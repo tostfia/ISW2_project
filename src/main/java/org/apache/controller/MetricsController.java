@@ -1,7 +1,7 @@
 package org.apache.controller;
 
-public class Metrics {
-    public Metrics(Git git){}
+public class MetricsController {
+    public MetricsController(GitController git){}
     public void start() {
     }
 

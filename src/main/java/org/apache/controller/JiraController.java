@@ -1,12 +1,13 @@
 package org.apache.controller;
 
 import org.apache.model.Release;
+import org.apache.model.Ticket;
 import org.json.JSONObject;
 
 import java.util.List;
 
-public class Jira {
-    public Jira(String targetName){}
+public class JiraController {
+    public JiraController(String targetName){}
     public void injectRelease() {
 
     }
@@ -18,7 +19,7 @@ public class Jira {
     public void injectTickets() {
     }
 
-    public Object getFixedTickets() {
+    public List<Ticket> getFixedTickets() {
         return null;
     }
 
