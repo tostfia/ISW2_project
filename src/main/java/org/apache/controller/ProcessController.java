@@ -92,7 +92,7 @@ public class ProcessController implements Runnable {
     private void storeData(JiraController jiraController, GitController gitController) {
         logger.info(threadIdentity+"-Avvio salvataggio dati ...");
         Utility.setupJson(targetName, ReportType.RELEASE,new JSONObject(jiraController.getMapReleases()), FileExtension.JSON);
-        Utility.setupJson(targetName, ReportType.TICKETS,new JSONObject(jiraController.getFixedTickets()), FileExtension.JSON);
+        Utility.setupJson(targetName, ReportType.TICKETS,new JSONObject(gitController.getMapTickets()), FileExtension.JSON);
         Utility.setupJson(targetName, ReportType.COMMITS,new JSONObject(gitController.getMapCommits()), FileExtension.JSON);
         Utility.setupJson(targetName, ReportType.SUMMARY,new JSONObject(gitController.getMapSummary()), FileExtension.JSON);
         logger.info(threadIdentity+"-Salvataggio dati completato.");

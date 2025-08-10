@@ -4,6 +4,7 @@ import org.apache.model.Release;
 import org.json.JSONObject;
 
 import java.util.List;
+import java.util.Map;
 
 public class GitController {
     public GitController(String targetName, String gitUrl, List<Release> releases) {
@@ -23,17 +24,28 @@ public class GitController {
 
     public void closeRepo() {
     }
-
-    public JSONObject getMapCommits() {
-        return null;
-
-    }
-    public JSONObject getMapSummary() {
-        return null;
-    }
-
     public JiraController getJiraController() {
         return null;
+    }
+
+
+
+
+
+
+    //Mapper
+    public Map<String,String> getMapSummary() {
+        return null;
+    }
+
+
+
+    public Map<String,String> getMapTickets() {
+        return null;
+    }
+    public Map<String,String> getMapCommits() {
+        return null;
+
     }
     // Method implementation
 }
