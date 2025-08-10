@@ -22,7 +22,7 @@ public class Main {
 
         try {
             AnalysisController controller = new AnalysisController();
-            //controller.startAnalysis(projectToAnalyze);
+            controller.startAnalysis(projectToAnalyze);
         }catch (Exception e){
             logger.severe(e.getMessage());
         }

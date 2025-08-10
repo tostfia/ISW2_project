@@ -1,13 +1,4 @@
 {
-  "clone_path": "C:/Users/sofia/repo",
-  "projects": [
-    {
-      "name": "BOOKKEEPER",
-      "url": "https://github.com/apache/bookkeeper.git"
-    },
-    {
-      "name": "STORM",
-      "url": "https://github.com/apache/storm.git"
-    }
-  ]
+  "BOOKKEEPER": "https://github.com/tostfia/bookkeeper.git",
+  "STORM": "https://github.com/tostfia/storm.git"
 }
