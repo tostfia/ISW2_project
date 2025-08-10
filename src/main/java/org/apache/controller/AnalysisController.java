@@ -15,26 +15,29 @@ public class AnalysisController {
     //Classe ha il controllo di tutto il processo di analisi
     public AnalysisController(){}
 
-    public void startAnalysis(String projectToAnalyze) {
+    public void startAnalysis(String configFilePath) {
         // Qui si avvia l'analisi del progetto specificato
         // Implementazione dell'analisi
-        JSONObject targets = Objects.requireNonNull(JsonReader.load(projectToAnalyze));
+        JSONObject targets = Objects.requireNonNull(JsonReader.load(configFilePath));
         Iterator<String> keys = targets.keys();
-        int threads= targets.length();
+        int numTasks= targets.length();
         Logger logger = CollectLogger.getInstance().getLogger();
-        String startMessage = "Analisi avviata per il progetto: " + projectToAnalyze + " con " + threads + " thread.";
-        logger.info(startMessage);
+        logger.info("Numero di progetti da analizzare: " + numTasks);
 
-        CountDownLatch latch = new CountDownLatch(threads);
-        int count=0;
+        CountDownLatch latch = new CountDownLatch(numTasks);
+
         try (ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors())) {
+            int count = 0;
             while (keys.hasNext()) {
                 String key = keys.next();
                 String value = targets.getString(key);
-                Process process = new Process(count, latch, key, value);
+                ProcessController processController = new ProcessController(count, latch, key, value);
+                executorService.submit(processController);
                 count++;
             }
+            logger.info("Tutti i task sono stati sottomessi. In attesa del completamento...");
             latch.await();
+            logger.info("Tutti i task hanno terminato. Analisi completata.");
 
         }catch (InterruptedException e){
             logger.severe(e.getMessage());

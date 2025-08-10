@@ -32,7 +32,7 @@
             <version>3.25.10</version> <!-- Versione aggiornata -->
         </dependency>
 
-        <!-- Librerie per il Machine Learning (Weka) -->
+        <!-- Librerie per il Machine Learning (WekaController) -->
         <dependency>
             <groupId>nz.ac.waikato.cms.weka</groupId>
             <artifactId>weka-stable</artifactId>
