@@ -5,9 +5,12 @@ import org.apache.model.Release;
 import org.apache.model.Ticket;
 import org.apache.utilities.enums.FileExtension;
 import org.apache.utilities.enums.ReportType;
+import org.eclipse.jgit.api.errors.GitAPIException;
 import org.json.JSONObject;
 import org.apache.utilities.Utility;
 
+import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.logging.Logger;
@@ -43,7 +46,7 @@ public class ProcessController implements Runnable {
             logger.info(finalMessage);
         }
     }
-    private void processing()  {
+    private void processing() throws IOException, URISyntaxException, GitAPIException {
         //FASE 1: Analisi Jira
         JiraController jiraController =performJiraAnalysis();
         List<Release> releases = jiraController.getRealeases();
@@ -52,7 +55,7 @@ public class ProcessController implements Runnable {
         GitController gitController= performGitAnalysis(releases,jiraController.getFixedTickets());
 
         //FASE 3: Calcolo metriche e salvataggio
-        calculateAndStoreMetrics(gitController);
+        calculateAndStoreMetrics(jiraController,gitController);
         //FASE 4: Generazione dataset finale
         MetricsController metricsController = new MetricsController(gitController);
         metricsController.generateDataset(targetName);
@@ -60,7 +63,7 @@ public class ProcessController implements Runnable {
         gitController.closeRepo();
     }
     // Questo metodo esegue l'analisi di Jira, iniettando le release e i ticket
-    private JiraController performJiraAnalysis(){
+    private JiraController performJiraAnalysis() throws IOException, URISyntaxException {
         logger.info(threadIdentity+"-Avvio analisi Jira ...");
         JiraController jiraController = new JiraController(targetName);
         jiraController.injectRelease();
@@ -69,7 +72,7 @@ public class ProcessController implements Runnable {
         return jiraController;
     }
     // Questo metodo esegue l'analisi di Git, iniettando i commit e correlando i ticket
-    private GitController performGitAnalysis(List<Release> releases, List<Ticket> tickets){
+    private GitController performGitAnalysis(List<Release> releases, List<Ticket> tickets) throws GitAPIException, IOException {
         logger.info(threadIdentity+"-Avvio analisi Git ...");
         GitController gitController = new GitController(targetName, project, releases);
         gitController.injectCommits();
@@ -80,12 +83,12 @@ public class ProcessController implements Runnable {
         return gitController;
     }
     // Questo metodo calcola le metriche e salva i dati in formato JSON
-    private void calculateAndStoreMetrics(GitController gitController){
+    private void calculateAndStoreMetrics(JiraController jiraController, GitController gitController){
         logger.info(threadIdentity+"-Avvio calcolo metriche ...");
         Utility.setupCsv(gitController);
         MetricsController metricsController = new MetricsController(gitController);
         metricsController.start();
-        storeData(gitController.getJiraController(),gitController);
+        storeData(jiraController,gitController);
         logger.info(threadIdentity+"-Calcolo metriche completato.");
     }
     // Questo metodo salva i dati in formato JSON

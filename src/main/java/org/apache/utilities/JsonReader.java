@@ -11,18 +11,18 @@ import java.nio.file.Paths;
 public class JsonReader {
     private JsonReader() {}
 
-    private static String read(Reader rd) throws IOException {
+    private static String readAll(Reader rd) throws IOException {
         StringBuilder sb= new StringBuilder();
-        int c;
-        while ((c = rd.read()) != -1) {
-            sb.append((char) c);
+        int cp;
+        while ((cp = rd.read()) != -1) {
+            sb.append((char) cp);
         }
         return sb.toString();
     }
     public static JSONObject readJsonFromUrl(String url) throws IOException, URISyntaxException {
         InputStream input = new URI(url).toURL().openStream();
         BufferedReader reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8));
-        String jsonText = read(reader);
+        String jsonText = readAll(reader);
         return new JSONObject(jsonText);
     }
     public static JSONObject load(String path) {
