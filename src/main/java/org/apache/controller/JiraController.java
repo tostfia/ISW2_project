@@ -9,6 +9,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.logging.Logger;
@@ -34,7 +35,7 @@ public class JiraController {
 
     //Fase 1: Scarico le informazioni sulle versioni da Jira e le carico nello stato interno
     public void injectRelease() throws IOException, URISyntaxException {
-        String urlString = JIRA_BASE_URL + "project/" + targetName + "/versions";
+        String urlString = JIRA_BASE_URL + "project/" + targetName ;
         JSONObject json = JsonReader.readJsonFromUrl(urlString);
         JSONArray versions = json.getJSONArray("versions");
 
@@ -46,6 +47,10 @@ public class JiraController {
             if (version.has("id")) releaseID = version.getString("id");
             if (version.has("name")) releaseName = version.getString("name");
             if (version.has("releaseDate")) releaseDate = version.getString("releaseDate");
+            if (releaseID == null || releaseName == null || releaseDate == null) {
+                logger.warning("Incomplete version data: " + version);
+                continue;
+            }
             try {
 
                 Release newRelease = new Release(releaseID, releaseName, releaseDate);
@@ -65,40 +70,76 @@ public class JiraController {
         int results;
         do {
             results = startAt + 1000;
-            String url = JIRA_BASE_URL + "search?jql=project=%22" + targetName + "%22AND%22issueType%22=%22Bug%22AND" +
-                    "(%22status%22=%22Closed%22OR%22status%22=%22Resolved%22)" +
-                    "AND%22resolution%22=%22Fixed%22&fields=key,versions,created,resolutiondate&startAt="
-                    + startAt + "&maxResults=" + results;
+            // --- INIZIO MODIFICA DI DEBUG ---
+            // Query JQL Semplificata: "dammi TUTTI i ticket di tipo Bug, indipendentemente dallo stato"
+            String jql = String.format("project = \"%s\" AND issuetype = \"Bug\"", targetName);
+
+            // Se anche questa non restituisce nulla, prova la query più permissiva di tutte:
+            // String jql = String.format("project = \"%s\"", this.targetName);
+
+            logger.info(String.format("Eseguo query JQL: %s", jql)); // Logghiamo la query che stiamo usando
+            // --- FINE MODIFICA DI DEBUG ---
+
+            String url = JIRA_BASE_URL + "search?jql=" + java.net.URLEncoder.encode(jql, StandardCharsets.UTF_8)
+                    + "&fields=key,versions,created,resolutiondate&startAt=" + startAt + "&maxResults=" + results;
             JSONObject json = JsonReader.readJsonFromUrl(url);
             JSONArray issues = json.getJSONArray("issues");
             total = json.getInt("total");
             //itero sui ticket ricordo che key è l'identificativo del ticket
-            for (; startAt < total && startAt < results; startAt++) {
-                String key = issues.getJSONObject(startAt % 1000).getString("key");
-                //Prendo la data di risoluzione
-                JSONObject fields = issues.getJSONObject(startAt % 1000).getJSONObject("fields");
-                String creationDateString = fields.getString("created");
-                String resolutionDateString = fields.getString("resolutiondate");
-                LocalDate creationDate = LocalDate.parse(creationDateString.substring(0, 10));
-                LocalDate resolutionDate = LocalDate.parse(resolutionDateString.substring(0, 10));
+            for (Object issueObj : issues) {
+                JSONObject issue = (JSONObject) issueObj;
+                try {
+                    JSONObject fields = issue.getJSONObject("fields");
 
-                //Prendo le versioni affette dalle issues
-                JSONArray affectedVersions = fields.optJSONArray("versions");
+                    // --- INIZIO CORREZIONE ---
+                    // Prima di tutto, controlliamo se il ticket è stato risolto.
+                    // Usiamo optString per evitare eccezioni su campi null.
+                    String resolutionDateString = fields.optString("resolutiondate");
 
-                //Prendo OV of the issues
-                Release openingVersion = Release.getReleaseAfterOrEqualToDate(creationDate, this.releases);
-                //Prendo FV of the issues
-                Release fixedVersion = Release.getReleaseAfterOrEqualToDate(resolutionDate, this.releases);
-                List<Release> affectedVersionList = Release.getAffectedVersions(affectedVersions, this.releases);
-                if (openingVersion == null || fixedVersion == null || openingVersion.getReleaseDate().isAfter(fixedVersion.getReleaseDate()) || (affectedVersionList.isEmpty() && (openingVersion.getReleaseDate().isBefore(affectedVersionList.getFirst().getReleaseDate()) || !fixedVersion.getReleaseDate().isAfter(affectedVersionList.getLast().getReleaseDate())))
-                ) continue;
-                tickets.add(new Ticket(key, creationDate, resolutionDate, openingVersion, fixedVersion, affectedVersionList));
+                    // Procediamo SOLO se la data di risoluzione esiste e non è vuota.
+                    if (resolutionDateString != null && !resolutionDateString.isEmpty()) {
+
+                        String key = issue.getString("key");
+                        String creationDateString = fields.getString("created");
+
+                        // Ora che siamo sicuri che le stringhe esistano, possiamo fare il parsing.
+                        LocalDate creationDate = LocalDate.parse(creationDateString.substring(0, 10));
+                        LocalDate resolutionDate = LocalDate.parse(resolutionDateString.substring(0, 10));
+
+                        JSONArray affectedVersions = fields.optJSONArray("versions");
+
+                        //Prendo OV of the issues
+                        Release openingVersion = Release.getReleaseAfterOrEqualToDate(creationDate, this.releases);
+                        //Prendo FV of the issues
+                        Release fixedVersion = Release.getReleaseAfterOrEqualToDate(resolutionDate, this.releases);
+                        List<Release> affectedVersionList = Release.getAffectedVersions(affectedVersions, this.releases);
+                        // Prima, controlliamo le condizioni di base che causano sempre lo scarto del ticket.
+                        if (openingVersion == null || fixedVersion == null || openingVersion.getReleaseDate().isAfter(fixedVersion.getReleaseDate())) {
+                            continue; // Scarta il ticket e passa al successivo
+                        }
+
+                        // Ora, gestiamo la logica complessa legata alle affected versions.
+                        // Eseguiamo questo controllo SOLO SE la lista delle affected versions NON è vuota.
+                        if (!affectedVersionList.isEmpty()) {
+                            // Se la lista non è vuota, controlliamo la coerenza.
+                            // Se una di queste condizioni è vera, il ticket non è coerente e lo scartiamo.
+                            if (openingVersion.getReleaseDate().isBefore(affectedVersionList.getFirst().getReleaseDate()) ||
+                                    !fixedVersion.getReleaseDate().isAfter(affectedVersionList.getLast().getReleaseDate())) {
+                                continue; // Scarta il ticket
+                            }
+                        }
+                        tickets.add(new Ticket(key, creationDate, resolutionDate, openingVersion, fixedVersion, affectedVersionList));
+                    }
+                } catch (Exception e) {
+                    logger.warning("Impossibile processare un ticket. Causa: " + e.getMessage());
+                }
 
             }
+        }while (startAt < total) ;
+            this.fixedTickets = new ArrayList<>(this.tickets);
+            this.fixedTickets.sort(Comparator.comparing(Ticket::getResolutionDate));
+            logger.info(String.format("Trovati e processati %d ticket 'Fixed' per %s", this.fixedTickets.size(), targetName));
 
-        } while (startAt < total);
-        //Filtro i ticket che hanno una versione fissa
-        tickets.sort(Comparator.comparing(Ticket::getResolutionDate));
 
 
     }

@@ -37,7 +37,13 @@ public class ProcessController implements Runnable {
         try {
             processing();
         } catch (Exception e) {
-            logger.severe(e.getMessage());
+            java.io.StringWriter sw = new java.io.StringWriter();
+            java.io.PrintWriter pw = new java.io.PrintWriter(sw);
+            e.printStackTrace(pw);
+            String sStackTrace = sw.toString(); // Contiene lo stack trace come stringa
+
+            String errorMessage = String.format("Errore critico in %s: %n%s", threadIdentity, sStackTrace);
+            logger.severe(errorMessage);
         } finally {
             latch.countDown();
             long endOverallTime = System.currentTimeMillis();
@@ -75,10 +81,9 @@ public class ProcessController implements Runnable {
     private GitController performGitAnalysis(List<Release> releases, List<Ticket> tickets) throws GitAPIException, IOException {
         logger.info(threadIdentity+"-Avvio analisi Git ...");
         GitController gitController = new GitController(targetName, project, releases);
-        gitController.injectCommits();
+        gitController.buildCommitHistory();
         gitController.setTickets(tickets);
-        gitController.processCommitsWithIssues();
-        gitController.processClass();
+        gitController.findBuggyFiles();
         logger.info(threadIdentity+"-Analisi Git completata.");
         return gitController;
     }
