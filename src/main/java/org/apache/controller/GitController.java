@@ -116,39 +116,21 @@ public class GitController {
         for (Ticket ticket : this.tickets) {
             ticketMap.put(ticket.getTicketKey().toUpperCase(), ticket);
         }
-        // 1. STAMPA UN CAMPIONE DI CHIAVI DALLA MAPPA DEI TICKET
-        logger.info(String.format("[%s] Dimensione della mappa dei ticket: %d", this.targetName, ticketMap.size()));
-        if (!ticketMap.isEmpty()) {
-            List<String> sampleKeys = new ArrayList<>(ticketMap.keySet()).subList(0, Math.min(5, ticketMap.size()));
-            logger.info(String.format("[%s] Esempio di chiavi ticket in mappa: %s", this.targetName, sampleKeys));
-        }
 
-        // 2. PREPARA LA STAMPA DEI COMMIT
-        int commitCountForDebug = 0;
-        final int MAX_MESSAGES_TO_PRINT = 20;
-        // --- FINE DEBUG ---
+
+
 
         // Regex migliorata: case-insensitive e cerca la chiave ovunque
         Pattern pattern = Pattern.compile(this.targetName + "-\\d+", Pattern.CASE_INSENSITIVE);
 
         for (Commit commit : this.allCommits) {
-            String commitMessage = commit.getRevCommit().getFullMessage();
 
-            // --- INIZIO DEBUG ---
-            // 3. STAMPA UN CAMPIONE DI MESSAGGI DI COMMIT
-            if (commitCountForDebug < MAX_MESSAGES_TO_PRINT) {
-                logger.info(String.format("[%s] Messaggio Commit Esempio: %s",
-                        this.targetName, commitMessage.replace("\n", " ").substring(0, Math.min(100, commitMessage.length()))));
-                commitCountForDebug++;
-            }
+
+
             Matcher matcher = pattern.matcher(commit.getRevCommit().getFullMessage());
             if (matcher.find()) {
                 String ticketKey = matcher.group(0).toUpperCase();// Normalizza a maiuscolo
-                // --- INIZIO DEBUG ---
-                // 4. STAMPA OGNI CORRISPONDENZA TROVATA DALLA REGEX
-                logger.info(String.format("!!! [%s] Regex ha trovato una potenziale chiave: '%s' nel commit %s",
-                        this.targetName, ticketKey, commit.getRevCommit().getName()));
-                // --- FINE DEBUG ---
+
                 if (ticketMap.containsKey(ticketKey)) {
                     // Trovato un fixing-commit!
                     commit.setTicket(ticketMap.get(ticketKey));

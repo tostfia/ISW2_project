@@ -17,7 +17,7 @@ import java.util.logging.Logger;
 public class JiraController {
     private final List<Release> releases;
     private final List<Ticket> tickets;
-    private static String targetName;
+    private  String targetName;
     private static final Logger logger = CollectLogger.getInstance().getLogger();
     //Prendo i ticket fixati
     @Getter
@@ -26,7 +26,7 @@ public class JiraController {
 
     //Costruttore
     public JiraController(String targetName) {
-        JiraController.targetName = targetName.toUpperCase();
+        this.targetName = targetName.toUpperCase();
         this.releases = new ArrayList<>();
         this.tickets = new ArrayList<>();
         this.fixedTickets = new ArrayList<>();
@@ -67,21 +67,13 @@ public class JiraController {
     public void injectTickets() throws IOException, URISyntaxException {
         int total;
         int startAt = 0;
-        int results;
         do {
-            results = startAt + 1000;
-            // --- INIZIO MODIFICA DI DEBUG ---
+
+
             // Query JQL Semplificata: "dammi TUTTI i ticket di tipo Bug, indipendentemente dallo stato"
             String jql = String.format("project = \"%s\" AND issuetype = \"Bug\"", targetName);
-
-            // Se anche questa non restituisce nulla, prova la query più permissiva di tutte:
-            // String jql = String.format("project = \"%s\"", this.targetName);
-
-            logger.info(String.format("Eseguo query JQL: %s", jql)); // Logghiamo la query che stiamo usando
-            // --- FINE MODIFICA DI DEBUG ---
-
             String url = JIRA_BASE_URL + "search?jql=" + java.net.URLEncoder.encode(jql, StandardCharsets.UTF_8)
-                    + "&fields=key,versions,created,resolutiondate&startAt=" + startAt + "&maxResults=" + results;
+                    + "&fields=key,versions,created,resolutiondate&startAt=" + startAt + "&maxResults=1000";
             JSONObject json = JsonReader.readJsonFromUrl(url);
             JSONArray issues = json.getJSONArray("issues");
             total = json.getInt("total");
@@ -91,8 +83,8 @@ public class JiraController {
                 try {
                     JSONObject fields = issue.getJSONObject("fields");
 
-                    // --- INIZIO CORREZIONE ---
-                    // Prima di tutto, controlliamo se il ticket è stato risolto.
+
+                    // Controlliamo se il ticket è stato risolto.
                     // Usiamo optString per evitare eccezioni su campi null.
                     String resolutionDateString = fields.optString("resolutiondate");
 
@@ -135,6 +127,8 @@ public class JiraController {
                 }
 
             }
+            startAt += issues.length();
+
         }while (startAt < total) ;
             this.fixedTickets = new ArrayList<>(this.tickets);
             this.fixedTickets.sort(Comparator.comparing(Ticket::getResolutionDate));
