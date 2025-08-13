@@ -8,13 +8,29 @@
     <artifactId>smell-analyzer</artifactId>
     <version>1.0-SNAPSHOT</version>
 
+    <!--
+        Centralizziamo tutte le versioni delle dipendenze qui.
+        Questo rende l'aggiornamento e la gestione delle coerenze molto più semplice.
+    -->
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- Versioni dei Plugin Maven -->
         <maven.plugin.javadoc.version>3.6.3</maven.plugin.javadoc.version>
         <maven.plugin.shade.version>3.6.0</maven.plugin.shade.version>
+
+        <!-- Versioni delle Dipendenze -->
+        <!-- NOTA IMPORTANTE: Usiamo PMD 6.55.0 perché l'API è stabile e compatibile
+             con il codice di esempio. PMD 7.x ha un'API completamente diversa. -->
         <pmd.version>6.55.0</pmd.version>
+        <jgit.version>6.8.0.202311291450-r</jgit.version>
+        <javaparser.version>3.25.10</javaparser.version>
+        <weka.version>3.8.6</weka.version>
+        <json.version>20240303</json.version>
+        <lombok.version>1.18.32</lombok.version>
+        <junit.version>4.13.2</junit.version>
     </properties>
 
     <dependencies>
@@ -22,21 +38,21 @@
         <dependency>
             <groupId>org.eclipse.jgit</groupId>
             <artifactId>org.eclipse.jgit</artifactId>
-            <version>6.8.0.202311291450-r</version> <!-- Usiamo una versione stabile e recente -->
+            <version>${jgit.version}</version>
         </dependency>
 
         <!-- Libreria per il parsing del codice sorgente Java -->
         <dependency>
             <groupId>com.github.javaparser</groupId>
             <artifactId>javaparser-core</artifactId>
-            <version>3.25.10</version> <!-- Versione aggiornata -->
+            <version>${javaparser.version}</version>
         </dependency>
 
         <!-- Librerie per il Machine Learning (WekaController) -->
         <dependency>
             <groupId>nz.ac.waikato.cms.weka</groupId>
             <artifactId>weka-stable</artifactId>
-            <version>3.8.6</version>
+            <version>${weka.version}</version>
         </dependency>
         <dependency>
             <groupId>nz.ac.waikato.cms.weka</groupId>
@@ -44,11 +60,11 @@
             <version>1.0.3</version>
         </dependency>
 
-        <!-- Librerie per la gestione dati (JSON e CSV) -->
+        <!-- Libreria per la gestione di JSON -->
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
-            <version> 20240303</version>
+            <version>${json.version}</version>
         </dependency>
 
 
@@ -56,7 +72,7 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.32</version> <!-- Versione aggiornata -->
+            <version>${lombok.version}</version>
             <scope>provided</scope>
         </dependency>
 
@@ -64,7 +80,7 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.13.2</version>
+            <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

@@ -5,26 +5,36 @@ import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
+
 
 @Getter
 public class DataMetrics {
     @Setter
     private boolean isBuggy;
+    @Setter
     private int size;
-
+    @Setter
     //Metriche di Complessità e Smells
     private long LOC; // Lines of Code
-    private long cycloComplexity; // Cyclomatic Complexity
-    private long numCodeSmells; // Numero di Code Smells
-    private long cognitiveComplexity; // Cognitive Complexity
+    @Setter
+    private long cycloComplexity;
+    @Setter// Cyclomatic Complexity
+    private long numCodeSmells;
+    @Setter// Numero di Code Smells
+    private long cognitiveComplexity;
+    @Setter// Cognitive Complexity
     private long nestingDepth; // Nesting Depth
 
     //Metriche di Processo/Storiche
+    @Setter
     private long churn;
+    @Setter
     private long maxChurn;
+    @Setter
     private long avgChurn;
+    @Setter
     private long methodHistory;
+    @Setter
     private long numAuthors;
 
 

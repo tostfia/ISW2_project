@@ -13,11 +13,14 @@ public class AnalyzedMethod {
 
     @Setter
     private DataMetrics metrics;
+    @Setter
+    private boolean isBuggy;
 
     public AnalyzedMethod(String signature, String simpleName, AnalyzedClass parentClass) {
         this.signature = signature;
         this.simpleName = simpleName;
         this.parentClass = parentClass;
-        this.metrics = new DataMetrics(); // Inizializziamo subito un oggetto metriche vuoto
+        this.metrics = new DataMetrics();// Inizializziamo subito un oggetto metriche vuoto
+        this.isBuggy = false;
     }
 }

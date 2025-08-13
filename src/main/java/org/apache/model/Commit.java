@@ -12,11 +12,14 @@ public class Commit {
     @Setter
     private Ticket ticket;
     private final Release release;
+    @Setter
+    private boolean isBuggy;
 
     public Commit(RevCommit revCommit, Release release) {
         this.revCommit = revCommit;
         this.release = release;
         ticket = null;
+        this.isBuggy = false;
     }
 
     @Override
@@ -30,5 +33,7 @@ public class Commit {
     public int hashCode() {
         return Objects.hashCode(revCommit);
     }
+
+
 }
 
