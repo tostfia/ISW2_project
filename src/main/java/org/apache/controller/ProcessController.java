@@ -84,6 +84,7 @@ public class ProcessController implements Runnable {
         gitController.buildCommitHistory();
         gitController.setTickets(tickets);
         gitController.findBuggyFiles();
+        gitController.processClasses();
         logger.info(threadIdentity+"-Analisi Git completata.");
         return gitController;
     }

@@ -71,9 +71,9 @@ public class GitController {
         this.buggyFilesPerCommit = new HashMap<>();
     }
 
-    /**
-     * Scansiona la storia di Git, crea oggetti Commit e li associa alla release corretta.
-     */
+
+    // --- Metodi per raccogliere commit associarli ai ticket e alla release di jira ---
+    //Scansiona la storia di Git, crea oggetti Commit e li associa alla release corretta.
     public void buildCommitHistory() throws GitAPIException, IOException {
         logger.info("Inizio analisi dei commit per " + targetName);
         Iterable<RevCommit> log = git.log().all().call();
@@ -116,9 +116,6 @@ public class GitController {
         for (Ticket ticket : this.tickets) {
             ticketMap.put(ticket.getTicketKey().toUpperCase(), ticket);
         }
-
-
-
 
         // Regex migliorata: case-insensitive e cerca la chiave ovunque
         Pattern pattern = Pattern.compile(this.targetName + "-\\d+", Pattern.CASE_INSENSITIVE);
@@ -181,6 +178,11 @@ public class GitController {
         }
         logger.info("Repository per " + targetName + " chiuso.");
     }
+    // --- Metodi per analizzare le classi ---
+    public void processClasses() {
+    }
+
+
 
     // --- Metodi Mapper Corretti per Produrre JSON Valido ---
 
@@ -235,6 +237,7 @@ public class GitController {
         summaryMap.put("FIXING_COMMITS", String.valueOf(this.fixingCommits.size()));
         return summaryMap;
     }
+
 
 
 }
