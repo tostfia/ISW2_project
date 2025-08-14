@@ -1,35 +1,57 @@
 package org.apache.model;
 
-
-
 import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.stmt.BlockStmt;
 import lombok.Getter;
 import lombok.Setter;
 
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
 @Getter
 public class AnalyzedMethod {
-    private final String signature; // La firma completa del metodo
+
+
+    private final String signature;
     private final String simpleName;
-    private final AnalyzedClass parentClass;// Riferimento alla classe che lo contiene
-    private final MethodDeclaration methodDeclaration; // Il metodo stesso, per accedere al corpo e ad altre informazioni
-    @Setter
-    private DataMetrics dataMetrics;
-    @Setter
-    private int totalLOC;
+    private final AnalyzedClass parentClass;
+    private final MethodDeclaration methodDeclaration;
 
     @Setter
     private DataMetrics metrics;
     @Setter
     private boolean isBuggy;
+    private final List<Commit> touchingMethodCommitList;
 
 
-    public AnalyzedMethod(String signature, String simpleName, AnalyzedClass parentClass) {
-        this.signature = signature;
-        this.simpleName = simpleName;
-        this.parentClass = parentClass;
-        this.metrics = new DataMetrics();// Inizializziamo subito un oggetto metriche vuoto
+    public AnalyzedMethod(String signature, String simpleName, AnalyzedClass parentClass, MethodDeclaration methodDeclaration) {
+
+        this.signature = Objects.requireNonNull(signature, "La firma del metodo non può essere nulla.");
+        this.simpleName = Objects.requireNonNull(simpleName, "Il nome semplice del metodo non può essere nullo.");
+        this.parentClass = Objects.requireNonNull(parentClass, "La classe contenitore non può essere nulla.");
+        this.methodDeclaration = Objects.requireNonNull(methodDeclaration, "MethodDeclaration non può essere nullo.");
+
+
+        this.metrics = new DataMetrics();
         this.isBuggy = false;
-        this.methodDeclaration= null; // Inizialmente non abbiamo il metodo
+        this.touchingMethodCommitList = new ArrayList<>();
     }
+
+
+    public String getBody() {
+
+        return this.methodDeclaration.getBody()
+                .map(BlockStmt::toString)
+                .orElse(""); // Se il metodo non ha corpo (es. in un'interfaccia), restituisce stringa vuota.
+    }
+
+
+    public void addTouchingCommit(Commit commit) {
+
+        this.touchingMethodCommitList.add(commit);
+    }
+
 
 }

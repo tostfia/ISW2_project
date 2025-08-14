@@ -5,7 +5,7 @@ import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import lombok.Getter;
 import lombok.Setter;
-import org.apache.controller.MetricsController;
+import org.apache.utilities.Utility;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,7 +15,7 @@ public class AnalyzedClass {
 
     // Campi Identificativi
     private final String filePath;      // Percorso del file
-    private final String fileContent;
+    private String fileContent;
     // Contenuto del file in questa versione
     @Setter
     private Release release;
@@ -75,9 +75,9 @@ public class AnalyzedClass {
 
         // Per ogni metodo, crea un oggetto AnalyzedMethod
         cu.findAll(MethodDeclaration.class).forEach(md -> {
-            String signature = MetricsController.getStringBody(md);
+            String signature = Utility.getStringBody(md);
             String simpleName = md.getNameAsString();
-            this.methods.add(new AnalyzedMethod(signature, simpleName, this));
+            this.methods.add(new AnalyzedMethod(signature, simpleName, this, md));
         });
     }
 
@@ -92,11 +92,19 @@ public class AnalyzedClass {
         this.touchingClassCommitList.add(commit);
     }
 
-    public void addLoc(int addedLines) {
-        addedLOCList.add(addedLines);
+
+    public void addMethod(AnalyzedMethod method) {
+        this.methods.add(method);
+    }
+    public String getCode(){
+        if (this.fileContent == null || this.fileContent.isEmpty()) {
+            return null; // Se il contenuto è vuoto, ritorna null
+        }
+        return this.fileContent; // Ritorna il contenuto del file
+
     }
 
-    public void removeLoc(int deletedLines) {
-        removedLOCList.add(deletedLines);
+    public void clearSourceCode() {
+       this.fileContent = null; // Pulisce il contenuto del file
     }
 }

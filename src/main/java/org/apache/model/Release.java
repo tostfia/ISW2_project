@@ -24,6 +24,7 @@ public  class Release {
     private final List<Commit> commitList;
 
 
+
     public Release(String releaseID ,String releaseName, String releaseDateString) {
         if(releaseID == null || releaseName == null || releaseDateString == null){
             throw new IllegalArgumentException();

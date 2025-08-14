@@ -42,6 +42,7 @@ public class GitController {
     @Getter
     private final List<Release> releases;
     protected final Git git;
+    @Getter
     private final Repository repository;
 
     @Getter
@@ -470,6 +471,32 @@ public class GitController {
         }
 
         logger.info("Trovati bug-introducing commits per " + bugIntroducingCommitsMap.size() + " fixing commits");
+    }
+    /**
+     * Estrae tutti gli snapshot delle classi relative a UNA SINGOLA release.
+     * @param release La release da analizzare.
+     * @return Una lista di AnalyzedClass per quella release.
+     */
+    public List<AnalyzedClass> getClassesForRelease(Release release) throws IOException {
+        List<AnalyzedClass> classList = new ArrayList<>();
+
+        if (release.getCommitList().isEmpty()) {
+            return classList; // Release senza commit
+        }
+
+        // Prendiamo l'ultimo commit come rappresentativo della release
+        Commit lastCommit = release.getCommitList().getLast();
+
+        // Get a map of class name to class code
+        Map<String, String> classesNameCodeMap = getClassesNameCodeInfos(lastCommit.getRevCommit());
+        for (Map.Entry<String, String> classInfo : classesNameCodeMap.entrySet()) {
+            classList.add(new AnalyzedClass(classInfo.getKey(), classInfo.getValue(), release));
+        }
+
+        // Associa i commit di QUESTA release alle classi trovate
+        setTouchingClassesCommits(classList, release.getCommitList());
+
+        return classList;
     }
 
 
