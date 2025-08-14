@@ -78,8 +78,9 @@ public class ProcessController implements Runnable {
         for(AnalyzedClass classSnapshot: allClasses){
            metricsController.calculateMetrics(classSnapshot);
            metricsController.calculateStatics(classSnapshot);
+            metricsController.generateDataset(classSnapshot);
         }
-        metricsController.generateDataset(targetName);
+
         //FASE 5: Chiudo le risorse
         gitController.closeRepo();
     }

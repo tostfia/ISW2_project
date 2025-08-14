@@ -30,8 +30,11 @@ public class AnalyzedClass {
 
     @Setter
     private boolean isBuggy;
+    @Setter
+    private int totalLOC;
 
     // Metriche di Processo (calcolate dal GitController)
+    @Setter
     private final DataMetrics processMetrics;
 
     public AnalyzedClass(String filePath, String fileContent, Release release) {
