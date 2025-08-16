@@ -1,110 +1,86 @@
 package org.apache.model;
 
-import com.github.javaparser.StaticJavaParser;
+import com.github.javaparser.JavaParser;
+import com.github.javaparser.ParseProblemException;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import lombok.Getter;
 import lombok.Setter;
-import org.apache.utilities.Utility;
+import org.apache.logging.CollectLogger;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.logging.Logger;
 
 @Getter
 public class AnalyzedClass {
 
-    // Campi Identificativi
-    private final String filePath;      // Percorso del file
-    private String fileContent;
+
+    private final String fileContent;
     // Contenuto del file in questa versione
     @Setter
     private Release release;
 
     // Struttura della Classe
-    private  String className;
-    private  String packageName;
+    private final String className;
+
     private final List<AnalyzedMethod> methods;
-    private final List<Commit> touchingClassCommitList;
-    private final List<Integer> addedLOCList;
-    private final List<Integer> removedLOCList;
+    @Setter
+    private List<Commit> touchingClassCommitList;
+
 
     @Setter
     private boolean isBuggy;
     @Setter
     private int totalLOC;
+    private final Logger logger = CollectLogger.getInstance().getLogger();
 
-    // Metriche di Processo (calcolate dal GitController)
     @Setter
-    private final DataMetrics processMetrics;
+    private ClassMetrics processMetrics;
 
-    public AnalyzedClass(String filePath, String fileContent, Release release) {
-        this.filePath = filePath;
+    public AnalyzedClass(String className, String fileContent, Release release) {
+        // --- INIZIO BLOCCO DI CONTROLLO E INIZIALIZZAZIONE ---
+        this.className = Objects.requireNonNull(className, "Il nome della classe non può essere nullo");
+        if (className.trim().isEmpty()) {
+            throw new IllegalArgumentException("Il nome della classe non può essere una stringa vuota.");
+        }
+
+        this.processMetrics= new ClassMetrics();
         this.fileContent = fileContent;
         this.release = release;
-        this.methods = new ArrayList<>();
-        this.processMetrics = new DataMetrics(); // Per Churn, Authors, etc.
-        this.isBuggy = false; // Inizialmente non è buggy
         this.touchingClassCommitList = new ArrayList<>();
-        this.addedLOCList = new ArrayList<>(); // Lista per le linee aggiunte
-        this.removedLOCList = new ArrayList<>(); // Lista per le linee rimosse
+        this.methods = new ArrayList<>();
 
-        // Esegui il parsing iniziale per identificare la struttura
-        parseStructure();
-    }
 
-    /**
-     * Usa JavaParser per estrarre il nome del package, della classe
-     * e per creare gli oggetti AnalyzedMethod (ancora senza metriche).
-     */
-    private void parseStructure() {
-        CompilationUnit cu;
+        // --- INIZIO BLOCCO DI PARSING SICURO (già presente, ma assicurati sia così) ---
         try {
-            cu = StaticJavaParser.parse(this.fileContent);
+            JavaParser parser = new JavaParser();
+            CompilationUnit cu = parser.parse(fileContent).getResult().orElse(null);
+
+            if (cu != null) {
+                cu.findAll(MethodDeclaration.class).forEach(method -> {
+                    this.methods.add(new AnalyzedMethod(method));
+                });
+                // Log di debug corretto
+                String msg = String.format("DEBUG: Parsato con successo %s - Trovati %d metodi.", this.className, this.methods.size());
+                logger.info(msg);
+            } else {
+                String errorMsg = String.format("ATTENZIONE: Parsing fallito ma senza eccezioni per la classe %s nella release %s. La lista dei metodi sarà vuota.", this.className, release.getReleaseID());
+                logger.warning(errorMsg);
+            }
+        } catch (ParseProblemException e) {
+            String errorMsg = String.format("ATTENZIONE: Errore di sintassi durante il parsing di %s nella release %s. La lista dei metodi sarà vuota. Errore: %s", this.className, release.getReleaseID(), e.getMessage());
+            logger.warning(errorMsg);
         } catch (Exception e) {
-            // Logga l'errore di parsing ma non bloccare
-            return;
+            String errorMsg = String.format("ATTENZIONE: Errore generico durante il parsing di %s nella release %s. La lista dei metodi sarà vuota.", this.className, release.getReleaseID());
+            logger.severe(errorMsg);
         }
 
-        // Estrai il nome del package
-        this.packageName = cu.getPackageDeclaration()
-                .map(pd -> pd.getName().asString())
-                .orElse("default");
-
-        // Estrai il nome della classe principale
-        this.className = cu.getPrimaryTypeName().orElse(extractClassNameFromPath());
-
-        // Per ogni metodo, crea un oggetto AnalyzedMethod
-        cu.findAll(MethodDeclaration.class).forEach(md -> {
-            String signature = Utility.getStringBody(md);
-            String simpleName = md.getNameAsString();
-            this.methods.add(new AnalyzedMethod(signature, simpleName, this, md));
-        });
-    }
-
-    private String extractClassNameFromPath() {
-        String[] parts = this.filePath.split("/");
-        String fileName = parts[parts.length - 1];
-        return fileName.replace(".java", "");
     }
 
 
-    public void addTouchingClassCommit(Commit commit) {
-        this.touchingClassCommitList.add(commit);
-    }
 
 
-    public void addMethod(AnalyzedMethod method) {
-        this.methods.add(method);
-    }
-    public String getCode(){
-        if (this.fileContent == null || this.fileContent.isEmpty()) {
-            return null; // Se il contenuto è vuoto, ritorna null
-        }
-        return this.fileContent; // Ritorna il contenuto del file
 
-    }
-
-    public void clearSourceCode() {
-       this.fileContent = null; // Pulisce il contenuto del file
-    }
 }

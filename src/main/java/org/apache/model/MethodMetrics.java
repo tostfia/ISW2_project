@@ -3,12 +3,8 @@ package org.apache.model;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.ArrayList;
-import java.util.List;
-
-
 @Getter
-public class DataMetrics {
+public class MethodMetrics {
     @Setter
     private boolean isBuggy;
     @Setter
@@ -38,7 +34,7 @@ public class DataMetrics {
     private long numAuthors;
 
 
-    public DataMetrics(){
+    public MethodMetrics(){
         this.isBuggy = false;
         this.size = 0;
         this.LOC = 0;
@@ -51,27 +47,6 @@ public class DataMetrics {
         this.avgChurn = 0;
         this.methodHistory = 0;
         this.numAuthors = 0;
-    }
-
-    public static String getCsvHeade(){
-        return "LOC,CyclomaticComplexity,NumCodeSmells,CognitiveComplexity,NestingDepth,Churn,MaxChurn,AvgChurn,MethodHistory,NumAuthors,Size,Buggy";
-
-    }
-    public List<Object> getAsCsvRow(){
-        List<Object> row = new ArrayList<>();
-        row.add(LOC);
-        row.add(cycloComplexity);
-        row.add(numCodeSmells);
-        row.add(cognitiveComplexity);
-        row.add(nestingDepth);
-        row.add(churn);
-        row.add(maxChurn);
-        row.add(avgChurn);
-        row.add(methodHistory);
-        row.add(numAuthors);
-        row.add(size);
-        row.add(isBuggy ? 1 : 0); // Convert boolean to int for CSV
-        return  row;
     }
 
 }

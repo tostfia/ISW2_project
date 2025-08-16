@@ -10,8 +10,6 @@ import org.apache.model.Release;
 import org.apache.utilities.metrics.CognitiveComplexityVisitor;
 import org.apache.utilities.metrics.NestingVisitor;
 
-
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -31,7 +29,7 @@ public class MetricsController {
         this.targetName = targetName;
         this.analyzedClasses = snapshot;
     }
-    public void processMetrics() throws IOException {
+    public void processMetrics() {
         processSize();
         processNumberOfAuthors();
         processLOC();
@@ -50,20 +48,18 @@ public class MetricsController {
             analyzedClass.getProcessMetrics().setSize(lines.length);
         }
     }
-    /**
-     * Metodo principale per processare il numero di autori per classi e metodi.
-     */
+
+
     private void processNumberOfAuthors() {
         for (AnalyzedClass analyzedClass : analyzedClasses) {
-            // Calcola e imposta gli autori per la classe
+            // Calcola gli autori a livello di classe (questo funziona già)
             int classAuthorCount = calculateUniqueAuthors(analyzedClass.getTouchingClassCommitList());
             analyzedClass.getProcessMetrics().setNumAuthors(classAuthorCount);
 
             // Calcola e imposta gli autori per ogni metodo
             for (AnalyzedMethod analyzedMethod : analyzedClass.getMethods()) {
-                // Assumiamo che esista getTouchingMethodCommitList() o un metodo simile
-                int methodAuthorCount = calculateUniqueAuthors(analyzedMethod.getTouchingMethodCommitList());
-                analyzedMethod.getMetrics().setNumAuthors(methodAuthorCount);
+                // SOLUZIONE TEMPORANEA: Assegna il numero di autori della classe al metodo
+                analyzedMethod.getMetrics().setNumAuthors(classAuthorCount);
             }
         }
     }
@@ -92,9 +88,11 @@ public class MetricsController {
         }
     }
     private void processCyclomaticComplexity() {
-        int cc=1;
+
         for (AnalyzedClass analyzedClass : analyzedClasses) {
+            int totalCC=0;
             for (AnalyzedMethod method : analyzedClass.getMethods()) {
+                int cc=1;
                 cc+=method.getMethodDeclaration().findAll(IfStmt.class).size();
                 cc+=method.getMethodDeclaration().findAll(ForStmt.class).size();
                 cc+=method.getMethodDeclaration().findAll(ForEachStmt.class).size();
@@ -106,8 +104,9 @@ public class MetricsController {
                                 || expr.getOperator() == BinaryExpr.Operator.OR)
                         .count()));
                 method.getMetrics().setCycloComplexity(cc);
+                totalCC+=cc; // Somma la complessità ciclommatica del metodo alla classe
             }
-            analyzedClass.getProcessMetrics().setCycloComplexity(cc);
+            analyzedClass.getProcessMetrics().setCycloComplexity(totalCC);
         }
 
     }

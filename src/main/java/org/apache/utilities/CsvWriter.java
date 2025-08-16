@@ -1,111 +1,120 @@
 package org.apache.utilities;
 
-import lombok.Getter;
 import org.apache.model.AnalyzedClass;
 import org.apache.model.AnalyzedMethod;
+import org.apache.model.ClassMetrics;
+import org.apache.model.MethodMetrics;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.List;
 
 
-public class CsvWriter {
+public class CsvWriter implements AutoCloseable {
     private final BufferedWriter writer;
     private final Object writeLock = new Object();
-
-    @Getter
     private volatile boolean isClosed = false;
 
     public CsvWriter(String fileName) throws IOException {
         this.writer = new BufferedWriter(new FileWriter(fileName));
     }
 
+    /**
+     * Scrive l'intestazione del file CSV. Deve corrispondere esattamente all'ordine
+     * dei dati scritti nel metodo buildRowString.
+     */
     public void writeHeader() throws IOException {
         synchronized (writeLock) {
-            if (isClosed) throw new IllegalStateException("CsvWriter già chiuso");
+            if (isClosed) throw new IllegalStateException("CsvWriter è già chiuso.");
 
-            writer.write("Release,ClassName,MethodName,LOC,Size,CycloComplexity,CognitiveComplexity,NestingDepth,NumCodeSmells" +
+            // Corrisponde esattamente alla logica di scrittura
+            writer.write("Release,ClassName,MethodName,LOC,Size,CycloComplexity,CognitiveComplexity,NestingDepth,NumCodeSmells," +
                     "NumAuthors,MethodHistory,Churn,MaxChurn,AvgChurn,IsBuggy");
             writer.newLine();
             writer.flush();
         }
     }
 
-
-    public void writeClassData(AnalyzedClass analyzedClass) throws IOException {
+    /**
+     * Metodo principale per scrivere i dati di una AnalyzedClass.
+     * Itera su tutti i metodi della classe e scrive una riga CSV per ciascuno.
+     *
+     * @param analyzedClass L'oggetto classe contenente i dati da scrivere.
+     */
+    public void writeResultsForClass(AnalyzedClass analyzedClass) throws IOException {
         synchronized (writeLock) {
-            if (isClosed) throw new IllegalStateException("CsvWriter già chiuso");
+            if (isClosed) throw new IllegalStateException("CsvWriter è già chiuso.");
 
-            List<AnalyzedMethod> methods = analyzedClass.getMethods();
-            if (methods == null || methods.isEmpty()) {
-                // Se non ci sono metodi, scrivi comunque una riga per la classe
-                writeClassRow(analyzedClass, null);
-                return;
+            // Scrivi una riga per ogni metodo trovato nella classe
+            for (AnalyzedMethod method : analyzedClass.getMethods()) {
+                String row = buildRowString(analyzedClass, method);
+                writer.write(row);
+                writer.newLine();
             }
-
-            // Scrivi una riga per ogni metodo
-            for (AnalyzedMethod method : methods) {
-                writeClassRow(analyzedClass, method);
-            }
-
-            writer.flush(); // Assicura che i dati siano scritti
         }
     }
-
-    private void writeClassRow(AnalyzedClass analyzedClass, AnalyzedMethod method) throws IOException {
-        StringBuilder row = new StringBuilder();
-
-        // Release info
-        row.append(csvEscape(analyzedClass.getRelease() != null ?
-                analyzedClass.getRelease().getReleaseID() : "Unknown")).append(",");
-
-        // Class info
-        row.append(csvEscape(analyzedClass.getClassName())).append(",");
-
-        // Method info
-        if (method != null) {
-            row.append(csvEscape(method.getSimpleName())).append(",");
-
-            // Static metrics
-            row.append(method.getMetrics().getLOC()).append(",");
-            row.append(method.getMetrics().getSize()).append(",");
-            row.append(method.getMetrics().getCycloComplexity()).append(",");
-            row.append(method.getMetrics().getCognitiveComplexity()).append(",");
-            row.append(method.getMetrics().getNestingDepth()).append(",");
-            row.append(method.getMetrics().getNumCodeSmells()).append(",");
-
-        } else {
-            // Metodo nullo - scrivi valori di default
-            row.append("N/A,N/A,0,0,0,");
-        }
-
-        // Process metrics (a livello di classe)
-        if (analyzedClass.getProcessMetrics() != null) {
-            row.append(analyzedClass.getProcessMetrics().getNumAuthors()).append(",");
-            row.append(analyzedClass.getProcessMetrics().getMethodHistory()).append(",");
-            row.append(analyzedClass.getProcessMetrics().getChurn()).append(",");
-            row.append(analyzedClass.getProcessMetrics().getMaxChurn()).append(",");
-            row.append(analyzedClass.getProcessMetrics().getAvgChurn()).append(",");
-        } else {
-            row.append("0,0,0,0,0,");
-        }
-
-        // Bug label
-        row.append(analyzedClass.isBuggy() ? "1" : "0");
-
-        writer.write(row.toString());
-        writer.newLine();
-    }
-
-
 
     /**
-     * Escape dei valori CSV per gestire virgole e virgolette
+     * Costruisce la stringa CSV per una singola riga (un metodo) combinando
+     * dati dalla classe e dal metodo stesso.
+     *
+     * @param analyzedClass La classe contenitore.
+     * @param method Il metodo per cui generare la riga.
+     * @return Una stringa formattata in CSV.
+     */
+    private String buildRowString(AnalyzedClass analyzedClass, AnalyzedMethod method) {
+        StringBuilder sb = new StringBuilder();
+
+        // Dati contestuali dalla Classe
+        // 1. Release
+        sb.append(csvEscape(analyzedClass.getRelease() != null ? analyzedClass.getRelease().getReleaseID() : "N/A")).append(",");
+        // 2. ClassName
+        sb.append(csvEscape(analyzedClass.getClassName())).append(",");
+
+        // Dati specifici del Metodo
+        // 3. MethodName
+        sb.append(csvEscape(method.getSimpleName())).append(",");
+
+        MethodMetrics methodMetrics = method.getMetrics();
+        // 4. LOC
+        sb.append(methodMetrics.getLOC()).append(",");
+        // 5. Size (Nota: Assumiamo che Size sia una metrica a livello di metodo. Se è a livello di classe, prendila da lì)
+        sb.append(methodMetrics.getSize()).append(",");
+        // 6. CycloComplexity
+        sb.append(methodMetrics.getCycloComplexity()).append(",");
+        // 7. CognitiveComplexity
+        sb.append(methodMetrics.getCognitiveComplexity()).append(",");
+        // 8. NestingDepth
+        sb.append(methodMetrics.getNestingDepth()).append(",");
+        // 9. NumCodeSmells
+        sb.append(methodMetrics.getNumCodeSmells()).append(",");
+        // 10. NumAuthors (del metodo)
+        sb.append(methodMetrics.getNumAuthors()).append(",");
+
+        // Metriche di processo (solitamente calcolate a livello di classe, ma riportate per ogni metodo)
+        // Se hai queste metriche anche a livello di metodo, prendile da method.getMetrics()
+        ClassMetrics classProcessMetrics = analyzedClass.getProcessMetrics();
+        // 11. MethodHistory
+        sb.append(classProcessMetrics.getMethodHistory()).append(",");
+        // 12. Churn
+        sb.append(classProcessMetrics.getChurn()).append(",");
+        // 13. MaxChurn
+        sb.append(classProcessMetrics.getMaxChurn()).append(",");
+        // 14. AvgChurn
+        sb.append(classProcessMetrics.getAvgChurn()).append(",");
+
+        // Etichetta del target (buggyness) - A livello di metodo
+        // 15. IsBuggy
+        sb.append(method.isBuggy() ? "1" : "0");
+
+        return sb.toString();
+    }
+
+    /**
+     * Esegue l'escape dei valori CSV per gestire correttamente virgole, virgolette e a capo.
      */
     private String csvEscape(String value) {
         if (value == null) return "";
-
         if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
             return "\"" + value.replace("\"", "\"\"") + "\"";
         }
@@ -113,15 +122,19 @@ public class CsvWriter {
     }
 
     /**
-     * Chiude il writer
+     * Chiude il writer in modo sicuro.
      */
+    @Override
     public void close() throws IOException {
         synchronized (writeLock) {
             if (!isClosed) {
-                writer.close();
-                isClosed = true;
+                try {
+                    writer.flush();
+                    writer.close();
+                } finally {
+                    isClosed = true;
+                }
             }
         }
     }
-
 }

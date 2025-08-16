@@ -8,7 +8,8 @@ import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
+
+
 
 @Getter
 public class AnalyzedMethod {
@@ -16,42 +17,33 @@ public class AnalyzedMethod {
 
     private final String signature;
     private final String simpleName;
-    private final AnalyzedClass parentClass;
-    private final MethodDeclaration methodDeclaration;
 
+
+
+
+    private final String body;
     @Setter
-    private DataMetrics metrics;
+    private MethodMetrics metrics;
     @Setter
     private boolean isBuggy;
     private final List<Commit> touchingMethodCommitList;
+    private final MethodDeclaration methodDeclaration;
 
 
-    public AnalyzedMethod(String signature, String simpleName, AnalyzedClass parentClass, MethodDeclaration methodDeclaration) {
+    public AnalyzedMethod( MethodDeclaration methodDeclaration) {
 
-        this.signature = Objects.requireNonNull(signature, "La firma del metodo non può essere nulla.");
-        this.simpleName = Objects.requireNonNull(simpleName, "Il nome semplice del metodo non può essere nullo.");
-        this.parentClass = Objects.requireNonNull(parentClass, "La classe contenitore non può essere nulla.");
-        this.methodDeclaration = Objects.requireNonNull(methodDeclaration, "MethodDeclaration non può essere nullo.");
-
-
-        this.metrics = new DataMetrics();
-        this.isBuggy = false;
-        this.touchingMethodCommitList = new ArrayList<>();
-    }
-
-
-    public String getBody() {
-
-        return this.methodDeclaration.getBody()
+        this.signature = methodDeclaration.getSignature().toString();
+        this.simpleName = methodDeclaration.getNameAsString();
+        this.body= methodDeclaration.getBody()
                 .map(BlockStmt::toString)
                 .orElse(""); // Se il metodo non ha corpo (es. in un'interfaccia), restituisce stringa vuota.
+        this.methodDeclaration= methodDeclaration;
+        this.metrics = new MethodMetrics();
+        this.isBuggy = false;
+        this.touchingMethodCommitList = new ArrayList<>();
+        this.metrics= new MethodMetrics();
     }
 
-
-    public void addTouchingCommit(Commit commit) {
-
-        this.touchingMethodCommitList.add(commit);
-    }
 
 
 }

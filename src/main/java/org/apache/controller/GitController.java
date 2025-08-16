@@ -31,6 +31,7 @@ import java.util.*;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class GitController {
     // Usiamo File.separator per la portabilità tra sistemi operativi
@@ -45,14 +46,16 @@ public class GitController {
     @Getter
     private final Repository repository;
 
-    @Getter
-    private final List<Commit> allCommits;
+
+    private final Map<String,Commit> allCommits;
     @Getter
     private final List<Commit> fixingCommits;
     @Getter
     private final Map<Commit, List<String>> buggyFilesPerCommit;// Mappa che lega un fixing-commit ai file "buggy"
     @Getter
     private final Map<Commit, List<Commit>> bugIntroducingCommitsMap; // Mappa fixing commit -> bug-introducing commits
+    @Getter
+    private Map<String, List<Commit>> commitsPerFile;
 
 
     private final String targetName;
@@ -77,11 +80,12 @@ public class GitController {
         this.repository = git.getRepository();
         // Inizializzazione di tutte le liste e mappe
         this.tickets = new ArrayList<>();
-        this.allCommits = new ArrayList<>();
+        this.allCommits = new HashMap<>();
         this.fixingCommits = new ArrayList<>();
         this.buggyFilesPerCommit = new HashMap<>();
         // Nel costruttore, aggiungi:
         this.bugIntroducingCommitsMap = new HashMap<>();
+        this.commitsPerFile = new HashMap<>();
     }
 
 
@@ -97,16 +101,16 @@ public class GitController {
 
             if (release != null) {
                 Commit newCommit = new Commit(revCommit, release);
-                this.allCommits.add(newCommit);
+                this.allCommits.put(newCommit.getRevCommit().getName(), newCommit);
                 release.addCommit(newCommit); // Assumendo che questo metodo esista
             }
         }
         // Rimuove le release che non hanno avuto commit (improbabile, ma è una sicurezza)
         releases.removeIf(release -> release.getCommitList().isEmpty());
         // Ordina i commit per data per un'elaborazione cronologica
-        allCommits.sort(Comparator.comparing(commit -> commit.getRevCommit().getCommitTime()));
         logger.info("Trovati e processati " + this.allCommits.size() + " commit.");
     }
+
 
     private Release findReleaseForCommit(LocalDateTime commitDate) {
         // Le release sono già ordinate per data dal JiraController
@@ -133,7 +137,7 @@ public class GitController {
         // Regex migliorata: case-insensitive e cerca la chiave ovunque
         Pattern pattern = Pattern.compile(this.targetName + "-\\d+", Pattern.CASE_INSENSITIVE);
 
-        for (Commit commit : this.allCommits) {
+        for (Commit commit : this.allCommits.values()) {
 
 
             Matcher matcher = pattern.matcher(commit.getRevCommit().getFullMessage());
@@ -192,35 +196,7 @@ public class GitController {
         logger.info("Repository per " + targetName + " chiuso.");
     }
 
-    public List<AnalyzedClass> processClass(List<Release> releaseList,
-                                            List<Commit> commitList) throws IOException {
-        List<AnalyzedClass> classList = new ArrayList<>();
-        List<Commit> lastCommitsList = new ArrayList<>();
 
-        // For each release we want to take all its classes, so we check their last commit
-        for (Release release : releaseList) {
-            // Order every commit list for each release
-            release.getCommitList().sort(Comparator.comparing(commit -> commit.getRevCommit().getCommitterIdent().getWhen()));
-            lastCommitsList.add(release.getCommitList().getLast());
-        }
-
-        // For each last commit of each release...
-        for(Commit lastCommit: lastCommitsList){
-            // Get a map of class name to class code for the actual release
-            Map<String, String> classesNameCodeMap = getClassesNameCodeInfos(lastCommit.getRevCommit());
-            for(Map.Entry<String, String> classInfo : classesNameCodeMap.entrySet()){
-                classList.add(new AnalyzedClass(classInfo.getKey(), classInfo.getValue(), lastCommit.getRelease()));
-            }
-        }
-
-        // Set the commit list that touches the class for each class
-        setTouchingClassesCommits(classList, commitList);
-
-        // Order classes by name
-        classList.sort(Comparator.comparing(AnalyzedClass::getClassName));
-
-        return classList;
-    }
 
     /**
      * From a commit takes the class name and code, excluding the test classes
@@ -284,79 +260,45 @@ public class GitController {
     }
 
     public void labelBuggynessWithSZZ(List<AnalyzedClass> classList) {
-        // 1. Inizializza tutto come "clean". Questo è il nostro stato di default.
+
+        // Creiamo una mappa temporanea per un accesso veloce.
+        Map<String, List<AnalyzedClass>> snapshotsByClassPath = classList.stream()
+                .collect(Collectors.groupingBy(AnalyzedClass::getClassName));
+
         for (AnalyzedClass classSnapshot : classList) {
             classSnapshot.setBuggy(false);
         }
 
-        // 2. Itera su ogni bug che SZZ ha trovato.
-        //    'bugIntroducingCommitsMap' contiene: FixingCommit -> Lista di BugIntroducingCommits
         for (Map.Entry<Commit, List<Commit>> entry : this.bugIntroducingCommitsMap.entrySet()) {
             Commit fixingCommit = entry.getKey();
-            Release fixedVersion = fixingCommit.getRelease(); // La release in cui il bug è stato RISOLTO.
+            Release fixedVersion = fixingCommit.getRelease();
+            List<String> affectedFiles = this.buggyFilesPerCommit.get(fixingCommit);
 
-            List<Commit> bugIntroducingCommits = entry.getValue();
+            if (affectedFiles == null) continue;
 
-            for (Commit bugIntroCommit : bugIntroducingCommits) {
-                Release injectedVersion = bugIntroCommit.getRelease(); // La release in cui il bug è stato INTRODOTTO.
+            for (Commit bugIntroCommit : entry.getValue()) {
+                Release injectedVersion = bugIntroCommit.getRelease();
 
-                // Quali file sono stati toccati da questo bug?
-                List<String> affectedFiles = this.buggyFilesPerCommit.get(fixingCommit);
-                if (affectedFiles == null) continue;
+                for (String filePath : affectedFiles) {
+                    List<AnalyzedClass> snapshots = snapshotsByClassPath.get(filePath);
+                    if (snapshots == null) continue;
 
-                // 3. Applica la regola di etichettatura a tutti gli snapshot.
-                for (AnalyzedClass classSnapshot : classList) {
+                    for (AnalyzedClass classSnapshot : snapshots) {
+                        Release snapshotRelease = classSnapshot.getRelease();
+                        boolean isInjectedBeforeOrDuringSnapshot = !injectedVersion.getReleaseDate().isAfter(snapshotRelease.getReleaseDate());
+                        boolean isFixedAfterSnapshot = fixedVersion.getReleaseDate().isAfter(snapshotRelease.getReleaseDate());
 
-                    // Se lo snapshot non riguarda uno dei file affetti, salta.
-                    if (!affectedFiles.contains(classSnapshot.getClassName())) {
-                        continue;
-                    }
-
-                    Release snapshotRelease = classSnapshot.getRelease();
-
-                    // LA REGOLA IBRIDA:
-                    // Lo snapshot è buggy se la sua release è compresa nell'intervallo [IV, FV).
-                    // (Inclusa la release di iniezione, esclusa la release di fix).
-                    boolean isInjectedBeforeOrDuringSnapshot = !injectedVersion.getReleaseDate().isAfter(snapshotRelease.getReleaseDate());
-                    boolean isFixedAfterSnapshot = fixedVersion.getReleaseDate().isAfter(snapshotRelease.getReleaseDate());
-
-                    if (isInjectedBeforeOrDuringSnapshot && isFixedAfterSnapshot) {
-                        classSnapshot.setBuggy(true);
+                        if (isInjectedBeforeOrDuringSnapshot && isFixedAfterSnapshot) {
+                            classSnapshot.setBuggy(true);
+                        }
                     }
                 }
             }
         }
     }
 
-    /**
-     * Adds each commit to the touching commit list of each class
-     * @param classList list of classes to set the touching commit list
-     * @param commitList list of commits that touches the classes in classList
-     * @throws IOException if there is any failure taking the touched class names
-     */
-    private void setTouchingClassesCommits(List<AnalyzedClass> classList, List<Commit> commitList) throws IOException {
-        List<AnalyzedClass> tempProjClasses;
 
-        for(Commit commit: commitList){
-            Release release = commit.getRelease();
-            tempProjClasses = new ArrayList<>(classList);
 
-            // Get the class list containing only the class of the current commit release
-            tempProjClasses.removeIf(tempProjClass -> !tempProjClass.getRelease().equals(release));
-
-            // Get the classes modified by the current commit
-            List<String> modifiedClassesNames = getTouchedClassesNames(commit.getRevCommit());
-
-            // For each class touched by the current commit, add the commit to its touching commit list
-            for(String modifiedClass: modifiedClassesNames){
-                for(AnalyzedClass projectClass: tempProjClasses){
-                    if(projectClass.getClassName().equals(modifiedClass) && !projectClass.getTouchingClassCommitList().contains(commit)) {
-                        projectClass.addTouchingClassCommit(commit);
-                    }
-                }
-            }
-        }
-    }
 
 
     /**
@@ -422,11 +364,9 @@ public class GitController {
 
                         // Converti da RevCommit ai nostri oggetti Commit
                         for (RevCommit suspiciousCommit : suspiciousCommits) {
-                            for (Commit commit : allCommits) {
-                                if (commit.getRevCommit().getName().equals(suspiciousCommit.getName())) {
-                                    bugIntroducingCommits.add(commit);
-                                    break;
-                                }
+                            Commit bugIntroCommit = allCommits.get(suspiciousCommit.getName());
+                            if (bugIntroCommit != null) {
+                                bugIntroducingCommits.add(bugIntroCommit);
                             }
                         }
                     } catch (GitAPIException e) {
@@ -448,60 +388,78 @@ public class GitController {
                 continue;
             }
 
-            List<Commit> bugIntroducingForThisCommit = new ArrayList<>();
+            Set<Commit> bugIntroducingForThisCommit = new HashSet<>(); // Usiamo un Set per evitare duplicati automaticamente
 
             for (String filePath : buggyFiles) {
                 List<Commit> bugIntroducingForFile = findBugIntroducingCommits(fixingCommit, filePath);
-                // Aggiungi solo commit non già presenti
-                for (Commit commit : bugIntroducingForFile) {
-                    if (!bugIntroducingForThisCommit.contains(commit)) {
-                        bugIntroducingForThisCommit.add(commit);
-                    }
-                }
+                bugIntroducingForThisCommit.addAll(bugIntroducingForFile);
             }
 
             if (!bugIntroducingForThisCommit.isEmpty()) {
-                bugIntroducingCommitsMap.put(fixingCommit, bugIntroducingForThisCommit);
-
-                // Aggiorna lo stato di buggy dei commit trovati
+                bugIntroducingCommitsMap.put(fixingCommit, new ArrayList<>(bugIntroducingForThisCommit));
                 for (Commit bugIntroducingCommit : bugIntroducingForThisCommit) {
                     bugIntroducingCommit.setBuggy(true);
                 }
             }
         }
-
         logger.info("Trovati bug-introducing commits per " + bugIntroducingCommitsMap.size() + " fixing commits");
     }
+
     /**
      * Estrae tutti gli snapshot delle classi relative a UNA SINGOLA release.
      * @param release La release da analizzare.
      * @return Una lista di AnalyzedClass per quella release.
      */
+    // Nel GitController.java
     public List<AnalyzedClass> getClassesForRelease(Release release) throws IOException {
         List<AnalyzedClass> classList = new ArrayList<>();
-
         if (release.getCommitList().isEmpty()) {
-            return classList; // Release senza commit
+            return classList;
         }
 
-        // Prendiamo l'ultimo commit come rappresentativo della release
         Commit lastCommit = release.getCommitList().getLast();
-
-        // Get a map of class name to class code
         Map<String, String> classesNameCodeMap = getClassesNameCodeInfos(lastCommit.getRevCommit());
+
         for (Map.Entry<String, String> classInfo : classesNameCodeMap.entrySet()) {
-            classList.add(new AnalyzedClass(classInfo.getKey(), classInfo.getValue(), release));
+            String className = classInfo.getKey();
+            AnalyzedClass ac = new AnalyzedClass(className, classInfo.getValue(), release);
+
+            // --- CORREZIONE: PASSA L'INTERA CRONOLOGIA ---
+            // Rimuoviamo il filtro per data e passiamo l'intera lista di commit per quel file.
+            // Sarà compito del MetricsController usare la data della release dello snapshot
+            // per calcolare correttamente le metriche.
+            List<Commit> fullHistory = this.commitsPerFile.get(className);
+            if (fullHistory != null) {
+                ac.setTouchingClassCommitList(new ArrayList<>(fullHistory)); // Assegna l'intera storia
+            }
+            classList.add(ac);
         }
-
-        // Associa i commit di QUESTA release alle classi trovate
-        setTouchingClassesCommits(classList, release.getCommitList());
-
         return classList;
     }
+    // Aggiungi questo nuovo metodo al GitController.java
+    public void buildFileCommitHistoryMap() throws IOException {
+        logger.info("Costruzione della cronologia dei commit per ogni file...");
+        for (Commit commit : allCommits.values()) {
+            if (commit.getRevCommit().getParentCount() > 0) {
+                List<String> touchedFiles = getTouchedClassesNames(commit.getRevCommit());
+                for (String filePath : touchedFiles) {
+                    // Aggiunge il commit alla lista di quel file. Se la lista non esiste, la crea.
+                    commitsPerFile.computeIfAbsent(filePath, k -> new ArrayList<>()).add(commit);
+                }
+            }
+        }
 
-
-
+        // Ordina le liste di commit per ogni file per data (importante per le metriche)
+        for (List<Commit> commitList : commitsPerFile.values()) {
+            commitList.sort(Comparator.comparing(c -> c.getRevCommit().getCommitTime()));
+        }
+        logger.info("Mappa della cronologia dei file completata.");
+    }
 }
+
+
+
+
 
 
 

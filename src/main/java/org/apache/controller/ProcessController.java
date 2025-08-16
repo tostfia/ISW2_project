@@ -56,61 +56,69 @@ public class ProcessController implements Runnable {
         }
     }
 
-    private void processing() throws IOException, URISyntaxException, GitAPIException, InterruptedException {
-        // --- FASE 1: SETUP ---
-            JiraController jiraController = performJiraAnalysis();
-            List<Release> releases = jiraController.getRealeases();
-            List<Ticket> tickets = jiraController.getFixedTickets();
+    private void processing() throws IOException, URISyntaxException, GitAPIException {
+        // --- FASE 1: JIRA & SETUP INIZIALE GIT (leggeri) ---
+        JiraController jiraController = performJiraAnalysis();
+        List<Release> releases = jiraController.getRealeases();
+        List<Ticket> tickets = jiraController.getFixedTickets();
 
-            // --- FASE 2: ANALISI GIT---
-            GitController gitController = new GitController(targetName, project, releases);
-            gitController.buildCommitHistory();
-            gitController.setTickets(tickets);
-            gitController.findBuggyFiles();
-            logger.info(threadIdentity+"-Analisi con SZZ");
-            gitController.findAllBugIntroducingCommits();
-            List<AnalyzedClass> allClasses = gitController.processClass(releases,gitController.getAllCommits());
-            logger.info("Creazione degli snapshot delle classi per ogni release");
-            gitController.labelBuggynessWithSZZ(allClasses);
-            logger.info(threadIdentity+"-Etichettatura delle classi completata.");
-            logger.info(threadIdentity+"-Analisi Git completata.");
+        GitController gitController = new GitController(targetName, project, releases);
+        gitController.buildCommitHistory(); // Carica i metadati dei commit (ancora necessario)
+        gitController.setTickets(tickets);
+        gitController.findBuggyFiles();
+        logger.info(threadIdentity + "-Analisi con SZZ");
+        gitController.findAllBugIntroducingCommits(); // Pre-calcola le informazioni sui bug
+        gitController.buildFileCommitHistoryMap();
 
+        logger.info(threadIdentity + "-Analisi Git completata.");
 
-
-
-        // --- FASE 3: ELABORAZIONE CONTROLLATA DELLE RELEASE ---
-            logger.info("Fase 3: Avvio calcolo metriche in parallelo controllato...");
-
-            // Apri il CsvWriter PRIMA di avviare i thread
-            String csvFileName =  targetName + "_dataset.csv";
-            CsvWriter csvWriter = new CsvWriter(csvFileName);
+        // --- FASE 2 & 3 & 4: CICLO PER RELEASE (Memory-Safe) ---
+        logger.info("Avvio calcolo metriche e scrittura per ogni release...");
+        String csvFileName = targetName + "_dataset.csv";
+        try (CsvWriter csvWriter = new CsvWriter(csvFileName)) {
             csvWriter.writeHeader();
             logger.info("CSV writer inizializzato: " + csvFileName);
 
-            MetricsController metricsController = new MetricsController(releases, allClasses, gitController, targetName);
-            metricsController.processMetrics();
+            for (Release release : releases) {
+                String releaseMsg = "Processando la release: " + release.getReleaseID();
+                logger.info(releaseMsg);
 
+                // 1. Estrai le classi SOLO per la release corrente
+                List<AnalyzedClass> classesForThisRelease = gitController.getClassesForRelease(release);
 
+                if (classesForThisRelease.isEmpty()) {
+                    logger.info("Nessuna classe trovata per la release " + release.getReleaseID() + ", saltando.");
+                    continue;
+                }
 
-            logger.info("Fase 4: In attesa del completamento di tutti i task...");
+                // 2. Etichetta la bugginess per questo sottoinsieme di classi
+                gitController.labelBuggynessWithSZZ(classesForThisRelease);
 
+                // 3. Calcola le metriche SOLO per questo sottoinsieme
+                MetricsController metricsController = new MetricsController(releases, classesForThisRelease, gitController, targetName);
+                metricsController.processMetrics();
 
+                // 4. Scrivi i risultati e libera la memoria IMMEDIATAMENTE
+                for (AnalyzedClass analyzedClass : classesForThisRelease) {
+                    csvWriter.writeResultsForClass(analyzedClass);
 
-            // Chiudi il CsvWriter DOPO che tutti i thread hanno finito
-            csvWriter.close();
-            logger.info("CSV completato e chiuso: " + csvFileName);
+                }
+                logger.info("Scrittura completata per la release: " + release.getReleaseID());
 
-            logger.info("Fase 4: In attesa del completamento di tutti i task...");
+                // La lista `classesForThisRelease` verrà distrutta dal garbage collector
+                // alla fine di questa iterazione del loop, liberando memoria per la prossima release.
+            }
+        }
 
-
-            logger.info("Tutti i task hanno terminato. Analisi completata.");
-
-            gitController.closeRepo();
-            logger.info("Repository chiuso correttamente.");
-
-
-
+        // --- FASE 5: COMPLETAMENTO ---
+        logger.info("Fase 5: Analisi completata.");
+        gitController.closeRepo();
+        logger.info("Repository chiuso correttamente.");
     }
+
+
+
+
 
 
 
