@@ -2,6 +2,7 @@ package org.apache.controller;
 
 import org.apache.logging.CollectLogger;
 import org.apache.utilities.JsonReader;
+import org.apache.utilities.enums.AnalysisMode;
 import org.json.JSONObject;
 
 import java.util.Iterator;
@@ -15,7 +16,7 @@ public class AnalysisController {
     //Classe ha il controllo di tutto il processo di analisi
     public AnalysisController(){}
 
-    public void startAnalysis(String configFilePath) {
+    public void startAnalysis(String configFilePath, AnalysisMode mode) {
         // Qui si avvia l'analisi del progetto specificato
         // Implementazione dell'analisi
         JSONObject targets = Objects.requireNonNull(JsonReader.load(configFilePath));
@@ -31,7 +32,7 @@ public class AnalysisController {
             while (keys.hasNext()) {
                 String key = keys.next();
                 String value = targets.getString(key);
-                ProcessController processController = new ProcessController(count, latch, key, value);
+                ProcessController processController = new ProcessController(count, latch, key, value,mode);
                 executorService.submit(processController);
                 count++;
             }

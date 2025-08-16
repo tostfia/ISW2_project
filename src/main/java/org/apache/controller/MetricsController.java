@@ -1,185 +1,269 @@
 package org.apache.controller;
 
+
+
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.BinaryExpr;
 import com.github.javaparser.ast.stmt.*;
-import org.apache.model.AnalyzedClass;
-import org.apache.model.AnalyzedMethod;
-import org.apache.model.Commit;
-import org.apache.model.Release;
+import org.apache.logging.CollectLogger;
+import org.apache.model.*;
 import org.apache.utilities.metrics.CognitiveComplexityVisitor;
 import org.apache.utilities.metrics.NestingVisitor;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
- * Orchestra il calcolo di tutte le metriche per una lista di classi.
- * Versione ottimizzata per ridurre l'uso di memoria.
+ * Orchestra il calcolo di tutte le metriche per uno snapshot di classi.
+ * Questa versione è stata riscritta per garantire che tutte le metriche
+ * siano calcolate con la granularità corretta (a livello di metodo)
+ * e in un ordine logico che rispetti le dipendenze tra di esse.
  */
 public class MetricsController {
-    List<Release> releases;
-    List<AnalyzedClass> analyzedClasses;
-    GitController gitController;
-    String targetName;
-    public MetricsController(List<Release> releases, List<AnalyzedClass> snapshot, GitController gitController, String targetName) {
-        this.releases = releases;
+
+    private final List<AnalyzedClass> analyzedClasses;
+    private final GitController gitController;
+    private final Logger logger = CollectLogger.getInstance().getLogger();
+
+    public MetricsController(List<AnalyzedClass> snapshot, GitController gitController) {
         this.gitController = gitController;
-        this.targetName = targetName;
         this.analyzedClasses = snapshot;
     }
+
+    /**
+     * Esegue il calcolo di tutte le metriche necessarie per il progetto.
+     * L'ordine delle chiamate è fondamentale per il corretto funzionamento.
+     */
     public void processMetrics() {
-        processSize();
+        logger.info("Inizio calcolo metriche per lo snapshot...");
+
+        // --- FASE 1: Metriche Statiche sul Codice (a livello di metodo) ---
+        // Queste non hanno dipendenze esterne, solo il codice sorgente.
+        processSizeAndStaticComplexity();
+        processParameterCount();
+
+
+
+        // --- FASE 3: Metriche Storiche (a livello di metodo) ---
+        // Queste dipendono dai dati raccolti nella Fase 2.
+        processRevisions();
         processNumberOfAuthors();
-        processLOC();
-        processCyclomaticComplexity();
-        processNestingDepth();
-        processCognitiveComplexity();
-        //processChurn();
-        //processMethodHistory();
-        //processNumberOfCodeSmells();
-        //processBuggyMethods();
+        processChangeMetrics(); // Sostituisce il vecchio processLOC e calcola Churn, StmtAdded, etc.
+        processBuggyMethods();
 
-    }
-    private void processSize(){
-        for (AnalyzedClass analyzedClass : analyzedClasses){
-            String[] lines= analyzedClass.getFileContent().split("\r\n|\r|\n");
-            analyzedClass.getProcessMetrics().setSize(lines.length);
-        }
+        logger.info("Calcolo metriche completato.");
     }
 
-
-    private void processNumberOfAuthors() {
+    /**
+     * Calcola metriche di complessità statica come LOC, Complessità Ciclomatica,
+     * Profondità di Annidamento e Complessità Cognitiva per ogni metodo.
+     */
+    private void processSizeAndStaticComplexity() {
         for (AnalyzedClass analyzedClass : analyzedClasses) {
-            // Calcola gli autori a livello di classe (questo funziona già)
-            int classAuthorCount = calculateUniqueAuthors(analyzedClass.getTouchingClassCommitList());
-            analyzedClass.getProcessMetrics().setNumAuthors(classAuthorCount);
+            int totalClassCC = 0;
+            int totalClassCognitive = 0;
+            int maxClassNesting = 0;
 
-            // Calcola e imposta gli autori per ogni metodo
-            for (AnalyzedMethod analyzedMethod : analyzedClass.getMethods()) {
-                // SOLUZIONE TEMPORANEA: Assegna il numero di autori della classe al metodo
-                analyzedMethod.getMetrics().setNumAuthors(classAuthorCount);
+            // Imposta la dimensione totale della classe
+            if (analyzedClass.getFileContent() != null) {
+                analyzedClass.getProcessMetrics().setSize(analyzedClass.getFileContent().split("\r\n|\r|\n").length);
             }
-        }
-    }
 
-    private int calculateUniqueAuthors(List<Commit> commits) {
-        if (commits == null || commits.isEmpty()) {
-            return 0;
-        }
-
-        // Usare un HashSet è più efficiente per garantire l'unicità
-        Set<String> authors = new HashSet<>();
-        for (Commit commit : commits) {
-            authors.add(commit.getRevCommit().getAuthorIdent().getName());
-        }
-        return authors.size();
-    }
-    private  void processLOC() {
-        for (AnalyzedClass analyzedClass: analyzedClasses){
-            long loc = 0; // Inizializza loc a 0 per ogni classe
-            for(AnalyzedMethod method: analyzedClass.getMethods()){
-                long mloc = method.getBody().lines().count();
-                method.getMetrics().setLOC(mloc);
-                loc += mloc; // Aggiunge le righe del metodo al totale della classe
-            }
-            analyzedClass.getProcessMetrics().setLOC(loc);
-        }
-    }
-    private void processCyclomaticComplexity() {
-
-        for (AnalyzedClass analyzedClass : analyzedClasses) {
-            int totalCC=0;
             for (AnalyzedMethod method : analyzedClass.getMethods()) {
-                int cc=1;
-                cc+=method.getMethodDeclaration().findAll(IfStmt.class).size();
-                cc+=method.getMethodDeclaration().findAll(ForStmt.class).size();
-                cc+=method.getMethodDeclaration().findAll(ForEachStmt.class).size();
-                cc+=method.getMethodDeclaration().findAll(WhileStmt.class).size();
-                cc+= method.getMethodDeclaration().findAll(CatchClause.class).size();
-                cc+= method.getMethodDeclaration().findAll(SwitchEntry.class).size();
-                cc+= (Math.toIntExact(method.getMethodDeclaration().findAll(BinaryExpr.class).stream()
-                        .filter(expr -> expr.getOperator() == BinaryExpr.Operator.AND
-                                || expr.getOperator() == BinaryExpr.Operator.OR)
-                        .count()));
+                MethodDeclaration md = method.getMethodDeclaration();
+
+                // LOC (Linee di Codice del corpo del metodo)
+                long loc = method.getBody().lines().count();
+                method.getMetrics().setLOC(loc);
+
+                // Complessità Ciclomatica
+                int cc = calculateCyclomaticComplexityForMethod(md);
                 method.getMetrics().setCycloComplexity(cc);
-                totalCC+=cc; // Somma la complessità ciclommatica del metodo alla classe
-            }
-            analyzedClass.getProcessMetrics().setCycloComplexity(totalCC);
-        }
+                totalClassCC += cc;
 
-    }
-    public void processNestingDepth() {
-        for (AnalyzedClass analyzedClass : analyzedClasses) {
-            int maxClassNesting = 0; // Per tenere traccia della profondità massima nella classe
+                // Profondità di Annidamento
+                int nesting = calculateNestingDepthForMethod(md);
+                method.getMetrics().setNestingDepth(nesting);
+                if (nesting > maxClassNesting) maxClassNesting = nesting;
 
-            for (AnalyzedMethod analyzedMethod : analyzedClass.getMethods()) {
-                // Ottieni la MethodDeclaration dall'AnalyzedMethod (assumendo che esista un getter)
-                MethodDeclaration methodDeclaration = analyzedMethod.getMethodDeclaration();
-
-                // Calcola la profondità per il singolo metodo usando il Visitor
-                int methodNesting = calculateNestingDepthForMethod(methodDeclaration);
-
-                // 1. Imposta la metrica per il METODO
-                analyzedMethod.getMetrics().setNestingDepth(methodNesting);
-
-                // Aggiorna la profondità massima per la classe
-                if (methodNesting > maxClassNesting) {
-                    maxClassNesting = methodNesting;
-                }
+                // Complessità Cognitiva
+                int cognitive = calculateCognitiveComplexityForMethod(md);
+                method.getMetrics().setCognitiveComplexity(cognitive);
+                totalClassCognitive += cognitive;
             }
 
-            // 2. Imposta la metrica per la CLASSE (usando il massimo trovato)
+            // Imposta le metriche aggregate a livello di classe
+            analyzedClass.getProcessMetrics().setCycloComplexity(totalClassCC);
+            analyzedClass.getProcessMetrics().setCognitiveComplexity(totalClassCognitive);
             analyzedClass.getProcessMetrics().setNestingDepth(maxClassNesting);
         }
     }
-    private int calculateNestingDepthForMethod(MethodDeclaration method) {
-        if (method == null || method.getBody().isEmpty()) {
-            return 0; // Nessun corpo, nessuna profondità
+
+    /**
+     * Calcola il numero di parametri per ogni metodo (metrica "actionable").
+     */
+    private void processParameterCount() {
+        for (AnalyzedClass analyzedClass : analyzedClasses) {
+            for (AnalyzedMethod method : analyzedClass.getMethods()) {
+                int paramCount = method.getMethodDeclaration().getParameters().size();
+                method.getMetrics().setParameterCount(paramCount);
+            }
         }
+    }
 
+
+
+
+    /**
+     * Calcola il numero di revisioni sia per la classe che per ogni metodo.
+     * Deve essere eseguito dopo `processMethodHistory`.
+     */
+    private void processRevisions() {
+        for (AnalyzedClass analyzedClass : analyzedClasses) {
+            analyzedClass.getProcessMetrics().setNumberOfRevisions(analyzedClass.getTouchingClassCommitList().size());
+            for (AnalyzedMethod method : analyzedClass.getMethods()) {
+                int methodRevisions = method.getTouchingMethodCommit().size();
+                method.getMetrics().setMethodHistory(methodRevisions); // methodHistories
+            }
+        }
+    }
+
+    /**
+     * Calcola il numero di autori unici per la classe e per ogni metodo.
+     * Deve essere eseguito dopo `processMethodHistory`.
+     */
+    private void processNumberOfAuthors() {
+        for (AnalyzedClass analyzedClass : analyzedClasses) {
+            analyzedClass.getProcessMetrics().setNumAuthors(calculateUniqueAuthors(analyzedClass.getTouchingClassCommitList()));
+            for (AnalyzedMethod method : analyzedClass.getMethods()) {
+                method.getMetrics().setNumAuthors(calculateUniqueAuthors(method.getTouchingMethodCommit())); // authors
+            }
+        }
+    }
+
+    /**
+     * Calcola tutte le metriche di cambiamento (Churn, StmtAdded, StmtDeleted)
+     * a livello di metodo, inclusi sum, max e avg.
+     * Deve essere eseguito dopo `processMethodHistory`.
+     */
+    private void processChangeMetrics() {
+        for (AnalyzedClass analyzedClass : analyzedClasses) {
+            for (AnalyzedMethod method : analyzedClass.getMethods()) {
+                List<Commit> methodHistory = method.getTouchingMethodCommit();
+                if (methodHistory == null || methodHistory.size() < 2) {
+                    setEmptyChangeMetrics(method);
+                    continue;
+                }
+
+                // Chiedi al GitController le statistiche di modifica per questo metodo
+                List<GitController.MethodChangeStats> changes = gitController.calculateMethodChangeHistory(
+                        methodHistory,
+                        analyzedClass.getClassName(),
+                        method.getSignature()
+                );
+
+                if (changes.isEmpty()) {
+                    setEmptyChangeMetrics(method);
+                    continue;
+                }
+
+                // Usa una classe helper per aggregare i risultati
+                LOCMetrics addedMetrics = new LOCMetrics();
+                LOCMetrics removedMetrics = new LOCMetrics();
+                LOCMetrics churnMetrics = new LOCMetrics();
+
+                for (GitController.MethodChangeStats change : changes) {
+                    addedMetrics.updateMetrics(change.linesAdded());
+                    removedMetrics.updateMetrics(change.linesDeleted());
+                    // Corretta la formula del churn
+                    churnMetrics.updateMetrics(change.linesAdded() + change.linesDeleted());
+                }
+
+                int nRevisions = changes.size();
+                addedMetrics.setAvgVal((double) addedMetrics.getVal() / nRevisions);
+                removedMetrics.setAvgVal((double) removedMetrics.getVal() / nRevisions);
+                churnMetrics.setAvgVal((double) churnMetrics.getVal() / nRevisions);
+
+                // Imposta le metriche nell'oggetto MethodMetrics
+                MethodMetrics metrics = method.getMetrics();
+                metrics.setStmtAddedMetrics(addedMetrics.getVal(), addedMetrics.getMaxVal(), addedMetrics.getAvgVal());
+                metrics.setStmtDeletedMetrics(removedMetrics.getVal(), removedMetrics.getMaxVal(), removedMetrics.getAvgVal());
+                metrics.setChurnMetrics(churnMetrics.getVal(), churnMetrics.getMaxVal(), churnMetrics.getAvgVal());
+            }
+        }
+    }
+
+    /**
+     * Etichetta i metodi come "buggy" se sono stati toccati da un commit che ha introdotto un bug (SZZ).
+     * Deve essere eseguito dopo `processMethodHistory`.
+     */
+    private void processBuggyMethods() {
+        Set<Commit> bugIntroducingCommits = gitController.getBugIntroducingCommitsMap().values().stream()
+                .flatMap(List::stream)
+                .collect(Collectors.toSet());
+
+        for (AnalyzedClass analyzedClass : analyzedClasses) {
+            for (AnalyzedMethod method : analyzedClass.getMethods()) {
+                List<Commit> methodHistory = method.getTouchingMethodCommit();
+                if (methodHistory == null || methodHistory.isEmpty()) {
+                    method.getMetrics().setBuggy(false);
+                    continue;
+                }
+
+                boolean isMethodBuggy = methodHistory.stream().anyMatch(bugIntroducingCommits::contains);
+                method.getMetrics().setBuggy(isMethodBuggy);
+            }
+        }
+    }
+
+    // --- METODI HELPER ---
+
+    private int calculateUniqueAuthors(List<Commit> commits) {
+        if (commits == null || commits.isEmpty()) return 0;
+        return new HashSet<>(commits.stream()
+                .map(c -> c.getRevCommit().getAuthorIdent().getName())
+                .toList()).size();
+    }
+
+    private int calculateCyclomaticComplexityForMethod(MethodDeclaration md) {
+        int cc = 1;
+        cc += md.findAll(IfStmt.class).size();
+        cc += md.findAll(ForStmt.class).size();
+        cc += md.findAll(ForEachStmt.class).size();
+        cc += md.findAll(WhileStmt.class).size();
+        cc += md.findAll(CatchClause.class).size();
+        cc += md.findAll(SwitchStmt.class).stream().mapToInt(s -> !s.getEntries().isEmpty() ? s.getEntries().size() - 1 : 0).sum();
+        cc += md.findAll(BinaryExpr.class, be -> be.getOperator() == BinaryExpr.Operator.AND || be.getOperator() == BinaryExpr.Operator.OR).size();
+        return cc;
+    }
+
+    private int calculateNestingDepthForMethod(MethodDeclaration method) {
+        if (method.getBody().isEmpty()) return 0;
         NestingVisitor visitor = new NestingVisitor();
-        // Il metodo accept avvierà la visita dell'AST a partire dal corpo del metodo
         method.getBody().get().accept(visitor, null);
-
         return visitor.getMaxDepth();
     }
 
-
-    public void processCognitiveComplexity() {
-        for (AnalyzedClass analyzedClass : analyzedClasses) {
-            int classCognitiveComplexity = 0; // Complessità totale per la classe
-
-            for (AnalyzedMethod analyzedMethod : analyzedClass.getMethods()) {
-                MethodDeclaration methodDeclaration = analyzedMethod.getMethodDeclaration();
-
-                // Calcola la complessità per il singolo metodo
-                int methodComplexity = calculateCognitiveComplexityForMethod(methodDeclaration);
-
-                // 1. Imposta la metrica per il METODO
-                analyzedMethod.getMetrics().setCognitiveComplexity(methodComplexity);
-
-                // Aggiungi alla somma della classe
-                classCognitiveComplexity += methodComplexity;
-            }
-
-            // 2. Imposta la metrica per la CLASSE
-            analyzedClass.getProcessMetrics().setCognitiveComplexity(classCognitiveComplexity);
-        }
-    }
     private int calculateCognitiveComplexityForMethod(MethodDeclaration method) {
-        if (method == null || method.getBody().isEmpty()) {
-            return 0; // Nessun corpo, nessuna complessità
-        }
-
+        if (method.getBody().isEmpty()) return 0;
         CognitiveComplexityVisitor visitor = new CognitiveComplexityVisitor();
-        method.accept(visitor, null); // Avvia la visita dall'inizio del metodo
-
+        method.accept(visitor, null);
         return visitor.getComplexity();
     }
-    //private void processChurn() {
-    //}
 
+    private void setEmptyChangeMetrics(AnalyzedMethod method) {
+        MethodMetrics metrics = method.getMetrics();
+        metrics.setStmtAddedMetrics(0, 0, 0.0);
+        metrics.setStmtDeletedMetrics(0, 0, 0.0);
+        metrics.setChurnMetrics(0, 0, 0.0);
+    }
 
+    public void processClassLevelHistoricalMetrics() {
+    }
+
+    public void processMethodLevelStaticMetrics() {
+    }
 }
+
+

@@ -38,6 +38,8 @@ public class AnalyzedClass {
 
     @Setter
     private ClassMetrics processMetrics;
+    private final List<Integer> addedLOCList;
+    private final List<Integer> removedLOCList;
 
     public AnalyzedClass(String className, String fileContent, Release release) {
         // --- INIZIO BLOCCO DI CONTROLLO E INIZIALIZZAZIONE ---
@@ -51,6 +53,9 @@ public class AnalyzedClass {
         this.release = release;
         this.touchingClassCommitList = new ArrayList<>();
         this.methods = new ArrayList<>();
+        this.isBuggy = false;
+        this.addedLOCList = new ArrayList<>();
+        this.removedLOCList = new ArrayList<>();
 
 
         // --- INIZIO BLOCCO DI PARSING SICURO (già presente, ma assicurati sia così) ---
@@ -79,8 +84,12 @@ public class AnalyzedClass {
 
     }
 
+    public void addAddedLOC(Integer lOCAddedByEntry) {
+        addedLOCList.add(lOCAddedByEntry);
+    }
 
-
-
+    public void addRemovedLOC(Integer lOCRemovedByEntry) {
+        removedLOCList.add(lOCRemovedByEntry);
+    }
 
 }

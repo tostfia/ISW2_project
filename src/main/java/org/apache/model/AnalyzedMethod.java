@@ -26,7 +26,8 @@ public class AnalyzedMethod {
     private MethodMetrics metrics;
     @Setter
     private boolean isBuggy;
-    private final List<Commit> touchingMethodCommitList;
+    @Setter
+    private List<Commit> touchingMethodCommit;
     private final MethodDeclaration methodDeclaration;
 
 
@@ -40,7 +41,7 @@ public class AnalyzedMethod {
         this.methodDeclaration= methodDeclaration;
         this.metrics = new MethodMetrics();
         this.isBuggy = false;
-        this.touchingMethodCommitList = new ArrayList<>();
+        this.touchingMethodCommit = new ArrayList<>();
         this.metrics= new MethodMetrics();
     }
 
