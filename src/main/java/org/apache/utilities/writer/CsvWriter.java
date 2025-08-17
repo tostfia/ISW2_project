@@ -2,11 +2,14 @@ package org.apache.utilities.writer;
 
 import org.apache.model.AnalyzedClass;
 import org.apache.model.AnalyzedMethod;
+import org.apache.model.ClassMetrics;
 import org.apache.model.MethodMetrics;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.List;
+import java.util.Locale;
 
 
 /**
@@ -18,10 +21,13 @@ public class CsvWriter implements AutoCloseable {
     private final BufferedWriter writer;
     private final Object writeLock = new Object();
     private volatile boolean isClosed = false;
+    private final String targetName;
+
 
     // Il tuo orchestratore usa questo costruttore, quindi lo manteniamo così.
-    public CsvWriter(String fileName) throws IOException {
+    public CsvWriter(String fileName,String targetName) throws IOException {
         this.writer = new BufferedWriter(new FileWriter(fileName));
+        this.targetName = targetName;
     }
 
     /**
@@ -34,15 +40,13 @@ public class CsvWriter implements AutoCloseable {
             // Header aggiornato per riflettere TUTTE le metriche calcolate in MethodMetrics.
             String header = String.join(",",
                     // Contesto
-                    "ReleaseID", "ClassName", "MethodSignature",
+                    "ProjectName","ReleaseID", "MethodName",
                     // Metriche di Complessità
                     "LOC", "ParameterCount", "CycloComplexity", "CognitiveComplexity", "NestingDepth",
                     // Metriche Storiche
                     "Revisions", "Authors",
                     // Metriche di Cambiamento Dettagliate
-                    "TotalStmtAdded", "MaxStmtAdded", "AvgStmtAdded",
-                    "TotalStmtDeleted", "MaxStmtDeleted", "AvgStmtDeleted",
-                    "TotalChurn", "MaxChurn", "AvgChurn",
+                    "Churn", "MaxChurn", "AvgChurn",
                     // Etichetta
                     "Bugginess"
             );
@@ -52,65 +56,6 @@ public class CsvWriter implements AutoCloseable {
         }
     }
 
-    /**
-     * Scrive i risultati per una singola classe analizzata, creando una riga per ogni metodo.
-     * Questo metodo è usato dal tuo orchestratore.
-     */
-    public void writeResultsForClass(AnalyzedClass analyzedClass) throws IOException {
-        synchronized (writeLock) {
-            if (isClosed) throw new IllegalStateException("CsvWriter è già chiuso.");
-
-            for (AnalyzedMethod method : analyzedClass.getMethods()) {
-                String row = buildRowString(analyzedClass, method);
-                writer.write(row);
-                writer.newLine();
-            }
-        }
-    }
-
-    /**
-     * Costruisce la stringa CSV per un singolo metodo.
-     * ORA LEGGE I DATI CORRETTI DALLA CLASSE MethodMetrics.
-     */
-    private String buildRowString(AnalyzedClass analyzedClass, AnalyzedMethod method) {
-        StringBuilder sb = new StringBuilder();
-        MethodMetrics metrics = method.getMetrics(); // L'unica fonte di dati per le metriche del metodo
-
-        // --- Contesto ---
-        sb.append(csvEscape(analyzedClass.getRelease() != null ? String.valueOf(analyzedClass.getRelease().getReleaseID()) : "N/A")).append(",");
-        sb.append(csvEscape(analyzedClass.getClassName())).append(",");
-        sb.append(csvEscape(method.getSignature())).append(",");
-
-        // --- Metriche di Complessità ---
-        sb.append(metrics.getLOC()).append(",");
-        sb.append(metrics.getParameterCount()).append(",");
-        sb.append(metrics.getCycloComplexity()).append(",");
-        sb.append(metrics.getCognitiveComplexity()).append(",");
-        sb.append(metrics.getNestingDepth()).append(",");
-
-        // --- Metriche Storiche ---
-        sb.append(metrics.getNumberOfRevisions()).append(","); // Corrisponde a 'methodHistories'
-        sb.append(metrics.getNumAuthors()).append(",");
-
-        // --- Metriche di Cambiamento Dettagliate ---
-        // Leggiamo i campi individuali da MethodMetrics
-        sb.append(metrics.getTotalStmtAdded()).append(",");
-        sb.append(metrics.getMaxStmtAdded()).append(",");
-        sb.append(String.format("%.2f", metrics.getAvgStmtAdded())).append(",");
-
-        sb.append(metrics.getTotalStmtDeleted()).append(",");
-        sb.append(metrics.getMaxStmtDeleted()).append(",");
-        sb.append(String.format("%.2f", metrics.getAvgStmtDeleted())).append(",");
-
-        sb.append(metrics.getTotalChurn()).append(",");
-        sb.append(metrics.getMaxChurn()).append(",");
-        sb.append(String.format("%.2f", metrics.getAvgChurn())).append(",");
-
-        // --- Etichetta ---
-        sb.append(metrics.isBuggy() ? "yes" : "no"); // Formato richiesto dalle slide
-
-        return sb.toString();
-    }
 
     private String csvEscape(String value) {
         if (value == null) return "";
@@ -132,5 +77,54 @@ public class CsvWriter implements AutoCloseable {
                 }
             }
         }
+    }
+
+    public void writeResultsForClass(List<AnalyzedClass> classes) throws IOException {
+        synchronized (writeLock) {
+            if (isClosed) throw new IOException("Writer è già chiuso.");
+
+            for (AnalyzedClass ac : classes) {
+                // Per ogni classe, iteriamo sui suoi metodi
+                for (AnalyzedMethod am : ac.getMethods()) {
+                    // Costruiamo e scriviamo una riga per ogni metodo
+                    String row = buildHybridRowString(ac, am);
+                    writer.write(row);
+                    writer.newLine();
+                }
+            }
+            writer.flush(); // Scrive i dati sul disco dopo aver processato la lista
+        }
+    }
+
+
+    private String buildHybridRowString(AnalyzedClass analyzedClass, AnalyzedMethod analyzedMethod) {
+        MethodMetrics methodMetrics = analyzedMethod.getMetrics();
+        ClassMetrics classMetrics = analyzedClass.getProcessMetrics();
+        String methodNameFormatted = analyzedClass.getClassName() + "/" + analyzedMethod.getSignature();
+
+        // Usiamo String.join per creare la riga CSV in modo pulito e sicuro
+        return String.join(",",
+                // Contesto
+                csvEscape(targetName),
+                String.valueOf(analyzedClass.getRelease().getReleaseID()),
+                csvEscape(methodNameFormatted),
+
+                // --- Dati dal METODO (veloci da calcolare) ---
+                String.valueOf(methodMetrics.getLOC()),
+                String.valueOf(methodMetrics.getParameterCount()),
+                String.valueOf(methodMetrics.getCycloComplexity()),
+                String.valueOf(methodMetrics.getCognitiveComplexity()),
+                String.valueOf(methodMetrics.getNestingDepth()),
+
+                // --- Dati dalla CLASSE (usati come proxy per le metriche lente) ---
+                String.valueOf(classMetrics.getNumberOfRevisions()),
+                String.valueOf(classMetrics.getNumAuthors()),
+                String.valueOf(classMetrics.getChurnMetrics().getVal()),
+                String.valueOf(classMetrics.getChurnMetrics().getMaxVal()),
+                String.format(Locale.US, "%.2f", classMetrics.getChurnMetrics().getAvgVal()),
+
+                // Etichetta (usiamo quella della classe, che è stata calcolata da SZZ)
+                analyzedClass.isBuggy() ? "yes" : "no"
+        );
     }
 }

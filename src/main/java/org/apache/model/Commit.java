@@ -22,7 +22,7 @@ public class Commit {
     private Ticket ticket;
 
     @Setter
-    private boolean bugIntroducing; // Questa è l'unica proprietà che può cambiare
+    private boolean buggy; // Questa è l'unica proprietà che può cambiare
 
     /**
      * Costruttore unico e principale.
@@ -35,7 +35,7 @@ public class Commit {
 
         this.revCommit = revCommit;
         this.release = release;
-        this.bugIntroducing = false; // Inizializzato a false di default
+        this.buggy= false; // Inizializzato a false di default
         this.ticket = null;
     }
 
@@ -62,4 +62,6 @@ public class Commit {
         // Usiamo l'hashCode del RevCommit, che è basato sul suo hash SHA-1.
         return revCommit.hashCode();
     }
+
+
 }

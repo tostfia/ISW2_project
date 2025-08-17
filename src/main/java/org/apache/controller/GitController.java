@@ -1,8 +1,5 @@
 package org.apache.controller;
 
-import com.github.javaparser.JavaParser;
-import com.github.javaparser.ast.body.MethodDeclaration;
-import com.github.javaparser.ast.stmt.BlockStmt;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.logging.CollectLogger;
@@ -35,7 +32,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -44,7 +40,7 @@ import java.util.stream.Collectors;
 public class GitController {
     // FIXED: Path portabile e configurabile
     private static final String DEFAULT_REPO_BASE_PATH = System.getProperty("user.home") + File.separator + "repositories";
-    private static final Map<String, BlameResult> GLOBAL_BLAME_CACHE = new ConcurrentHashMap<>();
+
 
     // REFACTOR: Costanti per la logica di realismo di SZZ
     private static final long SZZ_MAX_DAYS_THRESHOLD = 365; // Un anno di soglia temporale
@@ -513,23 +509,25 @@ public class GitController {
         logger.info("File history map completed.");
     }
 
-    public List<MethodChangeStats> calculateMethodChangeHistory(List<Commit> methodCommits, String filePath, String signature) {
-        List<MethodChangeStats> changeStats = new ArrayList<>();
 
-        for (int i = 1; i < methodCommits.size(); i++) {
-            Commit currentCommit = methodCommits.get(i);
-            Commit parentCommit = methodCommits.get(i - 1);
+
+    public List<ClassChangeStats> calculateClassChangeHistory(List<Commit> classCommits, String filePath) {
+        List<ClassChangeStats> changeStats = new ArrayList<>();
+
+        for (int i = 1; i < classCommits.size(); i++) {
+            Commit currentCommit = classCommits.get(i);
+            Commit parentCommit = classCommits.get(i - 1);
 
             try {
-                String currentBody = getMethodBodyAtCommit(currentCommit.getRevCommit(), filePath, signature);
-                String parentBody = getMethodBodyAtCommit(parentCommit.getRevCommit(), filePath, signature);
+                String currentContent = getFileContentAtCommit(currentCommit.getRevCommit(), filePath);
+                String parentContent = getFileContentAtCommit(parentCommit.getRevCommit(), filePath);
 
-                if (currentBody == null || parentBody == null) {
+                if (currentContent == null || parentContent == null) {
                     continue;
                 }
 
-                RawText currentText = new RawText(currentBody.getBytes(StandardCharsets.UTF_8));
-                RawText parentText = new RawText(parentBody.getBytes(StandardCharsets.UTF_8));
+                RawText currentText = new RawText(currentContent.getBytes(StandardCharsets.UTF_8));
+                RawText parentText = new RawText(parentContent.getBytes(StandardCharsets.UTF_8));
                 EditList edits = new EditList();
                 edits.addAll(MyersDiff.INSTANCE.diff(RawTextComparator.DEFAULT, parentText, currentText));
 
@@ -539,30 +537,26 @@ public class GitController {
                     linesDeleted += edit.getEndA() - edit.getBeginA();
                     linesAdded += edit.getEndB() - edit.getBeginB();
                 }
-                changeStats.add(new MethodChangeStats(linesAdded, linesDeleted));
+                changeStats.add(new ClassChangeStats(linesAdded, linesDeleted));
 
             } catch (IOException e) {
-                logger.warning("Cannot calculate method diff " + signature + " between commits " +
+                logger.warning("Cannot calculate class diff for " + filePath + " between commits " +
                         parentCommit.getRevCommit().getName() + " and " + currentCommit.getRevCommit().getName());
             }
         }
         return changeStats;
+
     }
 
-    private String getMethodBodyAtCommit(RevCommit commit, String filePath, String signature) throws IOException {
+
+    private String getFileContentAtCommit(RevCommit commit, String filePath) throws IOException {
         try (TreeWalk treeWalk = TreeWalk.forPath(repository, filePath, commit.getTree())) {
             if (treeWalk != null) {
                 byte[] data = repository.open(treeWalk.getObjectId(0)).getBytes();
-                String fileContent = new String(data, StandardCharsets.UTF_8);
-
-                return new JavaParser().parse(fileContent).getResult()
-                        .flatMap(cu -> cu.findFirst(MethodDeclaration.class, md -> md.getSignature().toString().equals(signature)))
-                        .flatMap(MethodDeclaration::getBody)
-                        .map(BlockStmt::toString)
-                        .orElse(null);
+                return new String(data, StandardCharsets.UTF_8);
             }
         } catch (Exception e) {
-            logger.fine("File " + filePath + " not found or not parseable in commit " + commit.getName());
+            logger.fine("File " + filePath + " not found in commit " + commit.getName());
         }
         return null;
     }
@@ -570,57 +564,11 @@ public class GitController {
 
 
 
-    public record MethodChangeStats(int linesAdded, int linesDeleted) {}
 
 
 
-    public BlameResult performBlame(String filePath, RevCommit snapshotCommit) throws GitAPIException, IOException {
-        // Creiamo una chiave unica per lo stato di un file in un dato commit.
-        String cacheKey = filePath + ":" + snapshotCommit.getName();
-
-        // 1. Controlla prima la cache globale.
-        BlameResult cachedResult = GLOBAL_BLAME_CACHE.get(cacheKey);
-        if (cachedResult != null) {
-            logger.fine("Cache HIT per il blame di: " + filePath);
-            return cachedResult;
-        }
-
-        // 2. Se non è in cache, esegui l'operazione costosa.
-        logger.info("Cache MISS. Eseguo 'git blame' per: " + filePath);
-        BlameCommand blameCommand = this.git.blame();
-        blameCommand.setStartCommit(snapshotCommit.getId());
-        blameCommand.setFilePath(filePath);
-        BlameResult result = blameCommand.call();
-
-        // 3. Salva il risultato nella cache globale prima di restituirlo.
-        if (result != null) {
-            GLOBAL_BLAME_CACHE.put(cacheKey, result);
-        }
-
-        return result;
-    }
+    public record ClassChangeStats(int linesAdded, int linesDeleted) {}
 
 
-    public List<Commit> extractCommitsFromBlameResult(BlameResult blameResult, int startLine, int endLine) {
-        Set<Commit> touchingCommits = new HashSet<>();
-        if (blameResult == null) {
-            return new ArrayList<>();
-        }
 
-        // Le linee in BlameResult sono 0-indexed, mentre JavaParser è 1-indexed. Convertiamo.
-        int start = Math.max(0, startLine - 1);
-        int end = Math.min(blameResult.getResultContents().size() - 1, endLine - 1);
-
-        for (int i = start; i <= end; i++) {
-            RevCommit sourceCommit = blameResult.getSourceCommit(i);
-            if (sourceCommit != null) {
-                // Usa la mappa 'allCommits' (che è un campo di questa classe) per una conversione veloce.
-                Commit commit = this.allCommits.get(sourceCommit.getName());
-                if (commit != null) {
-                    touchingCommits.add(commit);
-                }
-            }
-        }
-        return new ArrayList<>(touchingCommits);
-    }
 }
