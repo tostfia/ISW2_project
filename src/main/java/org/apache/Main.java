@@ -25,7 +25,7 @@ public class Main {
         }
         long endTime = System.currentTimeMillis();
         double elapsedSeconds = (endTime - startTime) / 1000.0;
-        logger.info("Analisi completata in " + elapsedSeconds + " secondi.");
+        logger.config("Elapsed Time: " + elapsedSeconds + " seconds");
 
 
     }

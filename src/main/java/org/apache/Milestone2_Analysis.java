@@ -1,57 +1,51 @@
 package org.apache;
-
+//import org.apache.controller.ClassifierController;
+import org.apache.controller.DatasetController;
+//import org.apache.controller.WekaController;
 import org.apache.logging.CollectLogger;
+import tech.tablesaw.api.Table;
+//import weka.classifiers.Classifier;
 
 import java.util.logging.Logger;
 
 public class Milestone2_Analysis {
-   // private final static Logger logger = CollectLogger.getInstance().getLogger();
+
+    private static final Logger logger = CollectLogger.getInstance().getLogger();
 
     public static void main(String[] args) throws Exception {
-        // Imposta qui il nome del progetto su cui lavorare
-        //String projectName = "BOOKKEEPER";
-        /*String projectName="STORM";
+
+        // --- IMPOSTAZIONI ---
+        String projectName = "BOOKKEEPER";
         String csvFilePath = projectName + "_dataset.csv";
 
-        // ==================================================================
-        // FASE 1: PREPARAZIONE DEL DATASET "A" (Punto 1 del PDF)
-        // ==================================================================
-        System.out.println("--- FASE 1: Preparazione del Dataset 'A' ---");
+        logger.info("--- AVVIO MILESTONE 2 PER: " + projectName + " ---");
 
-        // Carica il dataset completo generato dalla Milestone 1
-        Table fullDataset = Table.read().csv(csvFilePath);
+        // --- FASE 1: Preparazione Dati (con un controller dedicato) ---
+        DatasetController datasetController = new DatasetController(projectName);
+        Table datasetA = datasetController.prepareDatasetA();
 
-        // Trova il punto di taglio: il 50% delle release
-        IntColumn releaseColumn = fullDataset.intColumn("ReleaseID");
-        Table uniqueReleases = releaseColumn.unique().sortAscending();
-        int totalReleases = uniqueReleases.rowCount();
-        int releasesToKeepCount = totalReleases / 2;
-        int lastReleaseToKeep = (int) uniqueReleases.get(releasesToKeepCount - 1, 0);
+        if (datasetA == null || datasetA.isEmpty()) {
+            logger.severe("Analisi interrotta: il dataset 'A' non è stato creato o è vuoto.");
+            return;
+        }
 
-        // Filtra il dataset per tenere solo le righe delle release selezionate
-        Table A = fullDataset.where(releaseColumn.isLessThanOrEqualTo(lastReleaseToKeep));
-        logger.info("Dataset 'A' creato con le prime " + releasesToKeepCount + " release. Righe totali: " + A.rowCount());
+        // --- FASE 2: Scelta del Classificatore ---
+        //ClassifierController classifierController = new ClassifierController(datasetA);
+        //Classifier bClassifier = classifierController.chooseBestClassifier();
 
-        // Da qui in poi, useremo SOLO il dataset 'A'
+        // --- FASE 3: Analisi di Correlazione e Refactoring ---
+        //RefactoringController rc = new RefactoringController(datasetA);
+        //String aFeature = proportionController.findActionableFeature();
 
-        // ==================================================================
-        // FASE 2: SCELTA DEL MIGLIOR CLASSIFICATORE (Punti 2-3 del PDF)
-        // ==================================================================
-        System.out.println("\n--- FASE 2: Scelta del miglior classificatore (BClassifier) ---");
-        //Classifier bClassifier = chooseBestClassifier(A);
+        //if (aFeature != null) {
+            //proportionController.findMethodToRefactor(aFeature);
+        //}
 
-        // ==================================================================
-        // FASE 3: ANALISI DI CORRELAZIONE E REFACTORING (Punti 4-9 del PDF)
-        // ==================================================================
-        System.out.println("\n--- FASE 3: Analisi di Correlazione e Refactoring ---");
-        // ... (vedi implementazioni dettagliate sotto)
+        // --- FASE 4: Simulazione "What-If" ---
 
-        // ==================================================================
-        // FASE 4: SIMULAZIONE "WHAT-IF" (Punti 10-13 del PDF)
-        // ==================================================================
-        System.out.println("\n--- FASE 4: Simulazione What-If ---");
-        // ... (vedi implementazioni dettagliate sotto)*/
+        //WekaController wekaController = new WekaController(datasetA, bClassifier, aFeature);
+        //wekaController.performWhatIfAnalysis();
+
+        logger.info("\n--- ANALISI MILESTONE 2 COMPLETATA ---");
     }
-
-    // Qui sotto inseriremo i metodi helper per ogni fase
 }

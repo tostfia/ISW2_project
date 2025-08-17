@@ -7,8 +7,7 @@ import java.util.logging.Logger;
 
 public class CollectLogger {
 
-    public static final String ELAPSED_TIME = "elapsedTime";
-    public static final String SECONDS = "seconds";
+
     private static CollectLogger instance;
     private Logger logger;
 

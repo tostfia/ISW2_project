@@ -12,8 +12,7 @@ import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 
 public class AnalysisController {
-    //Classe ha il controllo di tutto il processo di analisi
-    public AnalysisController(){}
+
 
     public void startAnalysis(String configFilePath) {
         // Qui si avvia l'analisi del progetto specificato
@@ -22,7 +21,7 @@ public class AnalysisController {
         Iterator<String> keys = targets.keys();
         int numTasks= targets.length();
         Logger logger = CollectLogger.getInstance().getLogger();
-        logger.info("Numero di progetti da analizzare: " + numTasks);
+
 
         CountDownLatch latch = new CountDownLatch(numTasks);
 

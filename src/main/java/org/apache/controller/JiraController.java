@@ -17,7 +17,7 @@ import java.util.logging.Logger;
 public class JiraController {
     private final List<Release> releases;
     private final List<Ticket> tickets;
-    private  String targetName;
+    private final String targetName;
     private static final Logger logger = CollectLogger.getInstance().getLogger();
     //Prendo i ticket fixati
     @Getter
@@ -129,12 +129,30 @@ public class JiraController {
             }
             startAt += issues.length();
 
-        }while (startAt < total) ;
-            this.fixedTickets = new ArrayList<>(this.tickets);
+        } while (startAt < total);
+            logger.info("Avvio dell'euristica Proportion per stimare le Injected Versions...");
+
+
+            ProportionController propController = new ProportionController();
+
+
+            List<Ticket> repairedTickets = propController.applyProportion(this.tickets, this.releases);
+
+
+            this.fixedTickets = new ArrayList<>();
+            for (Ticket ticket : repairedTickets) {
+                if (ticket.getInjectedVersion() != null &&
+                        !ticket.getInjectedVersion().getReleaseDate().isAfter(ticket.getFixedVersion().getReleaseDate())) {
+
+                    this.fixedTickets.add(ticket);
+                }
+            }
+
             this.fixedTickets.sort(Comparator.comparing(Ticket::getResolutionDate));
-            logger.info(String.format("Trovati e processati %d ticket 'Fixed' per %s", this.fixedTickets.size(), targetName));
 
-
+            // Aggiorniamo il messaggio di log per riflettere il processo
+            logger.info(String.format("Trovati e processati %d ticket 'Fixed' per %s (dopo l'applicazione di Proportion)",
+                    this.fixedTickets.size(), targetName));
 
     }
 
@@ -142,6 +160,8 @@ public class JiraController {
     public List<Release> getRealeases() {
         return this.releases;
     }
+
+
 
 
 }

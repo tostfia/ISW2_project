@@ -10,15 +10,20 @@ import java.util.List;
 @Getter
 public class Ticket {
 
-    @Setter
+
     private String ticketKey;
     private final LocalDate creationDate;
     private final LocalDate resolutionDate;
-    private final Release injectedVersion;
-    private final Release openingVersion;
-    private final Release fixedVersion;
-    private final List<Release> affectedVersions;
-    private final List<Commit> commitList;
+    @Setter
+    private Release injectedVersion;
+    @Setter
+    private  Release openingVersion;
+    @Setter
+    private  Release fixedVersion;
+    @Setter
+    private  List<Release> affectedVersions;
+    @Setter
+    private  List<Commit> commitList;
 
     // --- NUOVI CAMPI AGGIUNTI ---
     private final String type;
