@@ -144,18 +144,6 @@ public class JiraController {
     }
 
 
-    //Fine salvo in Map
-    public Map<String, String> getMapReleases() {
-        Map<String, String> mapReleases = new HashMap<>();
-        for (Release release : this.releases) {
-            Map<String, String> innerMap = new LinkedHashMap<>();
-            innerMap.put("name", release.getReleaseName());
-            innerMap.put("releaseDate", release.getReleaseDate().toString());
-            innerMap.put("commits", String.valueOf(release.getCommitList().size()));
-            mapReleases.put(String.valueOf(release.getId()), innerMap.toString());
-        }
-        return mapReleases;
-    }
 }
 
 

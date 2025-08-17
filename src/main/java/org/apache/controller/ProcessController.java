@@ -4,10 +4,10 @@ import org.apache.logging.CollectLogger;
 import org.apache.model.AnalyzedClass;
 import org.apache.model.Release;
 
+import org.apache.model.Ticket;
 import org.apache.utilities.writer.CsvWriter;
 
 import org.apache.utilities.writer.HistoricalDataWriter;
-import org.apache.utilities.enums.AnalysisMode;
 import org.eclipse.jgit.api.errors.GitAPIException;
 
 
@@ -23,16 +23,16 @@ public class ProcessController implements Runnable {
     private final CountDownLatch latch;
     private final String threadIdentity;
     private static final Logger logger = CollectLogger.getInstance().getLogger();
-    private final AnalysisMode mode;
 
 
 
-    public ProcessController(int threadId, CountDownLatch latch, String targetName, String project, AnalysisMode mode) {
+
+    public ProcessController(int threadId, CountDownLatch latch, String targetName, String project) {
         this.targetName = targetName;
         this.project = project;
         this.latch = latch;
         this.threadIdentity = "Thread-" + threadId + " (" + targetName + ")";
-        this.mode = mode;
+
 
     }
 
@@ -42,7 +42,7 @@ public class ProcessController implements Runnable {
         String startMsg = threadIdentity + " avviato";
         logger.info(startMsg);
         try {
-            processing(this.mode);
+            processing();
         } catch (Exception e) {
             java.io.StringWriter sw = new java.io.StringWriter();
             java.io.PrintWriter pw = new java.io.PrintWriter(sw);
@@ -61,83 +61,75 @@ public class ProcessController implements Runnable {
     }
     private void processing(AnalysisMode currentMode) throws IOException, URISyntaxException, GitAPIException {
         if (currentMode == AnalysisMode.ANALYZE_HISTORY) {
-            // --- ESEGUI SOLO LA FASE 1 (LENTA) ---
             runHistoricalAnalysis();
         } else { // currentMode == AnalysisMode.BUILD_FINAL_DATASET
-            // --- ESEGUI SOLO LA FASE 2 (VELOCE) ---
             runFinalDatasetBuild();
         }
     }
 
     /**
-     * Contiene la logica per l'analisi storica e la scrittura del CSV intermedio.
+     * [NUOVO METODO]
+     * Esegue la Fase 1: analisi pesante di Jira e Git, calcolo delle metriche storiche
+     * e salvataggio dei risultati in un CSV intermedio.
      */
     private void runHistoricalAnalysis() throws IOException, URISyntaxException, GitAPIException {
         logger.info(threadIdentity + "- ESECUZIONE FASE 1: ANALISI STORICA...");
 
-        // Esegui tutta l'analisi pesante di Jira e Git
+        // --- 1. Analisi Jira e Git (il tuo codice esistente) ---
         JiraController jiraController = performJiraAnalysis();
-        List<Release> releases = jiraController.getRealeases();
-        // ...
+        List<Release> releases = jiraController.getRealeases(); // Tutte le release
+        List<Ticket> tickets = jiraController.getFixedTickets();
+
         GitController gitController = new GitController(targetName, project, releases);
-        gitController.buildCommitHistory();
+        gitController.setTickets(tickets);
+        gitController.buildCommitHistory(); // Analizza TUTTA la storia
         gitController.buildFileCommitHistoryMap();
         gitController.findAllBugIntroducingCommits();
 
-        // Scrivi il CSV intermedio
+        // --- 2. Scrittura del CSV intermedio usando il nuovo writer ---
         String csvFileName = targetName + "_historical_data.csv";
         try (HistoricalDataWriter writer = new HistoricalDataWriter(csvFileName)) {
             writer.writeHeader();
+
             for (Release release : releases) {
+                logger.info(threadIdentity + " - Processando dati storici per release: " + release.getReleaseID());
+
                 List<AnalyzedClass> classes = gitController.getClassesForRelease(release);
                 gitController.labelBuggynessWithSZZ(classes);
 
-                // Usa un MetricsController specializzato (o un metodo specializzato)
+                // Usa un MetricsController per calcolare le metriche storiche
+                // (Assicurati che MetricsController abbia un metodo specializzato o usa quello completo)
                 MetricsController metricsController = new MetricsController(classes, gitController);
-                metricsController.processClassLevelHistoricalMetrics(); // Metodo che calcola solo a livello di classe
+                // Questa è la chiamata a TUTTI i calcoli, lenti e veloci.
+                // In questa fase ha senso, perché dobbiamo popolare tutti i dati.
+                metricsController.processMetrics();
 
+                // Salva i risultati di questa release
                 writer.writeResults(classes);
             }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
         }
+
+        gitController.closeRepo();
+        logger.info(threadIdentity + "- FASE 1 COMPLETATA. File dati storici creato: " + csvFileName);
     }
 
     /**
-     * Contiene la logica per leggere i dati storici, calcolare le metriche statiche
-     * e scrivere il CSV finale.
+     * [NUOVO METODO - Per ora vuoto, lo svilupperemo dopo]
+     * Esegue la Fase 2: lettura del CSV intermedio, calcolo delle metriche statiche
+     * e scrittura del CSV finale.
      */
-    private void runFinalDatasetBuild() throws IOException, URISyntaxException, GitAPIException {
+    private void runFinalDatasetBuild() throws IOException {
         logger.info(threadIdentity + "- ESECUZIONE FASE 2: COSTRUZIONE DATASET FINALE...");
-
-        // 1. Carica i dati storici dal CSV intermedio
-        Map<String, HistoricalData> historicalDataMap = loadHistoricalData(targetName + "_historical_data.csv");
-
-        // 2. Usa GitController in modo "leggero"
-        JiraController jiraController = performJiraAnalysis();
-        List<Release> releases = jiraController.getRealeases();
-        GitController gitController = new GitController(targetName, project, releases);
-        // NON chiamare i metodi pesanti come buildCommitHistory, SZZ, etc.
-
-        // 3. Scrivi il dataset finale
-        String finalCsvFileName = targetName + "_final_dataset.csv";
-        try (CsvWriter writer = new CsvWriter(finalCsvFileName)) {
-            writer.writeHeader();
-            for (Release release : releases) {
-                List<AnalyzedClass> classes = gitController.getClassesForRelease(release);
-                for (AnalyzedClass ac : classes) {
-                    String key = release.getReleaseID() + ";" + ac.getClassName();
-                    HistoricalData history = historicalDataMap.getOrDefault(key, ...);
-
-                    // Usa un MetricsController che calcola solo le metriche a livello di metodo
-                    MetricsController metricsController = new MetricsController(List.of(ac), gitController);
-                    metricsController.processMethodLevelStaticMetrics(); // Metodo che calcola solo LOC, Cyclo, etc.
-
-                    writer.writeResultsForClass(ac, history);
-                }
-            }
-        }
+        // Per ora, lasciamo questo metodo vuoto. Lo implementeremo in un secondo momento.
+        // Qui andrà la logica per:
+        // 1. Leggere il file "_historical_data.csv".
+        // 2. Usare un GitController "leggero" per prendere il codice sorgente.
+        // 3. Usare un MetricsController che calcola solo le metriche statiche.
+        // 4. Usare un FinalCsvWriter per combinare e scrivere l'output finale.
+        logger.info(threadIdentity + "- FASE 2 COMPLETATA.");
     }
+
+
 
 
 

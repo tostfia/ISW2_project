@@ -56,7 +56,7 @@ public class CsvWriter implements AutoCloseable {
      * Scrive i risultati per una singola classe analizzata, creando una riga per ogni metodo.
      * Questo metodo è usato dal tuo orchestratore.
      */
-    public void writeResultsForClass(AnalyzedClass analyzedClass, HistoricalData history) throws IOException {
+    public void writeResultsForClass(AnalyzedClass analyzedClass) throws IOException {
         synchronized (writeLock) {
             if (isClosed) throw new IllegalStateException("CsvWriter è già chiuso.");
 
