@@ -20,6 +20,8 @@ public class MethodMetrics {
     private long cognitiveComplexity;
     @Setter// Cognitive Complexity
     private long nestingDepth; // Nesting Depth
+    @Setter
+    private long numberOfCodeSmells; // Numero di Code Smells
 
     //Metriche di Processo/Storiche
 
@@ -35,17 +37,7 @@ public class MethodMetrics {
     private long numAuthors;
     @Setter
     private long numberOfRevisions; // Numero di Revisioni del Metodo
-    private int totalStmtAdded;
-    private int maxStmtAdded;
-    private double avgStmtAdded;
 
-    private int totalStmtDeleted;
-    private int maxStmtDeleted;
-    private double avgStmtDeleted;
-
-    private int totalChurn;
-    private int maxChurn;
-    private double avgChurn;
 
 
     public MethodMetrics(){
@@ -63,23 +55,8 @@ public class MethodMetrics {
         this.methodHistory = 0;
         this.numAuthors = 0;
         this.parameterCount=0;
-    }
-    public void setStmtAddedMetrics(int total, int max, double avg) {
-        this.totalStmtAdded = total;
-        this.maxStmtAdded = max;
-        this.avgStmtAdded = avg;
+        this.numberOfCodeSmells=0;
     }
 
-    public void setStmtDeletedMetrics(int total, int max, double avg) {
-        this.totalStmtDeleted = total;
-        this.maxStmtDeleted = max;
-        this.avgStmtDeleted = avg;
-    }
-
-    public void setChurnMetrics(int total, int max, double avg) {
-        this.totalChurn = total;
-        this.maxChurn = max;
-        this.avgChurn = avg;
-    }
 
 }

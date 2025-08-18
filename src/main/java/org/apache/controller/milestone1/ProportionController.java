@@ -1,4 +1,4 @@
-package org.apache.controller;
+package org.apache.controller.milestone1;
 
 
 import org.apache.model.Release;
@@ -6,18 +6,16 @@ import org.apache.model.Ticket;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-/**
- * [CLASSE ADATTATA PER IL TUO PROGETTO]
- * Applica l'euristica "Proportion" per stimare la Injected Version (IV)
- * dei ticket che ne sono sprovvisti, usando un approccio incrementale.
- */
+
+
 public class ProportionController {
 
 
-    private static final double COLD_START_P_VALUE = 0.5; // Valore di P di default se non ci sono abbastanza dati
+    private static final int COLD_START_THRESHOLD=5;// Soglia per decidere se applicare cold start o proporzione media
 
     /**
      * Metodo principale. Prende una lista di ticket, la ordina e applica
@@ -27,35 +25,52 @@ public class ProportionController {
      * @param allReleases La lista di tutte le release del progetto.
      * @return La stessa lista di ticket, ma con le IV mancanti "riparate".
      */
-    public List<Ticket> applyProportion(List<Ticket> allTickets, List<Release> allReleases) {
+    public List<Ticket> applyProportion(List<Ticket> allTickets, List<Release> allReleases,List<Double> coldStartData) {
 
         // 1. Ordina tutti i ticket per data di risoluzione. Questo è fondamentale per l'approccio incrementale.
         allTickets.sort(Comparator.comparing(Ticket::getResolutionDate));
+        List<Ticket> ticketsWithKnownIv = allTickets.stream().filter(t -> t.getInjectedVersion()!=null).toList();
+        double p;
 
-        double p = COLD_START_P_VALUE; // Inizia con un valore di P di default
-        int updates = 0; // Contatore di quanti ticket con IV abbiamo usato per calcolare P
-
-        // 2. Itera su ogni ticket in ordine cronologico
+        if(ticketsWithKnownIv.size()>= COLD_START_THRESHOLD){
+            p=calculateAverageProportion(ticketsWithKnownIv);
+        }else{
+            p=calculateColdStartMedian(coldStartData);
+        }
         for (Ticket ticket : allTickets) {
-
-            // 3. Se il ticket ha una IV valida, usiamolo per migliorare la nostra stima di P
-            if (ticket.getInjectedVersion() != null) {
-                double newP = calculatePForTicket(ticket);
-                if (newP >= 0) { // Ignora i valori non validi (es. se FV e OV sono uguali)
-                    updates++;
-                    // Formula per l'aggiornamento incrementale della media
-                    p = p + (1.0 / updates) * (newP - p);
-                }
-            }
-
-            // 4. Se il ticket NON ha una IV, usiamo il valore attuale di P per stimarla
+            // Se il ticket NON ha una IV, usiamo il valore di P calcolato per stimarla
             if (ticket.getInjectedVersion() == null) {
                 estimateIvForTicket(ticket, p, allReleases);
             }
         }
 
-        return allTickets; // Ritorna la lista modificata
+        return allTickets;
     }
+    public double calculateAverageProportion(List<Ticket> ticketsWithKnownIv) {
+        if(ticketsWithKnownIv==null||ticketsWithKnownIv.isEmpty()){
+            return -1.0; // Valore sentinella per indicare che non è calcolabile
+        }
+        List<Double> proportions = ticketsWithKnownIv.stream()
+                .map(this::calculatePForTicket)
+                .filter(p -> p >= 0.0) // Filtra i valori non calcolabili
+                .toList();
+        if(proportions.isEmpty()) return -1.0;
+        return proportions.stream().mapToDouble(d-> d).average().orElse(-1.0);
+    }
+
+    private double calculateColdStartMedian(List<Double> coldStartData) {
+        if(coldStartData==null||coldStartData.isEmpty()){
+            return 0.5; // Valore di default se non ci sono dati esterni
+        }
+        Collections.sort(coldStartData);
+        int size = coldStartData.size();
+        if(size%2==0){
+            return coldStartData.get((size/2)-1)+ coldStartData.get(size/2)/2.0; // Media dei due mediani
+        }else{
+            return coldStartData.get(size/2); // Mediano singolo
+        }
+    }
+
 
     /**
      * Calcola il valore di P per un singolo ticket che ha una IV nota.

@@ -1,4 +1,4 @@
-package org.apache.controller;
+package org.apache.controller.milestone1;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -53,6 +53,7 @@ public class GitController {
     private List<Ticket> tickets;
     @Getter
     private final List<Release> releases;
+    @Getter
     protected final Git git;
     @Getter
     private final Repository repository;
@@ -66,8 +67,10 @@ public class GitController {
     private final Map<Commit, List<Commit>> bugIntroducingCommitsMap;
     @Getter
     private Map<String, List<Commit>> commitsPerFile;
+    private final String targetName ;
 
-    private final String targetName;
+
+
     private final Logger logger = CollectLogger.getInstance().getLogger();
 
     public GitController(String targetName, String gitUrl, List<Release> releases) throws IOException, GitAPIException {
@@ -75,7 +78,6 @@ public class GitController {
     }
 
     public GitController(String targetName, String gitUrl, List<Release> releases, String customBasePath) throws IOException, GitAPIException {
-        // ... (il costruttore rimane identico)
         this.targetName = targetName;
         this.releases = releases;
         Path repoPath = Paths.get(customBasePath, targetName.toLowerCase());
@@ -463,7 +465,7 @@ public class GitController {
         return true; // Se il commit supera tutti i filtri, è considerato realistico.
     }
 
-    // ... (tutti gli altri metodi come getClassesForRelease, buildFileCommitHistoryMap, ecc. rimangono identici)
+   
     public List<AnalyzedClass> getClassesForRelease(Release release) throws IOException {
         List<AnalyzedClass> classList = new ArrayList<>();
         if (release.getCommitList().isEmpty()) {
@@ -472,10 +474,11 @@ public class GitController {
 
         Commit lastCommit = release.getCommitList().getLast();
         Map<String, String> classesNameCodeMap = getClassesNameCodeInfos(lastCommit.getRevCommit());
-
+        
         for (Map.Entry<String, String> classInfo : classesNameCodeMap.entrySet()) {
             String className = classInfo.getKey();
-            AnalyzedClass ac = new AnalyzedClass(className, classInfo.getValue(), release);
+
+            AnalyzedClass ac = getAnalyzedClass(release, classInfo, className);
 
             List<Commit> fullHistory = this.commitsPerFile.get(className);
             if (fullHistory != null) {
@@ -484,6 +487,19 @@ public class GitController {
             classList.add(ac);
         }
         return classList;
+    }
+
+    private static AnalyzedClass getAnalyzedClass(Release release, Map.Entry<String, String> classInfo, String className) {
+        String packageName = "";
+        String fileName = className; // Default: il nome del file è l'intero percorso
+
+        int lastSlashIndex = className.lastIndexOf('/');
+        if (lastSlashIndex != -1) {
+            // Se c'è una barra, dividiamo
+            packageName = className.substring(0, lastSlashIndex);
+            fileName = className.substring(lastSlashIndex + 1);
+        }
+        return new AnalyzedClass(className, classInfo.getValue(), release,packageName,fileName);
     }
 
     public void buildFileCommitHistoryMap() {
@@ -561,13 +577,11 @@ public class GitController {
         return null;
     }
 
-
-
-
-
-
-
     public record ClassChangeStats(int linesAdded, int linesDeleted) {}
+
+    public String getRepoPath() {
+        return DEFAULT_REPO_BASE_PATH+ File.separator + targetName.toLowerCase();
+    }
 
 
 

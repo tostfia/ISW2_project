@@ -1,4 +1,4 @@
-package org.apache.controller;
+package org.apache.controller.milestone1;
 
 import lombok.Getter;
 import org.apache.logging.CollectLogger;
@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 public class JiraController {
     private final List<Release> releases;
@@ -130,29 +131,9 @@ public class JiraController {
             startAt += issues.length();
 
         } while (startAt < total);
-            logger.info("Avvio dell'euristica Proportion per stimare le Injected Versions...");
-
-
-            ProportionController propController = new ProportionController();
-
-
-            List<Ticket> repairedTickets = propController.applyProportion(this.tickets, this.releases);
-
-
-            this.fixedTickets = new ArrayList<>();
-            for (Ticket ticket : repairedTickets) {
-                if (ticket.getInjectedVersion() != null &&
-                        !ticket.getInjectedVersion().getReleaseDate().isAfter(ticket.getFixedVersion().getReleaseDate())) {
-
-                    this.fixedTickets.add(ticket);
-                }
-            }
-
+            this.fixedTickets = new ArrayList<>(this.tickets);
             this.fixedTickets.sort(Comparator.comparing(Ticket::getResolutionDate));
-
-            // Aggiorniamo il messaggio di log per riflettere il processo
-            logger.info(String.format("Trovati e processati %d ticket 'Fixed' per %s (dopo l'applicazione di Proportion)",
-                    this.fixedTickets.size(), targetName));
+            logger.info(String.format("Trovati e processati %d ticket 'Fixed' per %s", this.fixedTickets.size(), targetName));
 
     }
 
@@ -163,8 +144,31 @@ public class JiraController {
 
 
 
+    public void applyProportion(List<Double> coldStartData) {
+        logger.info("Avvio dell'euristica Proportion per stimare le Injected Versions...");
+
+        ProportionController propController = new ProportionController();
+
+        // Ora chiamiamo il metodo principale del controller, passandogli i dati di cold start
+        List<Ticket> repairedTickets = propController.applyProportion(this.fixedTickets, this.releases, coldStartData);
+
+        // Ri-filtriamo per sicurezza e aggiorniamo la lista
+        this.fixedTickets = repairedTickets.stream()
+                .filter(t -> t.getInjectedVersion() != null &&
+                        !t.getInjectedVersion().getReleaseDate().isAfter(t.getFixedVersion().getReleaseDate()))
+                .sorted(Comparator.comparing(Ticket::getResolutionDate))
+                .collect(Collectors.toList());
+
+        logger.info(String.format("Processo Proportion completato. Numero finale di ticket validi: %d", this.fixedTickets.size()));
+    }
+
 
 }
+
+
+
+
+
 
 
 

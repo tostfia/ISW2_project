@@ -40,13 +40,13 @@ public class CsvWriter implements AutoCloseable {
             // Header aggiornato per riflettere TUTTE le metriche calcolate in MethodMetrics.
             String header = String.join(",",
                     // Contesto
-                    "ProjectName","ReleaseID", "MethodName",
+                    "ProjectName","Release", "MethodName",
                     // Metriche di Complessità
                     "LOC", "ParameterCount", "CycloComplexity", "CognitiveComplexity", "NestingDepth",
                     // Metriche Storiche
                     "Revisions", "Authors",
                     // Metriche di Cambiamento Dettagliate
-                    "Churn", "MaxChurn", "AvgChurn",
+                    "TotalChurn", "MaxChurn", "AvgChurn", "NumberOfCodeSmells",
                     // Etichetta
                     "Bugginess"
             );
@@ -99,29 +99,28 @@ public class CsvWriter implements AutoCloseable {
 
     private String buildHybridRowString(AnalyzedClass analyzedClass, AnalyzedMethod analyzedMethod) {
         MethodMetrics methodMetrics = analyzedMethod.getMetrics();
-        ClassMetrics classMetrics = analyzedClass.getProcessMetrics();
+        ClassMetrics cm = analyzedClass.getProcessMetrics();
         String methodNameFormatted = analyzedClass.getClassName() + "/" + analyzedMethod.getSignature();
 
         // Usiamo String.join per creare la riga CSV in modo pulito e sicuro
         return String.join(",",
                 // Contesto
                 csvEscape(targetName),
-                String.valueOf(analyzedClass.getRelease().getReleaseID()),
+                String.valueOf(analyzedClass.getRelease().getReleaseName()),
                 csvEscape(methodNameFormatted),
 
-                // --- Dati dal METODO (veloci da calcolare) ---
+
                 String.valueOf(methodMetrics.getLOC()),
                 String.valueOf(methodMetrics.getParameterCount()),
                 String.valueOf(methodMetrics.getCycloComplexity()),
                 String.valueOf(methodMetrics.getCognitiveComplexity()),
                 String.valueOf(methodMetrics.getNestingDepth()),
-
-                // --- Dati dalla CLASSE (usati come proxy per le metriche lente) ---
-                String.valueOf(classMetrics.getNumberOfRevisions()),
-                String.valueOf(classMetrics.getNumAuthors()),
-                String.valueOf(classMetrics.getChurnMetrics().getVal()),
-                String.valueOf(classMetrics.getChurnMetrics().getMaxVal()),
-                String.format(Locale.US, "%.2f", classMetrics.getChurnMetrics().getAvgVal()),
+                String.valueOf(cm.getNumberOfRevisions()),
+                String.valueOf(cm.getNumAuthors()),
+                String.valueOf(cm.getChurnMetrics().getVal()),
+                String.valueOf(cm.getChurnMetrics().getMaxVal()),
+                String.format(Locale.US, "%.2f", cm.getChurnMetrics().getAvgVal()),
+                String.valueOf(methodMetrics.getNumberOfCodeSmells()),
 
                 // Etichetta (usiamo quella della classe, che è stata calcolata da SZZ)
                 analyzedClass.isBuggy() ? "yes" : "no"

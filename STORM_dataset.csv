@@ -1,0 +1,429 @@
+ProjectName,Release,MethodName,LOC,ParameterCount,CycloComplexity,CognitiveComplexity,NestingDepth,Revisions,Authors,TotalChurn,MaxChurn,AvgChurn,NumberOfCodeSmells,Bugginess
+STORM,0.9.0.1,src/jvm/storm/starter/spout/TwitterSampleSpout.java/isDistributed(),3,0,1,0,0,6,2,36,10,4.20,0,no
+STORM,0.9.0.1,"src/jvm/storm/starter/spout/TwitterSampleSpout.java/open(Map, TopologyContext, SpoutOutputCollector)",31,3,1,0,0,6,2,36,10,4.20,0,no
+STORM,0.9.0.1,src/jvm/storm/starter/spout/TwitterSampleSpout.java/onStatus(Status),3,1,1,0,0,6,2,36,10,4.20,0,no
+STORM,0.9.0.1,src/jvm/storm/starter/spout/TwitterSampleSpout.java/onDeletionNotice(StatusDeletionNotice),2,1,1,0,0,6,2,36,10,4.20,0,no
+STORM,0.9.0.1,src/jvm/storm/starter/spout/TwitterSampleSpout.java/onTrackLimitationNotice(int),2,1,1,0,0,6,2,36,10,4.20,0,no
+STORM,0.9.0.1,"src/jvm/storm/starter/spout/TwitterSampleSpout.java/onScrubGeo(long, long)",2,2,1,0,0,6,2,36,10,4.20,0,no
+STORM,0.9.0.1,src/jvm/storm/starter/spout/TwitterSampleSpout.java/onException(Exception),2,1,1,0,0,6,2,36,10,4.20,0,no
+STORM,0.9.0.1,src/jvm/storm/starter/spout/TwitterSampleSpout.java/nextTuple(),8,0,2,2,1,6,2,36,10,4.20,0,no
+STORM,0.9.0.1,src/jvm/storm/starter/spout/TwitterSampleSpout.java/close(),3,0,1,0,0,6,2,36,10,4.20,0,no
+STORM,0.9.0.1,src/jvm/storm/starter/spout/TwitterSampleSpout.java/ack(Object),2,1,1,0,0,6,2,36,10,4.20,0,no
+STORM,0.9.0.1,src/jvm/storm/starter/spout/TwitterSampleSpout.java/fail(Object),2,1,1,0,0,6,2,36,10,4.20,0,no
+STORM,0.9.0.1,src/jvm/storm/starter/spout/TwitterSampleSpout.java/declareOutputFields(OutputFieldsDeclarer),3,1,1,0,0,6,2,36,10,4.20,0,no
+STORM,0.9.0.1,src/jvm/storm/starter/PrintSampleStream.java/main(String[]),12,1,1,0,0,5,2,15,5,2.75,0,no
+STORM,0.9.0.1,"src/jvm/storm/starter/ExclamationTopology.java/prepare(Map, TopologyContext, OutputCollector)",3,3,1,0,0,8,2,125,41,9.29,0,no
+STORM,0.9.0.1,src/jvm/storm/starter/ExclamationTopology.java/execute(Tuple),4,1,1,0,0,8,2,125,41,9.29,0,no
+STORM,0.9.0.1,src/jvm/storm/starter/ExclamationTopology.java/cleanup(),2,0,1,0,0,8,2,125,41,9.29,0,no
+STORM,0.9.0.1,src/jvm/storm/starter/ExclamationTopology.java/declareOutputFields(OutputFieldsDeclarer),3,1,1,0,0,8,2,125,41,9.29,0,no
+STORM,0.9.0.1,src/jvm/storm/starter/ExclamationTopology.java/main(String[]),12,1,1,0,0,8,2,125,41,9.29,0,no
+STORM,0.9.0.1,src/jvm/storm/starter/spout/RandomSentenceSpout.java/isDistributed(),3,0,1,0,0,3,2,59,28,14.00,0,no
+STORM,0.9.0.1,"src/jvm/storm/starter/spout/RandomSentenceSpout.java/open(Map, TopologyContext, SpoutOutputCollector)",4,3,1,0,0,3,2,59,28,14.00,0,no
+STORM,0.9.0.1,src/jvm/storm/starter/spout/RandomSentenceSpout.java/nextTuple(),6,0,1,0,0,3,2,59,28,14.00,0,no
+STORM,0.9.0.1,src/jvm/storm/starter/spout/RandomSentenceSpout.java/close(),2,0,1,0,0,3,2,59,28,14.00,0,no
+STORM,0.9.0.1,src/jvm/storm/starter/spout/RandomSentenceSpout.java/ack(Object),2,1,1,0,0,3,2,59,28,14.00,0,no
+STORM,0.9.0.1,src/jvm/storm/starter/spout/RandomSentenceSpout.java/fail(Object),2,1,1,0,0,3,2,59,28,14.00,0,no
+STORM,0.9.0.1,src/jvm/storm/starter/spout/RandomSentenceSpout.java/declareOutputFields(OutputFieldsDeclarer),3,1,1,0,0,3,2,59,28,14.00,0,no
+STORM,0.9.0.1,src/jvm/storm/starter/WordCountTopology.java/declareOutputFields(OutputFieldsDeclarer),3,1,1,0,0,8,2,176,58,13.00,0,no
+STORM,0.9.0.1,"src/jvm/storm/starter/WordCountTopology.java/prepare(Map, TopologyContext)",2,2,1,0,0,8,2,176,58,13.00,0,no
+STORM,0.9.0.1,"src/jvm/storm/starter/WordCountTopology.java/execute(Tuple, BasicOutputCollector)",9,2,2,1,1,8,2,176,58,13.00,0,no
+STORM,0.9.0.1,src/jvm/storm/starter/WordCountTopology.java/cleanup(),2,0,1,0,0,8,2,176,58,13.00,0,no
+STORM,0.9.0.1,src/jvm/storm/starter/WordCountTopology.java/declareOutputFields(OutputFieldsDeclarer),3,1,1,0,0,8,2,176,58,13.00,0,no
+STORM,0.9.0.1,src/jvm/storm/starter/WordCountTopology.java/main(String[]),13,1,1,0,0,8,2,176,58,13.00,0,no
+STORM,0.9.1-incubating,"src/jvm/storm/starter/ReachTopology.java/execute(Tuple, BasicOutputCollector)",10,2,3,3,2,6,2,409,143,36.20,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/ReachTopology.java/declareOutputFields(OutputFieldsDeclarer),3,1,1,0,0,6,2,409,143,36.20,0,no
+STORM,0.9.1-incubating,"src/jvm/storm/starter/ReachTopology.java/execute(Tuple, BasicOutputCollector)",10,2,3,3,2,6,2,409,143,36.20,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/ReachTopology.java/declareOutputFields(OutputFieldsDeclarer),3,1,1,0,0,6,2,409,143,36.20,0,no
+STORM,0.9.1-incubating,"src/jvm/storm/starter/ReachTopology.java/prepare(Map, TopologyContext, BatchOutputCollector, Object)",4,4,1,0,0,6,2,409,143,36.20,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/ReachTopology.java/execute(Tuple),3,1,1,0,0,6,2,409,143,36.20,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/ReachTopology.java/finishBatch(),3,0,1,0,0,6,2,409,143,36.20,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/ReachTopology.java/declareOutputFields(OutputFieldsDeclarer),3,1,1,0,0,6,2,409,143,36.20,0,no
+STORM,0.9.1-incubating,"src/jvm/storm/starter/ReachTopology.java/prepare(Map, TopologyContext, BatchOutputCollector, Object)",4,4,1,0,0,6,2,409,143,36.20,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/ReachTopology.java/execute(Tuple),3,1,1,0,0,6,2,409,143,36.20,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/ReachTopology.java/finishBatch(),3,0,1,0,0,6,2,409,143,36.20,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/ReachTopology.java/declareOutputFields(OutputFieldsDeclarer),3,1,1,0,0,6,2,409,143,36.20,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/ReachTopology.java/construct(),8,0,1,0,0,6,2,409,143,36.20,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/ReachTopology.java/main(String[]),19,1,4,4,2,6,2,409,143,36.20,0,no
+STORM,0.9.1-incubating,"src/jvm/storm/starter/bolt/PrinterBolt.java/execute(Tuple, BasicOutputCollector)",3,2,1,0,0,4,2,30,8,3.33,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/bolt/PrinterBolt.java/declareOutputFields(OutputFieldsDeclarer),2,1,1,0,0,4,2,30,8,3.33,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/NthLastModifiedTimeTracker.java/initLastModifiedTimesMillis(),6,0,2,1,1,3,2,62,30,15.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/NthLastModifiedTimeTracker.java/now(),3,0,1,0,0,3,2,62,30,15.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/NthLastModifiedTimeTracker.java/secondsSinceOldestModification(),4,0,1,0,0,3,2,62,30,15.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/NthLastModifiedTimeTracker.java/markAsModified(),3,0,1,0,0,3,2,62,30,15.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/NthLastModifiedTimeTracker.java/updateLastModifiedTime(),3,0,1,0,0,3,2,62,30,15.00,0,no
+STORM,0.9.1-incubating,"src/jvm/storm/starter/spout/RandomSentenceSpout.java/open(Map, TopologyContext, SpoutOutputCollector)",4,3,1,0,0,3,2,59,28,14.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/spout/RandomSentenceSpout.java/nextTuple(),6,0,1,0,0,3,2,59,28,14.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/spout/RandomSentenceSpout.java/ack(Object),2,1,1,0,0,3,2,59,28,14.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/spout/RandomSentenceSpout.java/fail(Object),2,1,1,0,0,3,2,59,28,14.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/spout/RandomSentenceSpout.java/declareOutputFields(OutputFieldsDeclarer),3,1,1,0,0,3,2,59,28,14.00,0,no
+STORM,0.9.1-incubating,"test/jvm/storm/starter/bolt/TotalRankingsBoltTest.java/mockRankingsTuple(Object, long)",6,2,1,0,0,3,2,199,97,48.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/bolt/TotalRankingsBoltTest.java/illegalTopN(),3,0,1,0,0,3,2,199,97,48.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/bolt/TotalRankingsBoltTest.java/negativeOrZeroTopNShouldThrowIAE(int),3,1,1,0,0,3,2,199,97,48.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/bolt/TotalRankingsBoltTest.java/illegalEmitFrequency(),3,0,1,0,0,3,2,199,97,48.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/bolt/TotalRankingsBoltTest.java/negativeOrZeroEmitFrequencyShouldThrowIAE(int),3,1,1,0,0,3,2,199,97,48.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/bolt/TotalRankingsBoltTest.java/legalTopN(),3,0,1,0,0,3,2,199,97,48.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/bolt/TotalRankingsBoltTest.java/positiveTopNShouldBeOk(int),3,1,1,0,0,3,2,199,97,48.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/bolt/TotalRankingsBoltTest.java/legalEmitFrequency(),3,0,1,0,0,3,2,199,97,48.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/bolt/TotalRankingsBoltTest.java/positiveEmitFrequencyShouldBeOk(int),3,1,1,0,0,3,2,199,97,48.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/bolt/TotalRankingsBoltTest.java/shouldEmitSomethingIfTickTupleIsReceived(),11,0,1,0,0,3,2,199,97,48.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/bolt/TotalRankingsBoltTest.java/shouldEmitNothingIfNormalTupleIsReceived(),10,0,1,0,0,3,2,199,97,48.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/bolt/TotalRankingsBoltTest.java/shouldDeclareOutputFields(),9,0,1,0,0,3,2,199,97,48.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/bolt/TotalRankingsBoltTest.java/shouldSetTickTupleFrequencyInComponentConfigurationToNonZeroValue(),10,0,1,0,0,3,2,199,97,48.50,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/RankableObjectWithFields.java/from(Tuple),6,1,1,0,0,7,2,204,91,18.17,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/RankableObjectWithFields.java/getObject(),3,0,1,0,0,7,2,204,91,18.17,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/RankableObjectWithFields.java/getCount(),3,0,1,0,0,7,2,204,91,18.17,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/RankableObjectWithFields.java/getFields(),3,0,1,0,0,7,2,204,91,18.17,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/RankableObjectWithFields.java/compareTo(Rankable),10,1,3,1,2,7,2,204,91,18.17,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/RankableObjectWithFields.java/equals(Object),10,1,4,4,1,7,2,204,91,18.17,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/RankableObjectWithFields.java/hashCode(),7,0,1,1,0,7,2,204,91,18.17,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/RankableObjectWithFields.java/toString(),13,0,2,2,1,7,2,204,91,18.17,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/ManualDRPC.java/declareOutputFields(OutputFieldsDeclarer),3,1,1,0,0,3,2,62,30,15.00,0,no
+STORM,0.9.1-incubating,"src/jvm/storm/starter/ManualDRPC.java/execute(Tuple, BasicOutputCollector)",5,2,1,0,0,3,2,62,30,15.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/ManualDRPC.java/main(String[]),13,1,1,0,0,3,2,62,30,15.00,0,no
+STORM,0.9.1-incubating,"src/jvm/storm/starter/TransactionalWords.java/prepare(Map, TopologyContext, BatchOutputCollector, TransactionAttempt)",4,4,1,0,0,6,3,377,183,39.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/TransactionalWords.java/execute(Tuple),7,1,2,1,1,6,3,377,183,39.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/TransactionalWords.java/finishBatch(),19,0,5,7,3,6,3,377,183,39.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/TransactionalWords.java/declareOutputFields(OutputFieldsDeclarer),3,1,1,0,0,6,3,377,183,39.00,0,no
+STORM,0.9.1-incubating,"src/jvm/storm/starter/TransactionalWords.java/execute(Tuple, BasicOutputCollector)",16,2,4,2,2,6,3,377,183,39.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/TransactionalWords.java/declareOutputFields(OutputFieldsDeclarer),3,1,1,0,0,6,3,377,183,39.00,0,no
+STORM,0.9.1-incubating,"src/jvm/storm/starter/TransactionalWords.java/prepare(Map, TopologyContext, BatchOutputCollector, TransactionAttempt)",4,4,1,0,0,6,3,377,183,39.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/TransactionalWords.java/execute(Tuple),8,1,2,1,1,6,3,377,183,39.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/TransactionalWords.java/finishBatch(),17,0,5,7,3,6,3,377,183,39.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/TransactionalWords.java/declareOutputFields(OutputFieldsDeclarer),3,1,1,0,0,6,3,377,183,39.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/TransactionalWords.java/main(String[]),14,1,1,0,0,6,3,377,183,39.00,0,no
+STORM,0.9.1-incubating,"src/jvm/storm/starter/TransactionalGlobalCount.java/prepare(Map, TopologyContext, BatchOutputCollector, Object)",4,4,1,0,0,5,2,289,117,34.50,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/TransactionalGlobalCount.java/execute(Tuple),3,1,1,0,0,5,2,289,117,34.50,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/TransactionalGlobalCount.java/finishBatch(),3,0,1,0,0,5,2,289,117,34.50,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/TransactionalGlobalCount.java/declareOutputFields(OutputFieldsDeclarer),3,1,1,0,0,5,2,289,117,34.50,0,no
+STORM,0.9.1-incubating,"src/jvm/storm/starter/TransactionalGlobalCount.java/prepare(Map, TopologyContext, BatchOutputCollector, TransactionAttempt)",4,4,1,0,0,5,2,289,117,34.50,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/TransactionalGlobalCount.java/execute(Tuple),3,1,1,0,0,5,2,289,117,34.50,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/TransactionalGlobalCount.java/finishBatch(),17,0,4,5,2,5,2,289,117,34.50,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/TransactionalGlobalCount.java/declareOutputFields(OutputFieldsDeclarer),3,1,1,0,0,5,2,289,117,34.50,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/TransactionalGlobalCount.java/main(String[]),13,1,1,0,0,5,2,289,117,34.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankingsTest.java/illegalTopNData(),3,0,1,0,0,6,2,535,181,68.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankingsTest.java/constructorWithNegativeOrZeroTopNShouldThrowIAE(int),3,1,1,0,0,6,2,535,181,68.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankingsTest.java/legalTopNData(),3,0,1,0,0,6,2,535,181,68.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankingsTest.java/constructorWithPositiveTopNShouldBeOk(int),6,1,1,0,0,6,2,535,181,68.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankingsTest.java/shouldHaveDefaultConstructor(),3,0,1,0,0,6,2,535,181,68.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankingsTest.java/defaultConstructorShouldSetPositiveTopN(),6,0,1,0,0,6,2,535,181,68.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankingsTest.java/rankingsGrowData(),3,0,1,0,0,6,2,535,181,68.00,0,no
+STORM,0.9.1-incubating,"test/jvm/storm/starter/tools/RankingsTest.java/sizeOfRankingsShouldNotGrowBeyondTopN(int, List)",12,2,2,1,1,6,2,535,181,68.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankingsTest.java/simulatedRankingsData(),3,0,1,0,0,6,2,535,181,68.00,0,no
+STORM,0.9.1-incubating,"test/jvm/storm/starter/tools/RankingsTest.java/shouldCorrectlyRankWhenUpdatedWithRankables(List, List)",10,2,2,1,1,6,2,535,181,68.00,0,no
+STORM,0.9.1-incubating,"test/jvm/storm/starter/tools/RankingsTest.java/shouldCorrectlyRankWhenEmptyAndUpdatedWithOtherRankings(List, List)",12,2,2,1,1,6,2,535,181,68.00,0,no
+STORM,0.9.1-incubating,"test/jvm/storm/starter/tools/RankingsTest.java/shouldCorrectlyRankWhenUpdatedWithEmptyOtherRankings(List, List)",12,2,2,1,1,6,2,535,181,68.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankingsTest.java/simulatedRankingsAndOtherRankingsData(),3,0,1,0,0,6,2,535,181,68.00,0,no
+STORM,0.9.1-incubating,"test/jvm/storm/starter/tools/RankingsTest.java/shouldCorrectlyRankWhenNotEmptyAndUpdatedWithOtherRankings(List, List, List)",15,3,3,2,1,6,2,535,181,68.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankingsTest.java/duplicatesData(),6,0,1,0,0,6,2,535,181,68.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankingsTest.java/shouldNotRankDuplicateObjectsMoreThanOnce(List),10,1,2,1,1,6,2,535,181,68.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankingsTest.java/removeZeroRankingsData(),3,0,1,0,0,6,2,535,181,68.00,0,no
+STORM,0.9.1-incubating,"test/jvm/storm/starter/tools/RankingsTest.java/shouldRemoveZeroCounts(List, List)",11,2,2,1,1,6,2,535,181,68.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankingsTest.java/updatingWithNewRankablesShouldBeThreadSafe(),34,0,5,5,3,6,2,535,181,68.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankingsTest.java/run(),11,0,3,2,3,6,2,535,181,68.00,0,no
+STORM,0.9.1-incubating,"src/jvm/storm/starter/BasicDRPCTopology.java/execute(Tuple, BasicOutputCollector)",4,2,1,0,0,5,2,97,39,11.25,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/BasicDRPCTopology.java/declareOutputFields(OutputFieldsDeclarer),3,1,1,0,0,5,2,97,39,11.25,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/BasicDRPCTopology.java/main(String[]),18,1,4,4,2,5,2,97,39,11.25,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/RollingTopWords.java/createTopologyConfiguration(),5,0,1,0,0,6,2,182,48,20.20,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/RollingTopWords.java/wireTopology(),10,0,1,0,0,6,2,182,48,20.20,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/RollingTopWords.java/run(),3,0,1,0,0,6,2,182,48,20.20,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/RollingTopWords.java/main(String[]),3,1,1,0,0,6,2,182,48,20.20,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/bolt/IntermediateRankingsBolt.java/updateRankingsWithTuple(Tuple),4,1,1,0,0,3,2,46,22,11.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/bolt/IntermediateRankingsBolt.java/getLogger(),3,0,1,0,0,3,2,46,22,11.00,0,no
+STORM,0.9.1-incubating,"src/jvm/storm/starter/util/StormRunner.java/runTopologyLocally(StormTopology, String, Config, int)",7,4,1,0,0,3,2,22,11,5.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/MockTupleHelpers.java/mockTickTuple(),3,0,1,0,0,3,2,26,13,6.50,0,no
+STORM,0.9.1-incubating,"test/jvm/storm/starter/tools/MockTupleHelpers.java/mockTuple(String, String)",6,2,1,0,0,3,2,26,13,6.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/bolt/RollingCountBoltTest.java/mockNormalTuple(Object),5,1,1,0,0,3,2,141,68,34.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/bolt/RollingCountBoltTest.java/shouldEmitNothingIfNoObjectHasBeenCountedYetAndTickTupleIsReceived(),13,0,1,0,0,3,2,141,68,34.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/bolt/RollingCountBoltTest.java/shouldEmitSomethingIfAtLeastOneObjectWasCountedAndTickTupleIsReceived(),15,0,1,0,0,3,2,141,68,34.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/bolt/RollingCountBoltTest.java/shouldDeclareOutputFields(),9,0,1,0,0,3,2,141,68,34.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/bolt/RollingCountBoltTest.java/shouldSetTickTupleFrequencyInComponentConfigurationToNonZeroValue(),10,0,1,0,0,3,2,141,68,34.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/SlidingWindowCounter.java/incrementCount(T),3,1,1,1,0,7,3,116,55,9.67,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/SlidingWindowCounter.java/getCountsThenAdvanceWindow(),7,0,1,0,0,7,3,116,55,9.67,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/SlidingWindowCounter.java/advanceHead(),4,0,1,0,0,7,3,116,55,9.67,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/SlidingWindowCounter.java/slotAfter(int),3,1,1,0,0,7,3,116,55,9.67,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/WordCountTopology.java/declareOutputFields(OutputFieldsDeclarer),3,1,1,0,0,8,2,176,58,13.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/WordCountTopology.java/getComponentConfiguration(),3,0,1,0,0,8,2,176,58,13.00,0,no
+STORM,0.9.1-incubating,"src/jvm/storm/starter/WordCountTopology.java/execute(Tuple, BasicOutputCollector)",9,2,2,1,1,8,2,176,58,13.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/WordCountTopology.java/declareOutputFields(OutputFieldsDeclarer),3,1,1,0,0,8,2,176,58,13.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/WordCountTopology.java/main(String[]),18,1,3,2,1,8,2,176,58,13.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/bolt/AbstractRankerBolt.java/getRankings(),3,0,1,0,0,5,2,130,61,16.00,0,no
+STORM,0.9.1-incubating,"src/jvm/storm/starter/bolt/AbstractRankerBolt.java/execute(Tuple, BasicOutputCollector)",8,2,2,2,1,5,2,130,61,16.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/bolt/AbstractRankerBolt.java/updateRankingsWithTuple(Tuple),0,1,1,0,0,5,2,130,61,16.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/bolt/AbstractRankerBolt.java/emitRankings(BasicOutputCollector),4,1,1,0,0,5,2,130,61,16.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/bolt/AbstractRankerBolt.java/declareOutputFields(OutputFieldsDeclarer),3,1,1,0,0,5,2,130,61,16.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/bolt/AbstractRankerBolt.java/getComponentConfiguration(),5,0,1,0,0,5,2,130,61,16.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/bolt/AbstractRankerBolt.java/getLogger(),0,0,1,0,0,5,2,130,61,16.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/bolt/TotalRankingsBolt.java/updateRankingsWithTuple(Tuple),5,1,1,0,0,4,2,47,22,7.67,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/bolt/TotalRankingsBolt.java/getLogger(),3,0,1,0,0,4,2,47,22,7.67,0,no
+STORM,0.9.1-incubating,"src/jvm/storm/starter/trident/TridentWordCount.java/execute(TridentTuple, TridentCollector)",6,2,2,1,1,4,2,100,43,14.67,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/trident/TridentWordCount.java/buildTopology(LocalDRPC),8,1,1,0,0,4,2,100,43,14.67,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/trident/TridentWordCount.java/main(String[]),16,1,3,4,2,4,2,100,43,14.67,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/NthLastModifiedTimeTrackerTest.java/illegalNumTimesData(),3,0,1,0,0,3,2,170,83,41.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/NthLastModifiedTimeTrackerTest.java/negativeOrZeroNumTimesToTrackShouldThrowIAE(int),3,1,1,0,0,3,2,170,83,41.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/NthLastModifiedTimeTrackerTest.java/legalNumTimesData(),3,0,1,0,0,3,2,170,83,41.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/NthLastModifiedTimeTrackerTest.java/positiveNumTimesToTrackShouldBeOk(int),3,1,1,0,0,3,2,170,83,41.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/NthLastModifiedTimeTrackerTest.java/whenNotYetMarkedAsModifiedData(),3,0,1,0,0,3,2,170,83,41.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/NthLastModifiedTimeTrackerTest.java/shouldReturnCorrectModifiedTimeEvenWhenNotYetMarkedAsModified(int),12,1,1,0,0,3,2,170,83,41.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/NthLastModifiedTimeTrackerTest.java/simulatedTrackerIterations(),3,0,1,0,0,3,2,170,83,41.50,0,no
+STORM,0.9.1-incubating,"test/jvm/storm/starter/tools/NthLastModifiedTimeTrackerTest.java/shouldReturnCorrectModifiedTimeWhenMarkedAsModified(int, int[], int[])",18,3,2,1,1,3,2,170,83,41.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/NthLastModifiedTimeTrackerTest.java/advanceSimulatedTimeBy(int),3,1,1,0,0,3,2,170,83,41.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/SlotBasedCounterTest.java/illegalNumSlotsData(),3,0,1,0,0,5,3,255,126,32.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/SlotBasedCounterTest.java/negativeOrZeroNumSlotsShouldThrowIAE(int),3,1,1,0,0,5,3,255,126,32.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/SlotBasedCounterTest.java/legalNumSlotsData(),3,0,1,0,0,5,3,255,126,32.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/SlotBasedCounterTest.java/positiveNumSlotsShouldBeOk(int),3,1,1,0,0,5,3,255,126,32.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/SlotBasedCounterTest.java/newInstanceShouldHaveEmptyCounts(),8,0,1,0,0,5,3,255,126,32.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/SlotBasedCounterTest.java/shouldReturnNonEmptyCountsWhenAtLeastOneObjectWasCounted(),12,0,1,0,0,5,3,255,126,32.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/SlotBasedCounterTest.java/incrementCountData(),3,0,1,0,0,5,3,255,126,32.00,0,no
+STORM,0.9.1-incubating,"test/jvm/storm/starter/tools/SlotBasedCounterTest.java/shouldIncrementCount(Object[], int[])",17,2,4,4,2,5,3,255,126,32.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/SlotBasedCounterTest.java/shouldReturnZeroForNonexistentObject(),8,0,1,0,0,5,3,255,126,32.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/SlotBasedCounterTest.java/shouldIncrementCountOnlyOneSlotAtATime(),17,0,1,0,0,5,3,255,126,32.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/SlotBasedCounterTest.java/wipeSlotShouldSetAllCountsInSlotToZero(),15,0,1,0,0,5,3,255,126,32.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/SlotBasedCounterTest.java/wipeZerosShouldRemoveAnyObjectsWithZeroTotalCount(),17,0,1,0,0,5,3,255,126,32.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/util/TupleHelpers.java/isTickTuple(Tuple),3,1,2,1,0,3,2,12,6,3.00,0,no
+STORM,0.9.1-incubating,"src/jvm/storm/starter/tools/SlotBasedCounter.java/incrementCount(T, int)",8,2,2,1,1,5,3,163,68,20.75,0,no
+STORM,0.9.1-incubating,"src/jvm/storm/starter/tools/SlotBasedCounter.java/getCount(T, int)",8,2,2,2,1,5,3,163,68,20.75,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/SlotBasedCounter.java/getCounts(),7,0,2,1,1,5,3,163,68,20.75,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/SlotBasedCounter.java/computeTotalCount(T),8,1,2,1,1,5,3,163,68,20.75,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/SlotBasedCounter.java/wipeSlot(int),5,1,2,1,1,5,3,163,68,20.75,0,no
+STORM,0.9.1-incubating,"src/jvm/storm/starter/tools/SlotBasedCounter.java/resetSlotCountToZero(T, int)",4,2,1,0,0,5,3,163,68,20.75,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/SlotBasedCounter.java/shouldBeRemovedFromCounter(T),3,1,1,0,0,5,3,163,68,20.75,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/SlotBasedCounter.java/wipeZeros(),11,0,4,4,2,5,3,163,68,20.75,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/SlidingWindowCounterTest.java/illegalWindowLengths(),3,0,1,0,0,7,3,141,65,11.83,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/SlidingWindowCounterTest.java/lessThanTwoSlotsShouldThrowIAE(int),3,1,1,0,0,7,3,141,65,11.83,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/SlidingWindowCounterTest.java/legalWindowLengths(),3,0,1,0,0,7,3,141,65,11.83,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/SlidingWindowCounterTest.java/twoOrMoreSlotsShouldBeValid(int),3,1,1,0,0,7,3,141,65,11.83,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/SlidingWindowCounterTest.java/newInstanceShouldHaveEmptyCounts(),8,0,1,0,0,7,3,141,65,11.83,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/SlidingWindowCounterTest.java/simulatedCounterIterations(),3,0,1,0,0,7,3,141,65,11.83,0,no
+STORM,0.9.1-incubating,"test/jvm/storm/starter/tools/SlidingWindowCounterTest.java/testCounterWithSimulatedRuns(int, int[], long[])",24,3,6,8,2,7,3,141,65,11.83,0,no
+STORM,0.9.1-incubating,"test/jvm/storm/starter/bolt/IntermediateRankingsBoltTest.java/mockRankableTuple(Object, long)",5,2,1,0,0,3,2,196,95,47.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/bolt/IntermediateRankingsBoltTest.java/illegalTopN(),3,0,1,0,0,3,2,196,95,47.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/bolt/IntermediateRankingsBoltTest.java/negativeOrZeroTopNShouldThrowIAE(int),3,1,1,0,0,3,2,196,95,47.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/bolt/IntermediateRankingsBoltTest.java/illegalEmitFrequency(),3,0,1,0,0,3,2,196,95,47.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/bolt/IntermediateRankingsBoltTest.java/negativeOrZeroEmitFrequencyShouldThrowIAE(int),3,1,1,0,0,3,2,196,95,47.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/bolt/IntermediateRankingsBoltTest.java/legalTopN(),3,0,1,0,0,3,2,196,95,47.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/bolt/IntermediateRankingsBoltTest.java/positiveTopNShouldBeOk(int),3,1,1,0,0,3,2,196,95,47.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/bolt/IntermediateRankingsBoltTest.java/legalEmitFrequency(),3,0,1,0,0,3,2,196,95,47.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/bolt/IntermediateRankingsBoltTest.java/positiveEmitFrequencyShouldBeOk(int),3,1,1,0,0,3,2,196,95,47.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/bolt/IntermediateRankingsBoltTest.java/shouldEmitSomethingIfTickTupleIsReceived(),11,0,1,0,0,3,2,196,95,47.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/bolt/IntermediateRankingsBoltTest.java/shouldEmitNothingIfNormalTupleIsReceived(),10,0,1,0,0,3,2,196,95,47.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/bolt/IntermediateRankingsBoltTest.java/shouldDeclareOutputFields(),9,0,1,0,0,3,2,196,95,47.50,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/bolt/IntermediateRankingsBoltTest.java/shouldSetTickTupleFrequencyInComponentConfigurationToNonZeroValue(),10,0,1,0,0,3,2,196,95,47.50,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/Rankable.java/getObject(),0,0,1,0,0,4,2,10,6,2.67,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/Rankable.java/getCount(),0,0,1,0,0,4,2,10,6,2.67,0,no
+STORM,0.9.1-incubating,"src/jvm/storm/starter/bolt/RollingCountBolt.java/deriveNumWindowChunksFrom(int, int)",3,2,1,0,0,4,2,165,81,27.33,0,no
+STORM,0.9.1-incubating,"src/jvm/storm/starter/bolt/RollingCountBolt.java/prepare(Map, TopologyContext, OutputCollector)",4,3,1,0,0,4,2,165,81,27.33,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/bolt/RollingCountBolt.java/execute(Tuple),8,1,2,2,1,4,2,165,81,27.33,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/bolt/RollingCountBolt.java/emitCurrentWindowCounts(),9,0,2,1,1,4,2,165,81,27.33,0,no
+STORM,0.9.1-incubating,"src/jvm/storm/starter/bolt/RollingCountBolt.java/emit(Map, int)",7,2,2,2,1,4,2,165,81,27.33,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/bolt/RollingCountBolt.java/countObjAndAck(Tuple),5,1,1,0,0,4,2,165,81,27.33,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/bolt/RollingCountBolt.java/declareOutputFields(OutputFieldsDeclarer),3,1,1,0,0,4,2,165,81,27.33,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/bolt/RollingCountBolt.java/getComponentConfiguration(),5,0,1,0,0,4,2,165,81,27.33,0,no
+STORM,0.9.1-incubating,"src/jvm/storm/starter/trident/TridentReach.java/makeState(Map, IMetricsContext, int, int)",3,4,1,0,0,6,3,264,89,25.80,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/trident/TridentReach.java/multiGet(List),8,1,2,1,1,6,3,264,89,25.80,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/trident/TridentReach.java/init(TridentTuple),3,1,1,0,0,6,3,264,89,25.80,0,no
+STORM,0.9.1-incubating,"src/jvm/storm/starter/trident/TridentReach.java/combine(Integer, Integer)",3,2,1,0,0,6,3,264,89,25.80,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/trident/TridentReach.java/zero(),3,0,1,0,0,6,3,264,89,25.80,0,no
+STORM,0.9.1-incubating,"src/jvm/storm/starter/trident/TridentReach.java/execute(TridentTuple, TridentCollector)",8,2,3,3,2,6,3,264,89,25.80,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/trident/TridentReach.java/buildTopology(LocalDRPC),7,1,1,0,0,6,3,264,89,25.80,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/trident/TridentReach.java/main(String[]),12,1,1,0,0,6,3,264,89,25.80,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/SingleJoinExample.java/main(String[]),26,1,4,5,2,4,2,76,33,12.67,0,no
+STORM,0.9.1-incubating,"src/jvm/storm/starter/ExclamationTopology.java/prepare(Map, TopologyContext, OutputCollector)",3,3,1,0,0,8,2,125,41,9.29,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/ExclamationTopology.java/execute(Tuple),4,1,1,0,0,8,2,125,41,9.29,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/ExclamationTopology.java/declareOutputFields(OutputFieldsDeclarer),3,1,1,0,0,8,2,125,41,9.29,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/ExclamationTopology.java/main(String[]),18,1,3,2,1,8,2,125,41,9.29,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankableObjectWithFieldsTest.java/constructorWithNullObjectAndNoFieldsShouldThrowIAE(),3,0,1,0,0,4,2,368,168,63.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankableObjectWithFieldsTest.java/constructorWithNullObjectAndFieldsShouldThrowIAE(),4,0,1,0,0,4,2,368,168,63.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankableObjectWithFieldsTest.java/constructorWithNegativeCountAndNoFieldsShouldThrowIAE(),3,0,1,0,0,4,2,368,168,63.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankableObjectWithFieldsTest.java/constructorWithNegativeCountAndFieldsShouldThrowIAE(),4,0,1,0,0,4,2,368,168,63.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankableObjectWithFieldsTest.java/shouldBeEqualToItself(),4,0,1,0,0,4,2,368,168,63.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankableObjectWithFieldsTest.java/otherClassesData(),3,0,1,0,0,4,2,368,168,63.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankableObjectWithFieldsTest.java/shouldNotBeEqualToInstancesOfOtherClasses(Object),4,1,1,0,0,4,2,368,168,63.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankableObjectWithFieldsTest.java/falseDuplicatesData(),3,0,1,0,0,4,2,368,168,63.00,0,no
+STORM,0.9.1-incubating,"test/jvm/storm/starter/tools/RankableObjectWithFieldsTest.java/shouldNotBeEqualToFalseDuplicates(RankableObjectWithFields, RankableObjectWithFields)",3,2,1,0,0,4,2,368,168,63.00,0,no
+STORM,0.9.1-incubating,"test/jvm/storm/starter/tools/RankableObjectWithFieldsTest.java/shouldHaveDifferentHashCodeThanFalseDuplicates(RankableObjectWithFields, RankableObjectWithFields)",3,2,1,0,0,4,2,368,168,63.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankableObjectWithFieldsTest.java/trueDuplicatesData(),3,0,1,0,0,4,2,368,168,63.00,0,no
+STORM,0.9.1-incubating,"test/jvm/storm/starter/tools/RankableObjectWithFieldsTest.java/shouldBeEqualToTrueDuplicates(RankableObjectWithFields, RankableObjectWithFields)",3,2,1,0,0,4,2,368,168,63.00,0,no
+STORM,0.9.1-incubating,"test/jvm/storm/starter/tools/RankableObjectWithFieldsTest.java/shouldHaveSameHashCodeAsTrueDuplicates(RankableObjectWithFields, RankableObjectWithFields)",3,2,1,0,0,4,2,368,168,63.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankableObjectWithFieldsTest.java/compareToData(),3,0,1,0,0,4,2,368,168,63.00,0,no
+STORM,0.9.1-incubating,"test/jvm/storm/starter/tools/RankableObjectWithFieldsTest.java/verifyCompareTo(RankableObjectWithFields, RankableObjectWithFields, int)",3,3,1,0,0,4,2,368,168,63.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankableObjectWithFieldsTest.java/toStringData(),3,0,1,0,0,4,2,368,168,63.00,0,no
+STORM,0.9.1-incubating,"test/jvm/storm/starter/tools/RankableObjectWithFieldsTest.java/toStringShouldContainStringRepresentationsOfObjectAndCount(Object, long)",8,2,1,0,0,4,2,368,168,63.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankableObjectWithFieldsTest.java/shouldReturnTheObject(),8,0,1,0,0,4,2,368,168,63.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankableObjectWithFieldsTest.java/shouldReturnTheCount(),8,0,1,0,0,4,2,368,168,63.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankableObjectWithFieldsTest.java/fieldsData(),3,0,1,0,0,4,2,368,168,63.00,0,no
+STORM,0.9.1-incubating,"test/jvm/storm/starter/tools/RankableObjectWithFieldsTest.java/shouldReturnTheFields(Object, long, Object[])",8,3,1,0,0,4,2,368,168,63.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankableObjectWithFieldsTest.java/fieldsShouldBeImmutable(),9,0,1,0,0,4,2,368,168,63.00,0,no
+STORM,0.9.1-incubating,test/jvm/storm/starter/tools/RankableObjectWithFieldsTest.java/shouldCreateRankableObjectFromTuple(),14,0,1,0,0,4,2,368,168,63.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/Rankings.java/maxSize(),3,0,1,0,0,7,2,198,67,20.33,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/Rankings.java/size(),3,0,1,1,0,7,2,198,67,20.33,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/Rankings.java/getRankings(),3,0,1,0,0,7,2,198,67,20.33,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/Rankings.java/defensiveCopyOf(List),3,1,1,0,0,7,2,198,67,20.33,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/Rankings.java/updateWith(Rankings),5,1,2,2,1,7,2,198,67,20.33,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/Rankings.java/updateWith(Rankable),7,1,1,0,0,7,2,198,67,20.33,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/Rankings.java/addOrReplace(Rankable),8,1,2,2,1,7,2,198,67,20.33,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/Rankings.java/findRankOf(Rankable),10,1,3,3,2,7,2,198,67,20.33,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/Rankings.java/rerank(),4,0,1,0,0,7,2,198,67,20.33,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/Rankings.java/shrinkRankingsIfNeeded(),5,0,2,1,1,7,2,198,67,20.33,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/Rankings.java/pruneZeroCounts(),10,0,3,4,2,7,2,198,67,20.33,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/tools/Rankings.java/toString(),3,0,1,1,0,7,2,198,67,20.33,0,no
+STORM,0.9.1-incubating,"src/jvm/storm/starter/bolt/SingleJoinBolt.java/prepare(Map, TopologyContext, OutputCollector)",27,3,7,13,4,5,2,165,76,20.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/bolt/SingleJoinBolt.java/execute(Tuple),23,1,6,7,2,5,2,165,76,20.00,0,no
+STORM,0.9.1-incubating,src/jvm/storm/starter/bolt/SingleJoinBolt.java/declareOutputFields(OutputFieldsDeclarer),3,1,1,0,0,5,2,165,76,20.00,0,no
+STORM,0.9.1-incubating,"src/jvm/storm/starter/bolt/SingleJoinBolt.java/expire(List, Map)",5,2,2,1,1,5,2,165,76,20.00,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/Coordinator.java/close(),3,0,1,1,0,4,1,41,18,7.00,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/Coordinator.java/isReady(long),3,1,1,1,0,4,1,41,18,7.00,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/Coordinator.java/getPartitionsForBatch(),3,0,1,0,0,4,1,41,18,7.00,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/StaticBrokerReader.java/getCurrentBrokers(),3,0,1,0,0,6,3,37,5,2.40,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/StaticBrokerReader.java/close(),2,0,1,0,0,6,3,37,5,2.40,0,no
+STORM,0.9.2-incubating,src/test/storm/kafka/KafkaUtilsTest.java/setup(),8,0,1,0,0,8,2,167,71,21.29,0,no
+STORM,0.9.2-incubating,src/test/storm/kafka/KafkaUtilsTest.java/shutdown(),3,0,1,1,0,8,2,167,71,21.29,0,no
+STORM,0.9.2-incubating,src/test/storm/kafka/KafkaUtilsTest.java/topicDoesNotExist(),3,0,1,0,0,8,2,167,71,21.29,0,no
+STORM,0.9.2-incubating,src/test/storm/kafka/KafkaUtilsTest.java/brokerIsDown(),6,0,1,0,0,8,2,167,71,21.29,0,no
+STORM,0.9.2-incubating,src/test/storm/kafka/KafkaUtilsTest.java/fetchMessage(),4,0,1,0,0,8,2,167,71,21.29,0,no
+STORM,0.9.2-incubating,src/test/storm/kafka/KafkaUtilsTest.java/fetchMessagesWithInvalidOffsetAndDefaultHandlingDisabled(),4,0,1,0,0,8,2,167,71,21.29,0,no
+STORM,0.9.2-incubating,src/test/storm/kafka/KafkaUtilsTest.java/fetchMessagesWithInvalidOffsetAndDefaultHandlingEnabled(),3,0,1,0,0,8,2,167,71,21.29,0,no
+STORM,0.9.2-incubating,src/test/storm/kafka/KafkaUtilsTest.java/getOffsetFromConfigAndDontForceFromStart(),8,0,1,0,0,8,2,167,71,21.29,0,no
+STORM,0.9.2-incubating,src/test/storm/kafka/KafkaUtilsTest.java/getOffsetFromConfigAndFroceFromStart(),8,0,1,0,0,8,2,167,71,21.29,0,no
+STORM,0.9.2-incubating,src/test/storm/kafka/KafkaUtilsTest.java/createTopicAndSendMessage(),10,0,1,0,0,8,2,167,71,21.29,0,no
+STORM,0.9.2-incubating,src/test/storm/kafka/KafkaUtilsTest.java/sendMessageAndAssertValueForOffset(long),6,1,1,0,0,8,2,167,71,21.29,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/StringScheme.java/deserialize(byte[]),7,1,2,1,2,5,3,11,8,2.25,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/StringScheme.java/getOutputFields(),3,0,1,0,0,5,3,11,8,2.25,0,no
+STORM,0.9.2-incubating,"src/jvm/storm/kafka/trident/GlobalPartitionInformation.java/addPartition(int, Broker)",3,2,1,0,0,7,2,175,43,16.17,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/GlobalPartitionInformation.java/toString(),3,0,1,0,0,7,2,175,43,16.17,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/GlobalPartitionInformation.java/getBrokerFor(Integer),3,1,1,0,0,7,2,175,43,16.17,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/GlobalPartitionInformation.java/getOrderedPartitions(),7,0,2,1,1,7,2,175,43,16.17,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/GlobalPartitionInformation.java/iterator(),21,0,1,4,0,7,2,175,43,16.17,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/GlobalPartitionInformation.java/hasNext(),3,0,1,1,0,7,2,175,43,16.17,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/GlobalPartitionInformation.java/next(),4,0,1,1,0,7,2,175,43,16.17,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/GlobalPartitionInformation.java/remove(),3,0,1,1,0,7,2,175,43,16.17,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/GlobalPartitionInformation.java/hashCode(),3,0,1,1,0,7,2,175,43,16.17,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/GlobalPartitionInformation.java/equals(Object),10,1,4,2,1,7,2,175,43,16.17,0,no
+STORM,0.9.2-incubating,"src/jvm/storm/kafka/KafkaSpout.java/open(Map, TopologyContext, SpoutOutputCollector)",54,3,7,8,1,31,6,693,49,10.67,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/KafkaSpout.java/getValueAndReset(),12,0,3,3,1,31,6,693,49,10.67,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/KafkaSpout.java/getValueAndReset(),8,0,2,1,1,31,6,693,49,10.67,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/KafkaSpout.java/close(),3,0,1,1,0,31,6,693,49,10.67,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/KafkaSpout.java/nextTuple(),18,0,5,6,2,31,6,693,49,10.67,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/KafkaSpout.java/ack(Object),7,1,2,2,1,31,6,693,49,10.67,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/KafkaSpout.java/fail(Object),7,1,2,2,1,31,6,693,49,10.67,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/KafkaSpout.java/deactivate(),3,0,1,0,0,31,6,693,49,10.67,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/KafkaSpout.java/declareOutputFields(OutputFieldsDeclarer),3,1,1,0,0,31,6,693,49,10.67,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/KafkaSpout.java/commit(),6,0,2,2,1,31,6,693,49,10.67,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/PartitionCoordinator.java/getMyManagedPartitions(),0,0,1,0,0,5,3,3,1,0.50,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/PartitionCoordinator.java/getManager(Partition),0,1,1,0,0,5,3,3,1,0.50,0,no
+STORM,0.9.2-incubating,src/test/storm/kafka/KafkaTestBroker.java/getBrokerConnectionString(),3,0,1,0,0,4,2,1,1,0.33,0,no
+STORM,0.9.2-incubating,src/test/storm/kafka/KafkaTestBroker.java/getPort(),3,0,1,0,0,4,2,1,1,0.33,0,no
+STORM,0.9.2-incubating,src/test/storm/kafka/KafkaTestBroker.java/shutdown(),3,0,1,1,0,4,2,1,1,0.33,0,no
+STORM,0.9.2-incubating,src/test/storm/kafka/KafkaErrorTest.java/getError(),3,0,1,1,0,1,1,0,0,0.00,0,no
+STORM,0.9.2-incubating,src/test/storm/kafka/KafkaErrorTest.java/offsetMetaDataTooLarge(),3,0,1,0,0,1,1,0,0,0.00,0,no
+STORM,0.9.2-incubating,src/test/storm/kafka/KafkaErrorTest.java/unknownNegative(),3,0,1,0,0,1,1,0,0,0.00,0,no
+STORM,0.9.2-incubating,src/test/storm/kafka/KafkaErrorTest.java/unknownPositive(),3,0,1,0,0,1,1,0,0,0.00,0,no
+STORM,0.9.2-incubating,src/test/storm/kafka/KafkaErrorTest.java/unknown(),3,0,1,0,0,1,1,0,0,0.00,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/Broker.java/hashCode(),3,0,1,1,0,2,1,17,12,12.00,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/Broker.java/equals(Object),10,1,5,3,1,2,1,17,12,12.00,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/Broker.java/toString(),3,0,1,0,0,2,1,17,12,12.00,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/Broker.java/fromString(String),12,1,3,1,2,2,1,17,12,12.00,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/Broker.java/compareTo(Broker),7,1,2,3,1,2,1,17,12,12.00,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/IBatchCoordinator.java/isReady(long),0,1,1,0,0,4,3,1,1,0.33,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/IBatchCoordinator.java/close(),0,0,1,0,0,4,3,1,1,0.33,0,no
+STORM,0.9.2-incubating,"src/jvm/storm/kafka/KafkaUtils.java/makeBrokerReader(Map, KafkaConfig)",7,2,2,2,1,16,4,316,151,16.47,0,no
+STORM,0.9.2-incubating,"src/jvm/storm/kafka/KafkaUtils.java/getOffset(SimpleConsumer, String, int, KafkaConfig)",7,4,2,2,1,16,4,316,151,16.47,0,no
+STORM,0.9.2-incubating,"src/jvm/storm/kafka/KafkaUtils.java/getOffset(SimpleConsumer, String, int, long)",12,4,2,2,1,16,4,316,151,16.47,0,no
+STORM,0.9.2-incubating,"src/jvm/storm/kafka/KafkaUtils.java/setLatestEmittedOffset(Partition, long)",3,2,1,0,0,16,4,316,151,16.47,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/KafkaUtils.java/getValueAndReset(),40,0,7,11,4,16,4,316,151,16.47,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/KafkaUtils.java/refreshPartitions(Set),9,1,3,3,2,16,4,316,151,16.47,0,no
+STORM,0.9.2-incubating,"src/jvm/storm/kafka/KafkaUtils.java/fetchMessages(KafkaConfig, SimpleConsumer, Partition, long)",34,4,9,14,4,16,4,316,151,16.47,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/StaticHosts.java/getPartitionInformation(),3,0,1,0,0,3,1,49,7,7.00,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/ZkState.java/newCurator(Map),8,1,2,1,1,9,4,100,37,6.88,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/ZkState.java/getCurator(),4,0,1,0,0,9,4,100,37,6.88,0,no
+STORM,0.9.2-incubating,"src/jvm/storm/kafka/ZkState.java/writeJSON(String, Map)",4,2,1,0,0,9,4,100,37,6.88,0,no
+STORM,0.9.2-incubating,"src/jvm/storm/kafka/ZkState.java/writeBytes(String, byte[])",11,2,3,3,2,9,4,100,37,6.88,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/ZkState.java/readJSON(String),11,1,3,2,2,9,4,100,37,6.88,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/ZkState.java/readBytes(String),11,1,3,3,2,9,4,100,37,6.88,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/ZkState.java/close(),4,0,1,1,0,9,4,100,37,6.88,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/StaticPartitionConnections.java/getConsumer(int),7,1,2,1,1,9,3,38,4,1.75,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/StaticPartitionConnections.java/close(),5,0,2,2,1,9,3,38,4,1.75,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/Partition.java/hashCode(),3,0,1,1,0,5,1,59,23,7.25,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/Partition.java/equals(Object),10,1,5,3,1,5,1,59,23,7.25,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/Partition.java/toString(),3,0,1,0,0,5,1,59,23,7.25,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/Partition.java/getId(),3,0,1,0,0,5,1,59,23,7.25,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/DefaultCoordinator.java/isReady(long),3,1,1,0,0,4,3,2,1,0.33,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/DefaultCoordinator.java/close(),2,0,1,0,0,4,3,2,1,0.33,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/MaxMetric.java/identity(),3,0,1,0,0,5,4,11,6,2.00,0,no
+STORM,0.9.2-incubating,"src/jvm/storm/kafka/trident/MaxMetric.java/combine(Long, Long)",9,2,3,2,1,5,4,11,6,2.00,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/PartitionManager.java/getMetricsDataMap(),8,0,1,0,0,38,7,582,51,9.19,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/PartitionManager.java/next(SpoutOutputCollector),25,1,7,12,3,38,7,582,51,9.19,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/PartitionManager.java/fill(),22,0,4,3,1,38,7,582,51,9.19,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/PartitionManager.java/countMessages(ByteBufferMessageSet),7,1,2,1,1,38,7,582,51,9.19,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/PartitionManager.java/ack(Long),3,1,1,0,0,38,7,582,51,9.19,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/PartitionManager.java/fail(Long),8,1,2,1,1,38,7,582,51,9.19,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/PartitionManager.java/commit(),17,0,3,3,1,38,7,582,51,9.19,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/PartitionManager.java/committedPath(),3,0,1,0,0,38,7,582,51,9.19,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/PartitionManager.java/queryPartitionOffsetLatestTime(),3,0,1,0,0,38,7,582,51,9.19,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/PartitionManager.java/lastCommittedOffset(),3,0,1,0,0,38,7,582,51,9.19,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/PartitionManager.java/lastCompletedOffset(),7,0,2,2,1,38,7,582,51,9.19,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/PartitionManager.java/getPartition(),3,0,1,0,0,38,7,582,51,9.19,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/PartitionManager.java/close(),3,0,1,0,0,38,7,582,51,9.19,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/DynamicBrokersReader.java/getBrokerInfo(),22,0,4,3,4,11,4,367,79,19.80,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/DynamicBrokersReader.java/getNumPartitions(),9,0,2,1,2,11,4,367,79,19.80,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/DynamicBrokersReader.java/partitionPath(),3,0,1,0,0,11,4,367,79,19.80,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/DynamicBrokersReader.java/brokerPath(),3,0,1,0,0,11,4,367,79,19.80,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/DynamicBrokersReader.java/getLeaderFor(long),11,1,2,1,2,11,4,367,79,19.80,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/DynamicBrokersReader.java/close(),3,0,1,1,0,11,4,367,79,19.80,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/DynamicBrokersReader.java/getBrokerHost(byte[]),10,1,2,1,2,11,4,367,79,19.80,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/KafkaError.java/getError(int),7,1,3,2,1,2,1,5,3,3.00,0,no
+STORM,0.9.2-incubating,"src/jvm/storm/kafka/trident/OpaqueTridentKafkaSpout.java/getEmitter(Map, TopologyContext)",3,2,1,0,0,15,4,245,36,6.86,0,no
+STORM,0.9.2-incubating,"src/jvm/storm/kafka/trident/OpaqueTridentKafkaSpout.java/getCoordinator(Map, TopologyContext)",3,2,1,0,0,15,4,245,36,6.86,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/OpaqueTridentKafkaSpout.java/getOutputFields(),3,0,1,1,0,15,4,245,36,6.86,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/OpaqueTridentKafkaSpout.java/getComponentConfiguration(),3,0,1,0,0,15,4,245,36,6.86,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/DynamicPartitionConnections.java/register(Partition),4,1,1,1,0,13,4,106,18,5.50,0,no
+STORM,0.9.2-incubating,"src/jvm/storm/kafka/DynamicPartitionConnections.java/register(Broker, int)",8,2,2,1,1,13,4,106,18,5.50,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/DynamicPartitionConnections.java/getConnection(Partition),7,1,2,1,1,13,4,106,18,5.50,0,no
+STORM,0.9.2-incubating,"src/jvm/storm/kafka/DynamicPartitionConnections.java/unregister(Broker, int)",8,2,2,1,1,13,4,106,18,5.50,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/DynamicPartitionConnections.java/unregister(Partition),3,1,1,1,0,13,4,106,18,5.50,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/DynamicPartitionConnections.java/clear(),6,0,2,2,1,13,4,106,18,5.50,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/ZkCoordinator.java/getMyManagedPartitions(),7,0,3,1,1,25,7,374,25,6.71,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/ZkCoordinator.java/refresh(),31,0,6,6,3,25,7,374,25,6.71,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/ZkCoordinator.java/getManager(Partition),3,1,1,0,0,25,7,374,25,6.71,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/ZkCoordinator.java/myOwnership(Partition),4,1,1,0,0,25,7,374,25,6.71,0,no
+STORM,0.9.2-incubating,src/test/storm/kafka/DynamicBrokersReaderTest.java/setUp(),12,0,1,0,0,7,2,247,108,20.67,0,no
+STORM,0.9.2-incubating,src/test/storm/kafka/DynamicBrokersReaderTest.java/tearDown(),3,0,1,0,0,7,2,247,108,20.67,0,no
+STORM,0.9.2-incubating,"src/test/storm/kafka/DynamicBrokersReaderTest.java/addPartition(int, String, int)",5,3,1,0,0,7,2,247,108,20.67,0,no
+STORM,0.9.2-incubating,"src/test/storm/kafka/DynamicBrokersReaderTest.java/addPartition(int, int, String, int)",5,4,1,0,0,7,2,247,108,20.67,0,no
+STORM,0.9.2-incubating,src/test/storm/kafka/DynamicBrokersReaderTest.java/writePartitionId(int),4,1,1,0,0,7,2,247,108,20.67,0,no
+STORM,0.9.2-incubating,"src/test/storm/kafka/DynamicBrokersReaderTest.java/writeDataToPath(String, String)",4,2,1,0,0,7,2,247,108,20.67,0,no
+STORM,0.9.2-incubating,"src/test/storm/kafka/DynamicBrokersReaderTest.java/writeLeader(int, int)",5,2,1,0,0,7,2,247,108,20.67,0,no
+STORM,0.9.2-incubating,"src/test/storm/kafka/DynamicBrokersReaderTest.java/writeLeaderDetails(int, String, int)",5,3,1,0,0,7,2,247,108,20.67,0,no
+STORM,0.9.2-incubating,src/test/storm/kafka/DynamicBrokersReaderTest.java/testGetBrokerInfo(),10,0,1,0,0,7,2,247,108,20.67,0,no
+STORM,0.9.2-incubating,src/test/storm/kafka/DynamicBrokersReaderTest.java/testMultiplePartitionsOnDifferentHosts(),15,0,1,0,0,7,2,247,108,20.67,0,no
+STORM,0.9.2-incubating,src/test/storm/kafka/DynamicBrokersReaderTest.java/testMultiplePartitionsOnSameHost(),14,0,1,0,0,7,2,247,108,20.67,0,no
+STORM,0.9.2-incubating,src/test/storm/kafka/DynamicBrokersReaderTest.java/testSwitchHostForPartition(),15,0,1,0,0,7,2,247,108,20.67,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/StaticCoordinator.java/getMyManagedPartitions(),3,0,1,0,0,15,5,56,6,1.64,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/StaticCoordinator.java/getManager(Partition),3,1,1,0,0,15,5,56,6,1.64,0,no
+STORM,0.9.2-incubating,"src/jvm/storm/kafka/trident/TridentKafkaEmitter.java/failFastEmitNewPartitionBatch(TransactionAttempt, TridentCollector, Partition, Map)",6,4,1,0,0,9,2,548,209,34.50,0,no
+STORM,0.9.2-incubating,"src/jvm/storm/kafka/trident/TridentKafkaEmitter.java/emitNewPartitionBatch(TransactionAttempt, TridentCollector, Partition, Map)",19,4,3,4,3,9,2,548,209,34.50,0,no
+STORM,0.9.2-incubating,"src/jvm/storm/kafka/trident/TridentKafkaEmitter.java/doEmitNewPartitionBatch(SimpleConsumer, Partition, TridentCollector, Map)",32,4,6,8,2,9,2,548,209,34.50,0,no
+STORM,0.9.2-incubating,"src/jvm/storm/kafka/trident/TridentKafkaEmitter.java/fetchMessages(SimpleConsumer, Partition, long)",9,3,1,1,0,9,2,548,209,34.50,0,no
+STORM,0.9.2-incubating,"src/jvm/storm/kafka/trident/TridentKafkaEmitter.java/reEmitPartitionBatch(TransactionAttempt, TridentCollector, Partition, Map)",20,4,6,9,3,9,2,548,209,34.50,0,no
+STORM,0.9.2-incubating,"src/jvm/storm/kafka/trident/TridentKafkaEmitter.java/emit(TridentCollector, Message)",8,2,3,4,2,9,2,548,209,34.50,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/TridentKafkaEmitter.java/clear(),3,0,1,1,0,9,2,548,209,34.50,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/TridentKafkaEmitter.java/orderPartitions(GlobalPartitionInformation),3,1,1,0,0,9,2,548,209,34.50,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/TridentKafkaEmitter.java/refresh(List),4,1,1,0,0,9,2,548,209,34.50,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/TridentKafkaEmitter.java/asOpaqueEmitter(),30,0,1,0,0,9,2,548,209,34.50,0,no
+STORM,0.9.2-incubating,"src/jvm/storm/kafka/trident/TridentKafkaEmitter.java/emitPartitionBatch(TransactionAttempt, TridentCollector, Partition, Map)",3,4,1,0,0,9,2,548,209,34.50,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/TridentKafkaEmitter.java/refreshPartitions(List),3,1,1,0,0,9,2,548,209,34.50,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/TridentKafkaEmitter.java/getOrderedPartitions(GlobalPartitionInformation),3,1,1,0,0,9,2,548,209,34.50,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/TridentKafkaEmitter.java/close(),3,0,1,0,0,9,2,548,209,34.50,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/TridentKafkaEmitter.java/asTransactionalEmitter(),41,0,1,0,0,9,2,548,209,34.50,0,no
+STORM,0.9.2-incubating,"src/jvm/storm/kafka/trident/TridentKafkaEmitter.java/emitPartitionBatchNew(TransactionAttempt, TridentCollector, Partition, Map)",3,4,1,0,0,9,2,548,209,34.50,0,no
+STORM,0.9.2-incubating,"src/jvm/storm/kafka/trident/TridentKafkaEmitter.java/emitPartitionBatch(TransactionAttempt, TridentCollector, Partition, Map)",3,4,1,0,0,9,2,548,209,34.50,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/TridentKafkaEmitter.java/refreshPartitions(List),3,1,1,0,0,9,2,548,209,34.50,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/TridentKafkaEmitter.java/getOrderedPartitions(GlobalPartitionInformation),3,1,1,0,0,9,2,548,209,34.50,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/TridentKafkaEmitter.java/close(),3,0,1,0,0,9,2,548,209,34.50,0,no
+STORM,0.9.2-incubating,"src/jvm/storm/kafka/trident/TransactionalTridentKafkaSpout.java/getCoordinator(Map, TopologyContext)",3,2,1,0,0,15,4,279,38,7.43,0,no
+STORM,0.9.2-incubating,"src/jvm/storm/kafka/trident/TransactionalTridentKafkaSpout.java/getEmitter(Map, TopologyContext)",3,2,1,0,0,15,4,279,38,7.43,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/TransactionalTridentKafkaSpout.java/getOutputFields(),3,0,1,1,0,15,4,279,38,7.43,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/TransactionalTridentKafkaSpout.java/getComponentConfiguration(),3,0,1,0,0,15,4,279,38,7.43,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/IBrokerReader.java/getCurrentBrokers(),0,0,1,0,0,4,3,11,2,1.00,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/IBrokerReader.java/close(),0,0,1,0,0,4,3,11,2,1.00,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/ZkBrokerReader.java/getCurrentBrokers(),9,0,2,1,1,5,3,36,13,5.50,0,no
+STORM,0.9.2-incubating,src/jvm/storm/kafka/trident/ZkBrokerReader.java/close(),3,0,1,1,0,5,3,36,13,5.50,0,no

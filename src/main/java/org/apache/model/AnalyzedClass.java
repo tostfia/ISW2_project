@@ -22,6 +22,10 @@ public class AnalyzedClass {
     @Setter
     private Release release;
 
+    private final String packageName;
+    // Nome del package della classe
+    private final String FileName;
+
     // Struttura della Classe
     private final String className;
 
@@ -41,9 +45,11 @@ public class AnalyzedClass {
     private final List<Integer> addedLOCList;
     private final List<Integer> removedLOCList;
 
-    public AnalyzedClass(String className, String fileContent, Release release) {
+    public AnalyzedClass(String className, String fileContent, Release release, String packageName, String fileName) {
         // --- INIZIO BLOCCO DI CONTROLLO E INIZIALIZZAZIONE ---
         this.className = Objects.requireNonNull(className, "Il nome della classe non può essere nullo");
+        this.packageName = packageName;
+        FileName = fileName;
         if (className.trim().isEmpty()) {
             throw new IllegalArgumentException("Il nome della classe non può essere una stringa vuota.");
         }
@@ -84,12 +90,9 @@ public class AnalyzedClass {
 
     }
 
-    public void addAddedLOC(Integer lOCAddedByEntry) {
-        addedLOCList.add(lOCAddedByEntry);
+    public void findMethodByLine(int line) {
+
     }
 
-    public void addRemovedLOC(Integer lOCRemovedByEntry) {
-        removedLOCList.add(lOCRemovedByEntry);
-    }
 
 }

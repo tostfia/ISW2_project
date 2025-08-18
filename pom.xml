@@ -20,17 +20,17 @@
         <!-- Versioni dei Plugin Maven -->
         <maven.plugin.javadoc.version>3.6.3</maven.plugin.javadoc.version>
         <maven.plugin.shade.version>3.6.0</maven.plugin.shade.version>
+        <pmd.plugin.version>3.24.0</pmd.plugin.version> <!-- NUOVA PROPERTY per il plugin PMD -->
 
         <!-- Versioni delle Dipendenze -->
-        <!-- NOTA IMPORTANTE: Usiamo PMD 6.55.0 perché l'API è stabile e compatibile
-             con il codice di esempio. PMD 7.x ha un'API completamente diversa. -->
-        <pmd.version>6.55.0</pmd.version>
+        <pmd.version>7.3.0</pmd.version> <!-- NUOVA PROPERTY per la libreria PMD -->
         <jgit.version>6.8.0.202311291450-r</jgit.version>
         <javaparser.version>3.25.10</javaparser.version>
         <weka.version>3.8.6</weka.version>
         <json.version>20240303</json.version>
         <lombok.version>1.18.32</lombok.version>
         <junit.version>4.13.2</junit.version>
+        <tablesaw.version>0.43.1</tablesaw.version>
     </properties>
 
     <dependencies>
@@ -54,6 +54,8 @@
             <artifactId>weka-stable</artifactId>
             <version>${weka.version}</version>
         </dependency>
+
+        <!-- Dipendenza SMOTE (già presente, la lascio) -->
         <dependency>
             <groupId>nz.ac.waikato.cms.weka</groupId>
             <artifactId>SMOTE</artifactId>
@@ -67,7 +69,6 @@
             <version>${json.version}</version>
         </dependency>
 
-
         <!-- Utilità per ridurre codice boilerplate -->
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -76,7 +77,6 @@
             <scope>provided</scope>
         </dependency>
 
-
         <!-- Supporto per i test -->
         <dependency>
             <groupId>junit</groupId>
@@ -84,10 +84,19 @@
             <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
+
+        <!-- Per l'analisi statica con PMD -->
+        <dependency>
+            <groupId>net.sourceforge.pmd</groupId>
+            <artifactId>pmd-java</artifactId>
+            <version>${pmd.version}</version> <!-- AGGIORNATO per usare la property -->
+        </dependency>
+
+        <!-- Libreria Tablesaw per la gestione dei dati -->
         <dependency>
             <groupId>tech.tablesaw</groupId>
             <artifactId>tablesaw-core</artifactId>
-            <version>0.43.1</version>
+            <version>${tablesaw.version}</version> <!-- AGGIORNATO per usare la property -->
         </dependency>
     </dependencies>
 
@@ -139,6 +148,35 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- ======================================================= -->
+            <!--          NUOVO PLUGIN: CONFIGURAZIONE PMD               -->
+            <!-- ======================================================= -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-pmd-plugin</artifactId>
+                <version>${pmd.plugin.version}</version>
+                <configuration>
+                    <rulesets>
+                        <!-- Usa il tuo file di regole personalizzato -->
+                        <ruleset>src/main/resources/pmd-ruleset.xml</ruleset>
+                    </rulesets>
+                    <!-- Genera il report in formato CSV -->
+                    <format>csv</format>
+                    <!-- Non far fallire il build se trova degli smell -->
+                    <failOnViolation>false</failOnViolation>
+                    <linkXRef>false</linkXRef>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>verify</phase> <!-- Esegui durante la fase di 'verify' -->
+                        <goals>
+                            <goal>pmd</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
         </plugins>
     </build>
 </project>
