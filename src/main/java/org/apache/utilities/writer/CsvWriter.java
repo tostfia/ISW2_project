@@ -120,7 +120,7 @@ public class CsvWriter implements AutoCloseable {
                 String.valueOf(cm.getChurnMetrics().getVal()),
                 String.valueOf(cm.getChurnMetrics().getMaxVal()),
                 String.format(Locale.US, "%.2f", cm.getChurnMetrics().getAvgVal()),
-                String.valueOf(methodMetrics.getNumberOfCodeSmells()),
+                String.valueOf(methodMetrics.getNumberOfCodeSmells()) ,
 
                 // Etichetta (usiamo quella della classe, che è stata calcolata da SZZ)
                 analyzedClass.isBuggy() ? "yes" : "no"

@@ -7,14 +7,16 @@ import org.apache.model.Release;
 import org.apache.model.Ticket;
 
 import org.apache.utilities.metrics.CodeSmellParser;
-import org.apache.utilities.metrics.NumofCodeSmells;
+import org.apache.utilities.metrics.NumOfCodeSmells;
 import org.apache.utilities.writer.CsvWriter;
 import org.eclipse.jgit.api.errors.GitAPIException;
 
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
@@ -105,31 +107,37 @@ public class ProcessController implements Runnable {
         logger.info(threadIdentity + " --- Controllo prima della generazione PMD ---");
         logger.info(threadIdentity + " Numero di release trovate e pronte per l'analisi PMD: " + releases.size());
 
-        if (releases.isEmpty()) {
-            logger.severe(threadIdentity + " La lista delle release è vuota! Impossibile generare i report PMD. Controllare la query Jira o la logica di buildCommitHistory.");
-        } else {
-            // Se la lista non è vuota, procediamo come prima
-            logger.info(threadIdentity + " --- INIZIO FASE DI GENERAZIONE REPORT PMD (può richiedere molto tempo) ---");
-            NumofCodeSmells numofCodeSmells = new NumofCodeSmells(targetName, gitController.getRepoPath(), gitController.getGit(), releases);
-            numofCodeSmells.generatePmdReports();
-            logger.info(threadIdentity + " --- FINE FASE DI GENERAZIONE REPORT PMD ---");
-        }
+
+        // Se la lista non è vuota, procediamo come prima
+        logger.info(threadIdentity + " --- INIZIO FASE DI GENERAZIONE REPORT PMD (può richiedere molto tempo) ---");
+        NumOfCodeSmells numofCodeSmells = new NumOfCodeSmells(targetName, gitController.getRepoPath(), gitController.getGit(), releases);
+        numofCodeSmells.generatePmdReports();
+        logger.info(threadIdentity + " --- FINE FASE DI GENERAZIONE REPORT PMD ---");
+
 
         // --- 2. Scrittura del CSV
         String csvFileName = targetName + "_dataset.csv";
         try(CsvWriter writer = new CsvWriter(csvFileName, targetName)) {
             writer.writeHeader();
+            int total = releases.size();
+            int index = 0;
             for(Release release : releases){
                 logger.info(threadIdentity+ " - Processando release: " + release.getReleaseID());
+                index++;
+                logger.info("Analisi release " + index + "/" + total +
+                        " (ID: " + release.getId() + ", Nome: " + release.getReleaseName() + ")");
                 List<AnalyzedClass> classes = gitController.getClassesForRelease(release);
                 gitController.labelBuggynessWithSZZ(classes);
-                // 3. Costruisci il percorso del report PMD (come prima)
-                String pmdReportPath = PMD_REPORTS_BASE_DIR + File.separator
-                        + this.targetName + File.separator
-                        + release.getId() + ".csv";
+                Path baseDir = Paths.get(PMD_REPORTS_BASE_DIR, targetName);
+                Files.createDirectories(baseDir);  // crea la cartella se non esiste
 
-                // 4. Arricchisci con gli smell. Ora questa chiamata TROVERÀ i file.
-                CodeSmellParser.extractCodeSmell(classes, pmdReportPath);
+                String releaseId = release.getReleaseID();
+                Path reportPath = baseDir.resolve(releaseId + ".csv");  // file unico per release
+
+                logger.info(threadIdentity + " - Percorso report PMD per release " + releaseId + ": " + reportPath);
+
+                // --- 5. Parsing code smells
+                CodeSmellParser.extractCodeSmell(classes, targetName, releaseId);
 
                 MetricsController metricsController= new MetricsController( classes,gitController);
                 metricsController.processMetrics();

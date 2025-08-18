@@ -13,15 +13,15 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
+
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-public class NumofCodeSmells {
+public class NumOfCodeSmells {
 
     private static final String PMD_ANALYSIS_BASE_DIR = "pmd_analysis";
-    private static final Logger logger = Logger.getLogger(NumofCodeSmells.class.getName());
+    private static final Logger logger = Logger.getLogger(NumOfCodeSmells.class.getName());
 
     private final String project;
     private final String repoPath;
@@ -36,7 +36,7 @@ public class NumofCodeSmells {
      * @param git L'istanza dell'oggetto Git.
      * @param releases La lista delle release da analizzare.
      */
-    public NumofCodeSmells(String project, String repoPath, Git git, List<Release> releases) throws IOException {
+    public NumOfCodeSmells(String project, String repoPath, Git git, List<Release> releases) throws IOException {
         this.project = project;
         this.repoPath = repoPath;
         this.git = git;
@@ -71,11 +71,12 @@ public class NumofCodeSmells {
             }
 
             // 4. Prendi l'ULTIMO commit della release, che rappresenta lo snapshot finale.
-            RevCommit targetCommit = release.getCommitList().getLast().getRevCommit();
+            RevCommit targetCommit = release.getCommitList().get(release.getCommitList().size() - 1).getRevCommit();
+
 
             // 5. Chiama il metodo di analisi passando l'ID CORRETTO della release corrente.
             //    Questa è la riga più importante. Non ci sono 'if' o logiche strane.
-            runPmdForCommit(release.getId(), targetCommit);
+            runPmdForCommit(release.getReleaseID(), targetCommit);
         }
 
         // 6. Alla fine di TUTTE le iterazioni, ripristina lo stato del repository.
@@ -84,7 +85,7 @@ public class NumofCodeSmells {
 
     // Dentro la classe PmdReportGenerator
 
-    private void runPmdForCommit(int releaseId, RevCommit commit) {
+    private void runPmdForCommit(String releaseId, RevCommit commit) {
         String reportPath = PMD_ANALYSIS_BASE_DIR + File.separator + this.project + File.separator + releaseId + ".csv";
 
         if (new File(reportPath).exists()) {
@@ -95,7 +96,7 @@ public class NumofCodeSmells {
         logger.info("Inizio analisi PMD per la release " + releaseId + " (commit: " + commit.getName() + ")");
 
         try {
-            git.checkout().setForced(true).setName(commit.getName()).call();
+            git.checkout().setForced(true).setName(commit.getName()).setStartPoint(commit).call();
             logger.info("Checkout al commit " + commit.getName() + " completato.");
 
             Process process = buildPmdProcess(reportPath);
@@ -149,33 +150,27 @@ public class NumofCodeSmells {
             throw new IOException("La variabile d'ambiente PMD_HOME non è impostata.");
         }
 
-        // --- INIZIO MODIFICA ---
-
-        // 1. Determina il nome corretto dell'eseguibile in base al sistema operativo
+        // Determina l'eseguibile corretto (Windows vs Unix)
         String pmdExecutableName = System.getProperty("os.name").toLowerCase().contains("win")
                 ? "pmd.bat"
                 : "pmd";
 
-
-        // 2. Costruisci il percorso completo dell'eseguibile
         String pmdExecutablePath = pmdHome + File.separator + "bin" + File.separator + pmdExecutableName;
 
-        // --- FINE MODIFICA ---
+        // Usa repoPath passato al costruttore
 
-        String sourcePath = "C:\\Users\\sofia\\repo\\"+ project.toLowerCase();
-        String rulesetPath = "C:\\Users\\sofia\\IdeaProjects\\ISW2_project\\src\\main\\resources\\pmd-ruleset.xml";
-
-        // Path dei sorgenti Java
-        String outputPath = "C:\\Users\\sofia\\IdeaProjects\\ISW2_project\\output.csv";
+        // Path ruleset: meglio passarlo come parametro o config, non hardcoded
+        String rulesetPath = "src/main/resources/pmd-ruleset.xml";
 
         return new ProcessBuilder(
                 pmdExecutablePath, "check",
-                "-d", sourcePath,
+                "-d", repoPath,
                 "-R", rulesetPath,
                 "-f", "csv",
-                "-r",outputPath
+                "-r", reportPath // qui finalmente usi quello giusto
         ).redirectErrorStream(true).start();
     }
+
 
     private void cleanAndResetGitState() {
         try {

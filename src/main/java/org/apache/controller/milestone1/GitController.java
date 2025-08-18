@@ -580,7 +580,7 @@ public class GitController {
     public record ClassChangeStats(int linesAdded, int linesDeleted) {}
 
     public String getRepoPath() {
-        return DEFAULT_REPO_BASE_PATH+ File.separator + targetName.toLowerCase();
+        return DEFAULT_REPO_BASE_PATH+ File.separator + targetName.toLowerCase() + File.separator;
     }
 
 

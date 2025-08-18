@@ -21,6 +21,8 @@ public class ClassMetrics {
     private long cognitiveComplexity;
     @Setter// Cognitive Complexity
     private long nestingDepth; // Nesting Depth
+    @Setter
+    private long numberOfCodeSmells; // Numero di Code Smells
 
 
     private final LOCMetrics removedLOCMetrics;
@@ -49,17 +51,7 @@ public class ClassMetrics {
         this.methodHistory = 0;
         this.numAuthors = 0;
     }
-    public void setAddedLOCMetrics(int addedLOC, int maxAddedLOC, double avgAddedLOC) {
-        this.addedLOCMetrics.setVal(addedLOC);
-        this.addedLOCMetrics.setMaxVal(maxAddedLOC);
-        this.addedLOCMetrics.setAvgVal(avgAddedLOC);
-    }
 
-    public void setRemovedLOCMetrics(int removedLOC, int maxRemovedLOC, double avgRemovedLOC) {
-        this.removedLOCMetrics.setVal(removedLOC);
-        this.removedLOCMetrics.setMaxVal(maxRemovedLOC);
-        this.removedLOCMetrics.setAvgVal(avgRemovedLOC);
-    }
 
     public void setChurnMetrics(int churn, int maxChurningFactor, double avgChurningFactor) {
         this.churnMetrics.setVal(churn);
