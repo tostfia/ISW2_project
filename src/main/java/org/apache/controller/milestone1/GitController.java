@@ -106,7 +106,7 @@ public class GitController {
                     ZoneOffset.UTC
             );
 
-            Release release = findReleaseForCommit(commitDate); // USA validReleases
+            Release release = findReleaseForCommit(commitDate);
 
             if (release != null) {
                 Commit newCommit = new Commit(revCommit, release);
@@ -120,7 +120,7 @@ public class GitController {
         logger.info("Found and processed " + this.allCommits.size() + " commits across " + releases.size() + " valid releases.");
     }
 
-    // IMPROVED: Metodo refactored per chiarezza
+
     private Release findReleaseForCommit(LocalDateTime commitDate) {
         if (releases == null || releases.isEmpty()) {
             return null;
@@ -137,12 +137,12 @@ public class GitController {
         return releases.getLast();
     }
 
-    // IMPROVED: Better error handling and ticket filtering
+
     public void findBuggyFiles() {
         logger.info("Searching for bug-fixing commits and associated files...");
         Map<String, Ticket> ticketMap = new HashMap<>();
 
-        // NEW: Filtra i ticket secondo i requisiti del Milestone
+
         for (Ticket ticket : this.tickets) {
             ticketMap.put(ticket.getTicketKey().toUpperCase(), ticket);
 
@@ -174,7 +174,7 @@ public class GitController {
     }
 
 
-    // IMPROVED: Better resource management
+
     private List<String> getModifiedFiles(RevCommit commit) throws IOException {
         List<String> modifiedPaths = new ArrayList<>();
 
@@ -224,7 +224,7 @@ public class GitController {
         }
     }
 
-    // IMPROVED: Better resource management in getClassesNameCodeInfos
+
     private Map<String, String> getClassesNameCodeInfos(RevCommit revCommit) throws IOException {
         Map<String, String> allClasses = new HashMap<>();
         RevTree tree = revCommit.getTree();
@@ -248,7 +248,7 @@ public class GitController {
         return allClasses;
     }
 
-    // IMPROVED: Better exception handling in getTouchedClassesNames
+
     private List<String> getTouchedClassesNames(RevCommit commit) throws IOException {
         List<String> touchedClassesNames = new ArrayList<>();
 
@@ -310,8 +310,6 @@ public class GitController {
 
                     for (AnalyzedClass classSnapshot : snapshots) {
                         Release snapshotRelease = classSnapshot.getRelease();
-                        // Questa logica di propagazione temporale è una forma di "realismo":
-                        // una classe è buggy solo nell'intervallo di tempo tra l'introduzione e la correzione.
                         boolean isInjectedBeforeOrDuringSnapshot =
                                 !injectedVersion.getReleaseDate().isAfter(snapshotRelease.getReleaseDate());
                         boolean isFixedAfterSnapshot =

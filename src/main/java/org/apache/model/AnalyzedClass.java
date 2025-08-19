@@ -70,9 +70,7 @@ public class AnalyzedClass {
             CompilationUnit cu = parser.parse(fileContent).getResult().orElse(null);
 
             if (cu != null) {
-                cu.findAll(MethodDeclaration.class).forEach(method -> {
-                    this.methods.add(new AnalyzedMethod(method));
-                });
+                cu.findAll(MethodDeclaration.class).forEach(method -> this.methods.add(new AnalyzedMethod(method)));
                 // Log di debug corretto
                 String msg = String.format("DEBUG: Parsato con successo %s - Trovati %d metodi.", this.className, this.methods.size());
                 logger.info(msg);
@@ -90,9 +88,7 @@ public class AnalyzedClass {
 
     }
 
-    public void findMethodByLine(int line) {
 
-    }
 
 
 }

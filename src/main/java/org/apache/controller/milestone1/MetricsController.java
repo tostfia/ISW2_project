@@ -4,7 +4,6 @@ package org.apache.controller.milestone1;
 
 
 import com.github.javaparser.StaticJavaParser;
-import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.BinaryExpr;
 import com.github.javaparser.ast.expr.MethodCallExpr;
@@ -15,9 +14,6 @@ import org.apache.utilities.metrics.CognitiveComplexityVisitor;
 import org.apache.utilities.metrics.NestingVisitor;
 
 
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.logging.Logger;
 
@@ -31,12 +27,12 @@ public class MetricsController {
     private final List<AnalyzedClass> analyzedClasses;
     private final GitController gitController;
     private final Logger logger = CollectLogger.getInstance().getLogger();
-    private final Release release;
 
-    public MetricsController(List<AnalyzedClass> snapshot, GitController gitController,Release release) {
+
+    public MetricsController(List<AnalyzedClass> snapshot, GitController gitController) {
         this.gitController = gitController;
         this.analyzedClasses = snapshot;
-        this.release= release;
+
     }
 
     /**
@@ -44,8 +40,8 @@ public class MetricsController {
      */
     public void processMetrics() {
         logger.info("Inizio calcolo metriche per lo snapshot...");
-        LocalDate dateRelease = release.getReleaseDate();
-        calculateAge(dateRelease);
+
+
         // Prima di processare le singole classi/metodi, calcoliamo Fan-in/Fan-out
         // che richiede una visione d'insieme dello snapshot corrente.
         calculateMethodUsageMetrics(); // Nuovo metodo per Fan-in/Fan-out
@@ -108,9 +104,9 @@ public class MetricsController {
         // --- Fase 1: Popolare le chiamate in uscita (Fan-out) e preparare la mappa per il Fan-in ---
         for (AnalyzedClass analyzedClass : analyzedClasses) {
             String className = analyzedClass.getClassName();
-            CompilationUnit cu;
+            // Parsing sicuro della classe per evitare errori di sintassi
             try {
-                cu = StaticJavaParser.parse(analyzedClass.getFileContent());
+                 StaticJavaParser.parse(analyzedClass.getFileContent());
             } catch (Exception e) {
                 logger.warning("Errore di parsing JavaParser per classe " + className + ": " + e.getMessage());
                 continue;
@@ -159,9 +155,9 @@ public class MetricsController {
         }
 
         for (AnalyzedClass callerClass : analyzedClasses) {
-            CompilationUnit callerCu;
+
             try {
-                callerCu = StaticJavaParser.parse(callerClass.getFileContent());
+                StaticJavaParser.parse(callerClass.getFileContent());
             } catch (Exception e) {
                 logger.warning("Errore di parsing JavaParser per classe chiamante " + callerClass.getClassName() + ": " + e.getMessage());
                 continue;
@@ -169,24 +165,17 @@ public class MetricsController {
 
             for (AnalyzedMethod callerMethod : callerClass.getMethods()) {
                 MethodDeclaration callerMd = callerMethod.getMethodDeclaration();
-                callerMd.getBody().ifPresent(body -> {
-                    body.findAll(MethodCallExpr.class).forEach(methodCall -> {
-                        String calleeSimpleName = methodCall.getNameAsString();
-                        int calleeArgCount = methodCall.getArguments().size();
-                        String heuristicSignature = calleeSimpleName + "_" + calleeArgCount;
-
-                        // Usa la mappa pre-costruita per trovare i potenziali metodi chiamati
-                        List<AnalyzedMethod> potentialCallees = methodsByHeuristicSignature.getOrDefault(heuristicSignature, Collections.emptyList());
-
-                        for (AnalyzedMethod potentialCalleeMethod : potentialCallees) {
-                            // Incrementa il Fan-in per ogni metodo potenziale corrispondente all'euristica.
-                            // Nota: Questa euristica non distingue se la chiamata è a un metodo nella stessa classe,
-                            // in una superclasse, o in una classe diversa ma con lo stesso nome/parametri.
-                            // Per una precisione maggiore sarebbe necessario il type solving.
-                            potentialCalleeMethod.getMetrics().setFanIn(potentialCalleeMethod.getMetrics().getFanIn() + 1);
-                        }
-                    });
-                });
+                callerMd.getBody().ifPresent(body ->
+                        body.findAll(MethodCallExpr.class).forEach(methodCall -> {
+                            String calleeSimpleName = methodCall.getNameAsString();
+                            int calleeArgCount = methodCall.getArguments().size();
+                            String heuristicSignature = calleeSimpleName + "_" + calleeArgCount;
+                            List<AnalyzedMethod> potentialCallees = methodsByHeuristicSignature.getOrDefault(heuristicSignature, Collections.emptyList());
+                            potentialCallees.forEach(potentialCalleeMethod ->
+                                    potentialCalleeMethod.getMetrics().setFanIn(potentialCalleeMethod.getMetrics().getFanIn() + 1)
+                            );
+                        })
+                );
             }
         }
         logger.fine("Calcolo Fan-in/Fan-out completato.");

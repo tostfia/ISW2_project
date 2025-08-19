@@ -108,7 +108,7 @@ public class ProcessController implements Runnable {
         try {
             CodeSmellParser.setRepoRootPath(gitController.getRepoPath());
 
-            // Se la lista non è vuota, procediamo come prima
+
             logger.info(threadIdentity + " --- INIZIO FASE DI GENERAZIONE REPORT PMD  ---");
             NumOfCodeSmells numofCodeSmells = new NumOfCodeSmells(targetName, gitController.getRepoPath(), gitController.getGit(), releases);
             numofCodeSmells.generatePmdReports();
@@ -133,7 +133,7 @@ public class ProcessController implements Runnable {
                     Files.createDirectories(baseDir);  // crea la cartella se non esiste
 
                     String releaseId = release.getReleaseID();
-                    Path reportPath = baseDir.resolve(releaseId + ".csv");  // file unico per release
+                    Path reportPath = baseDir.resolve(releaseId + ".xml");  // file unico per release
 
                     logger.info(threadIdentity + " - Percorso report PMD per release " + releaseId + ": " + reportPath);
 
@@ -141,7 +141,7 @@ public class ProcessController implements Runnable {
                     CodeSmellParser.extractCodeSmell(classes, targetName, releaseId);
 
 
-                    MetricsController metricsController = new MetricsController(classes, gitController, release);
+                    MetricsController metricsController = new MetricsController(classes, gitController);
                     metricsController.processMetrics();
                     writer.writeResultsForClass(classes);
                 }

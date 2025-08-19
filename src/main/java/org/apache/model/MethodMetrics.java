@@ -63,6 +63,9 @@ public class MethodMetrics {
         this.parameterCount=0;
         this.numberOfCodeSmells=0;
     }
+    public void incrementCodeSmellCount() {
+        this.numberOfCodeSmells++;
+    }
 
 
 }

@@ -5,7 +5,6 @@ import lombok.Getter;
 import lombok.Setter;
 import org.eclipse.jgit.revwalk.RevCommit;
 
-import java.util.Date;
 import java.util.Objects;
 
 /**

@@ -12,8 +12,11 @@ public class Main {
         Logger logger= CollectLogger.getInstance().getLogger();
 
         String configFilePath = args[0];
+        //In config.json si trovano le repo Git da analizzare
+        //"BOOKKEEPER": "https://github.com/tostfia/bookkeeper.git"
+        //"STORM": "https://github.com/tostfia/storm.git"
 
-        //File json di configurazione
+
         logger.info("--------------------------------------------ANALISI AVVIATA--------------------------------------------");
         long startTime = System.currentTimeMillis();
 

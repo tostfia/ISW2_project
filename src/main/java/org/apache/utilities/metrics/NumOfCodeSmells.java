@@ -16,7 +16,6 @@ import java.util.List;
 
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 public class NumOfCodeSmells {
 
@@ -44,22 +43,19 @@ public class NumOfCodeSmells {
         this.originalBranch = git.getRepository().getBranch(); // Salva il branch corrente per ripristinarlo
     }
 
-    /**
-     * Esegue l'analisi PMD per tutte le release, generando un file CSV per ciascuna.
-     */
-    // Dentro la classe PmdReportGenerator
+
 
     /**
      * Esegue l'analisi PMD per tutte le release, generando un file CSV per ciascuna.
      */
     public void generatePmdReports() {
         String outputDirPath = PMD_ANALYSIS_BASE_DIR + File.separator + this.project;
-        new File(outputDirPath).mkdirs(); // Crea la cartella di output se non esiste
+        new File(outputDirPath);
 
         // 1. Ordina le release in base al loro ID per un'esecuzione sequenziale e logica.
         List<Release> sortedReleases = releases.stream()
                 .sorted(Comparator.comparing(Release::getId))
-                .collect(Collectors.toList()); // Usa .collect per evitare problemi con stream paralleli
+                .toList();
 
         // 2. Itera sulla lista ordinata.
         for (Release release : sortedReleases) {
@@ -71,7 +67,7 @@ public class NumOfCodeSmells {
             }
 
             // 4. Prendi l'ULTIMO commit della release, che rappresenta lo snapshot finale.
-            RevCommit targetCommit = release.getCommitList().get(release.getCommitList().size() - 1).getRevCommit();
+            RevCommit targetCommit = release.getCommitList().getLast().getRevCommit();
 
 
             // 5. Chiama il metodo di analisi passando l'ID CORRETTO della release corrente.
@@ -104,7 +100,7 @@ public class NumOfCodeSmells {
 
             // --- INIZIO DIAGNOSTICA AVANZATA ---
 
-            // 1. Cattura l'output del processo PMD in tempo reale
+
             StringBuilder pmdOutput = new StringBuilder();
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String line;
@@ -139,7 +135,7 @@ public class NumOfCodeSmells {
                 logger.info("PMD ha terminato con successo per la release " + releaseId + " trovando violazioni. (Vedi report XML).");
             } else {
                 // Qualsiasi altro codice di uscita indica un vero fallimento o errore di configurazione.
-                logger.severe("PMD ha fallito inaspettatamente per la release " + releaseId + ". Codice di uscita: " + exitCode + ". Output di PMD:\n" + pmdOutput.toString());
+                logger.severe("PMD ha fallito inaspettatamente per la release " + releaseId + ". Codice di uscita: " + exitCode + ". Output di PMD:\n" + pmdOutput);
             }
             // --- FINE DIAGNOSTICA AVANZATA ---
 
