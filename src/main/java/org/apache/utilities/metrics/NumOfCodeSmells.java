@@ -125,11 +125,13 @@ public class NumOfCodeSmells {
             // 3. Logga i risultati dettagliati
             logger.info("Analisi PMD per la release " + releaseId + " terminata con codice di uscita: " + exitCode);
 
-            if (exitCode != 0) {
+            if (exitCode == 0) {
                 logger.severe("PMD ha fallito per la release " + releaseId + ". Output di PMD:\n" + pmdOutput.toString());
+            }else if(exitCode == 4){
+                logger.info("Analisi PMD per la release " + releaseId + " terminata con violazioni trovate. Conteggio violazioni: " + /* (puoi parsare l'output di pmdOutput per contare, o semplicemente loggare) */ "Vedi report CSV.");
             } else if (pmdOutput.isEmpty()) {
                 logger.warning("PMD ha terminato con successo ma non ha prodotto alcun output per la release " + releaseId + ".");
-            } else {
+            }else {
                 logger.info("PMD ha terminato con successo per la release " + releaseId + ".");
             }
 
@@ -167,6 +169,7 @@ public class NumOfCodeSmells {
                 "-d", repoPath,
                 "-R", rulesetPath,
                 "-f", "csv",
+                "--no-cache", // Disabilita la cache per evitare problemi con PMD
                 "-r", reportPath // qui finalmente usi quello giusto
         ).redirectErrorStream(true).start();
     }

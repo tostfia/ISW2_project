@@ -4,6 +4,8 @@ package org.apache.model;
 import lombok.Getter;
 import lombok.Setter;
 import org.eclipse.jgit.revwalk.RevCommit;
+
+import java.util.Date;
 import java.util.Objects;
 
 /**
@@ -23,6 +25,7 @@ public class Commit {
 
     @Setter
     private boolean buggy; // Questa è l'unica proprietà che può cambiare
+
 
     /**
      * Costruttore unico e principale.

@@ -139,7 +139,7 @@ public class ProcessController implements Runnable {
                 // --- 5. Parsing code smells
                 CodeSmellParser.extractCodeSmell(classes, targetName, releaseId);
 
-                MetricsController metricsController= new MetricsController( classes,gitController);
+                MetricsController metricsController= new MetricsController( classes,gitController,release);
                 metricsController.processMetrics();
                 writer.writeResultsForClass(classes);
             }

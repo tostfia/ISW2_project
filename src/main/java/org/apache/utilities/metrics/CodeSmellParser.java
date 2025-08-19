@@ -39,6 +39,8 @@ public class CodeSmellParser {
 
         String reportPath = buildReportPath(project, releaseId);
         File reportFile = new File(reportPath);
+        // LOG: Verifica il percorso del report PMD
+        logger.warning("extractCodeSmell: Tentativo di leggere il report PMD da: " + reportPath);
 
         if (!reportFile.exists() || !reportFile.canRead()) {
             logger.warning("Report non trovato o non leggibile: " + reportPath);
@@ -46,7 +48,10 @@ public class CodeSmellParser {
         }
 
         try {
+
             List<CodeSmellInfo> smells = parseCodeSmellCsv(reportPath,releaseId);
+            // LOG: Numero di code smell parsati dal CSV
+            logger.warning("extractCodeSmell: Parsati " + smells.size() + " code smell dal report per release " + releaseId);
             associateCodeSmellsToClasses(classes, smells);
             logger.info("Estratti " + smells.size() + " code smell da " + reportFile.getName() +
                     " per " + classes.size() + " classi");
@@ -76,6 +81,7 @@ public class CodeSmellParser {
                 logger.warning("CSV vuoto: " + csvFilePath);
                 return smells;
             }
+            logger.fine("parseCodeSmellCsv: Intestazione CSV letta: " + String.join(",", header));
 
             String[] row;
             int lineNum = 1;
@@ -85,6 +91,8 @@ public class CodeSmellParser {
                 try {
                     CodeSmellInfo info = new CodeSmellInfo(row, lineNum,releaseId);
                     smells.add(info);
+                    // LOG: Logga le informazioni estratte per ogni smell
+                    logger.fine("parseCodeSmellCsv: Estratto smell alla riga " + info.getLine() + " per file: " + info.getFilename());
                 } catch (Exception e) {
                     logger.log(Level.WARNING, "Errore parsing riga " + lineNum, e);
                 }
@@ -96,17 +104,29 @@ public class CodeSmellParser {
     /**
      * Associa i code smell alle classi/metodi.
      */
-    private static void associateCodeSmellsToClasses(List<AnalyzedClass> classes, List<CodeSmellInfo> smells)  {
+    private static void associateCodeSmellsToClasses(List<AnalyzedClass> classes, List<CodeSmellInfo> smells) {
+        logger.info("associateCodeSmellsToClasses: Inizio associazione per " + classes.size() + " classi e " + smells.size() + " code smell.");
         for (AnalyzedClass analyzedClass : classes) {
-            String className = normalizeClassName(analyzedClass.getClassName());
+            String className = normalizeClassName(analyzedClass.getClassName()); // Questo dovrebbe essere il percorso completo o il nome che matchi
+
+            // LOG: Inizio elaborazione per una classe specifica
+            logger.fine("associateCodeSmellsToClasses: Elaborazione classe: " + analyzedClass.getClassName() + " (Normalizzata: " + className + ")");
 
             List<CodeSmellInfo> classSmells = smells.stream()
-                    .filter(s -> isSmellForClass(s, className))
-                    .toList();
+                    .filter(s -> {
+                        boolean match = isSmellForClass(s, analyzedClass.getClassName()); // Usa analyzedClass.getClassName() direttamente qui per coerenza
+                        // LOG: Logga il risultato del filtro per ogni smell e classe
+                        logger.finest("associateCodeSmellsToClasses: Smell file '" + s.getFilename() + "' vs Classe file '" + analyzedClass.getClassName() + "' -> Match: " + match);
+                        return match;
+                    })
+                    //.collect(Collectors.toList()); // Per Java 8-15
+                    .toList(); // Per Java 16+
 
             if (!classSmells.isEmpty()) {
-                logger.fine("Trovati " + classSmells.size() + " code smell per classe " + className);
+                logger.info("associateCodeSmellsToClasses: Trovati " + classSmells.size() + " code smell per la classe " + analyzedClass.getClassName() + ". Tentativo di associarli ai metodi.");
                 associateSmellsToMethods(analyzedClass, classSmells);
+            } else {
+                logger.fine("associateCodeSmellsToClasses: Nessun code smell trovato per la classe " + analyzedClass.getClassName() + " in questo report.");
             }
         }
     }
@@ -121,36 +141,68 @@ public class CodeSmellParser {
 
     private static boolean isSmellForClass(CodeSmellInfo smell, String className) {
         String cleanFilename = smell.getFilename().replaceAll("\"", "").replace("\\", "/");
-        String fileOnly = Paths.get(cleanFilename).getFileName().toString();
-        return fileOnly.equals(className + ".java");
+        // Prende solo il nome del file (es. BasicDRPCTopology.java) dalla stringa del report PMD
+        String fileOnlyFromSmell = Paths.get(cleanFilename).getFileName().toString();
+
+        // Prende solo il nome del file dalla stringa del nome della classe analizzata
+        // Assumiamo che className sia il percorso completo (es. "src/main/java/MyClass.java")
+        String fileOnlyFromAnalyzedClass = Paths.get(className).getFileName().toString();
+
+        // LOG: Logga i valori che vengono confrontati
+        logger.finest("isSmellForClass: Confronto smell file '" + fileOnlyFromSmell + "' con classe file '" + fileOnlyFromAnalyzedClass + "'");
+
+        return fileOnlyFromSmell.equals(fileOnlyFromAnalyzedClass);
     }
 
     private static void associateSmellsToMethods(AnalyzedClass analyzedClass, List<CodeSmellInfo> classSmells) {
-        boolean assignedToMethod = false;
+        logger.info("associateSmellsToMethods: Inizio associazione per " + analyzedClass.getClassName() + ". Code smell da assegnare: " + classSmells.size());
+
+        // Inizializza una lista con tutti i code smell della classe.
+        // Man mano che vengono assegnati a un metodo, li rimuoveremo da questa lista.
+        List<CodeSmellInfo> smellsNotYetAssigned = new ArrayList<>(classSmells);
 
         for (AnalyzedMethod method : analyzedClass.getMethods()) {
             String methodName = method.getMethodDeclaration().getNameAsString();
             int begin = method.getMethodDeclaration().getBegin().map(p -> p.line).orElse(-1);
             int end = method.getMethodDeclaration().getEnd().map(p -> p.line).orElse(-1);
 
-            for (CodeSmellInfo smell : classSmells) {
+            // LOG: Dettagli sul metodo corrente
+            logger.fine("associateSmellsToMethods: Elaborando metodo: " + analyzedClass.getClassName() + "." + methodName + " (Righe: " + begin + "-" + end + ")");
+
+
+            // Usiamo un iteratore per rimuovere gli elementi in modo sicuro mentre li scorriamo.
+            Iterator<CodeSmellInfo> iterator = smellsNotYetAssigned.iterator();
+            while (iterator.hasNext()) {
+                CodeSmellInfo smell = iterator.next();
+
                 // Associa lo smell se cade dentro (o vicino) al range del metodo
                 boolean lineMatches = smell.getLine() >= begin - 2 && smell.getLine() <= end + 2;
+
+                // LOG: Dettagli sulla riga dello smell e il risultato del match
+                logger.finest("associateSmellsToMethods: Smell a riga " + smell.getLine() + " vs Metodo " + methodName + " righe " + begin + "-" + end + " -> Match: " + lineMatches);
 
                 if (lineMatches) {
                     MethodMetrics metrics = method.getMetrics();
                     metrics.setNumberOfCodeSmells(metrics.getNumberOfCodeSmells() + 1);
-                    assignedToMethod = true;
+                    iterator.remove(); // Rimuovi lo smell da questa lista, è stato assegnato!
+                    // Non abbiamo più bisogno di 'assignedToMethod' come flag booleana globale qui
+                    logger.info("associateSmellsToMethods: ASSEGNATO code smell a metodo: " + analyzedClass.getClassName() + "." + methodName + " (Riga: " + smell.getLine() + "). Nuovo conteggio: " + metrics.getNumberOfCodeSmells());
                 }
             }
         }
 
-        // Se nessun metodo ha catturato lo smell → assegnalo alla classe
-        if (!assignedToMethod) {
+        // Dopo aver provato ad assegnare tutti gli smell a tutti i metodi,
+        // tutti gli smell rimasti nella lista 'smellsNotYetAssigned'
+        // devono essere assegnati alle metriche della classe.
+        if (!smellsNotYetAssigned.isEmpty()) {
+            logger.info("associateSmellsToMethods: " + smellsNotYetAssigned.size() + " code smell non assegnati a metodi per classe " + analyzedClass.getClassName() + ". Assegnazione a livello di classe.");
             ClassMetrics classMetrics = analyzedClass.getProcessMetrics();
-            for (CodeSmellInfo smell : classSmells) {
+            for (CodeSmellInfo smell : smellsNotYetAssigned) {
                 classMetrics.setNumberOfCodeSmells(classMetrics.getNumberOfCodeSmells() + 1);
+                logger.fine("associateSmellsToMethods: ASSEGNATO code smell a classe: " + analyzedClass.getClassName() + " (Riga: " + smell.getLine() + "). Nuovo conteggio classe: " + classMetrics.getNumberOfCodeSmells());
             }
+        } else {
+            logger.info("associateSmellsToMethods: Tutti i code smell sono stati assegnati a metodi per classe " + analyzedClass.getClassName() + ".");
         }
     }
 
@@ -168,16 +220,15 @@ public class CodeSmellParser {
         private final int line;
         @Getter
         private final String releaseId;      // release ID
-        @Getter
-        private final String methodName;     // nome del metodo, se presente nel CSV
+
 
         public CodeSmellInfo(String[] row, int rowNumber,String releaseId) {
             this.problem = getSafe(row, 0);
             this.line = parseLine(getSafe(row, 4), rowNumber); // colonna LINE
             this.releaseId = releaseId;       // colonna RELEASE (da adattare al CSV)
-            String fileCol = getSafe(row, 2); // FILE column
-            this.filename = fileCol.contains(":") ? fileCol.substring(0, fileCol.indexOf(":")) : fileCol;
-            this.methodName = fileCol.contains(":") ? fileCol.substring(fileCol.indexOf(":") + 1) : null;
+            this.filename= getSafe(row, 2); // colonna FILE
+            logger.finest("CodeSmellInfo: Creato smell per file '" + filename + "' a riga " + line + ", problema: '" + problem + "'");
+
         }
 
         private String getSafe(String[] arr, int idx) {
