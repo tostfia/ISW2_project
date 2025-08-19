@@ -1,12 +1,10 @@
 package org.apache.controller.milestone1;
 
+
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.logging.CollectLogger;
-import org.apache.model.AnalyzedClass;
-import org.apache.model.Commit;
-import org.apache.model.Release;
-import org.apache.model.Ticket;
+import org.apache.model.*;
 import org.eclipse.jgit.api.BlameCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -39,7 +37,7 @@ import java.util.stream.Collectors;
 
 public class GitController {
     // FIXED: Path portabile e configurabile
-    private static final String DEFAULT_REPO_BASE_PATH = System.getProperty("user.home") + File.separator + "repositories";
+    private static final String DEFAULT_REPO_BASE_PATH = System.getProperty("user.home") + File.separator + "repo";
 
 
     // REFACTOR: Costanti per la logica di realismo di SZZ
@@ -98,7 +96,6 @@ public class GitController {
         this.commitsPerFile = new HashMap<>();
     }
 
-    // ... (buildCommitHistory, findReleaseForCommit, findBuggyFiles, getModifiedFiles, isValidJavaFile, closeRepo, ecc. rimangono identici)
     public void buildCommitHistory() throws GitAPIException, IOException {
         logger.info("Starting commit analysis for " + targetName);
         Iterable<RevCommit> log = git.log().all().call();
@@ -329,7 +326,7 @@ public class GitController {
         }
     }
 
-    // ... (findBugIntroducingCommits rimane identico)
+
     public List<Commit> findBugIntroducingCommits(Commit fixingCommit, String filePath) throws IOException {
         logger.info("Applying SZZ algorithm for " + filePath + " in fixing commit " + fixingCommit.getRevCommit().getName());
         List<Commit> bugIntroducingCommits = new ArrayList<>();
@@ -480,6 +477,7 @@ public class GitController {
 
             AnalyzedClass ac = getAnalyzedClass(release, classInfo, className);
 
+
             List<Commit> fullHistory = this.commitsPerFile.get(className);
             if (fullHistory != null) {
                 ac.setTouchingClassCommitList(new ArrayList<>(fullHistory));
@@ -489,18 +487,7 @@ public class GitController {
         return classList;
     }
 
-    private static AnalyzedClass getAnalyzedClass(Release release, Map.Entry<String, String> classInfo, String className) {
-        String packageName = "";
-        String fileName = className; // Default: il nome del file è l'intero percorso
 
-        int lastSlashIndex = className.lastIndexOf('/');
-        if (lastSlashIndex != -1) {
-            // Se c'è una barra, dividiamo
-            packageName = className.substring(0, lastSlashIndex);
-            fileName = className.substring(lastSlashIndex + 1);
-        }
-        return new AnalyzedClass(className, classInfo.getValue(), release,packageName,fileName);
-    }
 
     public void buildFileCommitHistoryMap() {
         logger.info("Building commit history map for each file...");
@@ -581,6 +568,21 @@ public class GitController {
 
     public String getRepoPath() {
         return DEFAULT_REPO_BASE_PATH+ File.separator + targetName.toLowerCase() + File.separator;
+    }
+
+
+    private static AnalyzedClass getAnalyzedClass(Release release, Map.Entry<String, String> classInfo, String className) {
+        String packageName = "";
+        String fileName = className;
+
+        int lastSlashIndex = className.lastIndexOf('/');
+        if (lastSlashIndex != -1) {
+            packageName = className.substring(0, lastSlashIndex);
+            fileName = className.substring(lastSlashIndex + 1);
+        }
+        // Questo costruttore non dovrebbe parsare i metodi o popolare la loro storia.
+        // Tale logica è stata spostata in populateMethodsForAnalyzedClass.
+        return new AnalyzedClass(className, classInfo.getValue(), release,packageName,fileName);
     }
 
 

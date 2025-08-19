@@ -20,6 +20,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class ProcessController implements Runnable {
@@ -70,22 +71,19 @@ public class ProcessController implements Runnable {
     private void processing() throws IOException, URISyntaxException, GitAPIException {
         logger.info(threadIdentity+"-Fase 0: Pre-calcolo dati per il cold start di proportion ...");
         List<Double> coldStartProportions = new ArrayList<>();
-        List<String> allProjectNames= List.of("BOOKKEEPER","STORM");
-        for(String projectName:allProjectNames){
-            if(projectName.equalsIgnoreCase(this.targetName)){
-                continue;
-            }
-            logger.info(threadIdentity + "- Calcolo proporzioni per il progetto: " + projectName);
-            JiraController tempJira= new JiraController(projectName);
-            tempJira.injectRelease();
-            tempJira.injectTickets();
-            List<Ticket> ticketsWithIV= tempJira.getFixedTickets().stream().filter(t -> t.getInjectedVersion()!=null).toList();
-            ProportionController tempProportionController = new ProportionController();
-            double p = tempProportionController.calculateAverageProportion(ticketsWithIV);
-            if(p>=0){
-                coldStartProportions.add(p);
-            }
+
+
+        logger.info(threadIdentity + "- Calcolo proporzioni per il progetto: " + this.targetName);
+        JiraController tempJira= new JiraController(this.targetName);
+        tempJira.injectRelease();
+        tempJira.injectTickets();
+        List<Ticket> ticketsWithIV= tempJira.getFixedTickets().stream().filter(t -> t.getInjectedVersion()!=null).toList();
+        ProportionController tempProportionController = new ProportionController();
+        double p = tempProportionController.calculateAverageProportion(ticketsWithIV);
+        if(p>=0){
+            coldStartProportions.add(p);
         }
+
         logger.info(threadIdentity + "- ESECUZIONE FASE 1: ANALISI ...");
         JiraController jiraController = performJiraAnalysis();
         logger.info(threadIdentity + "- Fase 2: Applicazione di Proportion per " + this.targetName);
@@ -106,47 +104,56 @@ public class ProcessController implements Runnable {
 
         logger.info(threadIdentity + " --- Controllo prima della generazione PMD ---");
         logger.info(threadIdentity + " Numero di release trovate e pronte per l'analisi PMD: " + releases.size());
+        // AGGIUNGI QUESTA RIGA PRIMA DEL CICLO SULLE RELEASE:
+        try {
+            CodeSmellParser.setRepoRootPath(gitController.getRepoPath());
+
+            // Se la lista non è vuota, procediamo come prima
+            logger.info(threadIdentity + " --- INIZIO FASE DI GENERAZIONE REPORT PMD  ---");
+            NumOfCodeSmells numofCodeSmells = new NumOfCodeSmells(targetName, gitController.getRepoPath(), gitController.getGit(), releases);
+            numofCodeSmells.generatePmdReports();
+            logger.info(threadIdentity + " --- FINE FASE DI GENERAZIONE REPORT PMD ---");
 
 
-        // Se la lista non è vuota, procediamo come prima
-        logger.info(threadIdentity + " --- INIZIO FASE DI GENERAZIONE REPORT PMD (può richiedere molto tempo) ---");
-        NumOfCodeSmells numofCodeSmells = new NumOfCodeSmells(targetName, gitController.getRepoPath(), gitController.getGit(), releases);
-        numofCodeSmells.generatePmdReports();
-        logger.info(threadIdentity + " --- FINE FASE DI GENERAZIONE REPORT PMD ---");
+
+            // --- 2. Scrittura del CSV
+            String csvFileName = targetName + "_dataset.csv";
+            try (CsvWriter writer = new CsvWriter(csvFileName, targetName)) {
+                writer.writeHeader();
+                int total = releases.size();
+                int index = 0;
+                for (Release release : releases) {
+                    logger.info(threadIdentity + " - Processando release: " + release.getReleaseID());
+                    index++;
+                    logger.info("Analisi release " + index + "/" + total +
+                            " (ID: " + release.getId() + ", Nome: " + release.getReleaseName() + ")");
+                    List<AnalyzedClass> classes = gitController.getClassesForRelease(release);
+                    gitController.labelBuggynessWithSZZ(classes);
+                    Path baseDir = Paths.get(PMD_REPORTS_BASE_DIR, targetName);
+                    Files.createDirectories(baseDir);  // crea la cartella se non esiste
+
+                    String releaseId = release.getReleaseID();
+                    Path reportPath = baseDir.resolve(releaseId + ".csv");  // file unico per release
+
+                    logger.info(threadIdentity + " - Percorso report PMD per release " + releaseId + ": " + reportPath);
 
 
-        // --- 2. Scrittura del CSV
-        String csvFileName = targetName + "_dataset.csv";
-        try(CsvWriter writer = new CsvWriter(csvFileName, targetName)) {
-            writer.writeHeader();
-            int total = releases.size();
-            int index = 0;
-            for(Release release : releases){
-                logger.info(threadIdentity+ " - Processando release: " + release.getReleaseID());
-                index++;
-                logger.info("Analisi release " + index + "/" + total +
-                        " (ID: " + release.getId() + ", Nome: " + release.getReleaseName() + ")");
-                List<AnalyzedClass> classes = gitController.getClassesForRelease(release);
-                gitController.labelBuggynessWithSZZ(classes);
-                Path baseDir = Paths.get(PMD_REPORTS_BASE_DIR, targetName);
-                Files.createDirectories(baseDir);  // crea la cartella se non esiste
+                    CodeSmellParser.extractCodeSmell(classes, targetName, releaseId);
 
-                String releaseId = release.getReleaseID();
-                Path reportPath = baseDir.resolve(releaseId + ".csv");  // file unico per release
 
-                logger.info(threadIdentity + " - Percorso report PMD per release " + releaseId + ": " + reportPath);
+                    MetricsController metricsController = new MetricsController(classes, gitController, release);
+                    metricsController.processMetrics();
+                    writer.writeResultsForClass(classes);
+                }
 
-                // --- 5. Parsing code smells
-                CodeSmellParser.extractCodeSmell(classes, targetName, releaseId);
-
-                MetricsController metricsController= new MetricsController( classes,gitController,release);
-                metricsController.processMetrics();
-                writer.writeResultsForClass(classes);
             }
+            gitController.closeRepo();
+            logger.info(threadIdentity + "- MILESTONE 1 COMPLETATA. File CSV creato: " + csvFileName);
+        }catch (Exception e) {
+            logger.log(Level.SEVERE, threadIdentity + " Errore FATALE nel processo di analisi DOPO la generazione PMD: " + e.getMessage(), e);
+
 
         }
-        gitController.closeRepo();
-        logger.info(threadIdentity + "- MILESTONE 1 COMPLETATA. File CSV creato: " + csvFileName);
 
     }
 

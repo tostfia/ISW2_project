@@ -28,8 +28,8 @@ public class AnalyzedClass {
 
     // Struttura della Classe
     private final String className;
-
-    private final List<AnalyzedMethod> methods;
+    @Setter
+    private List<AnalyzedMethod> methods;
     @Setter
     private List<Commit> touchingClassCommitList;
 

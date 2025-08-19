@@ -18,6 +18,7 @@ import java.util.Objects;
 public class Commit {
 
     private final RevCommit revCommit;
+
     private final Release release;
 
     @Setter

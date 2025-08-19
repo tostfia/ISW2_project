@@ -86,10 +86,11 @@ public class NumOfCodeSmells {
     // Dentro la classe PmdReportGenerator
 
     private void runPmdForCommit(String releaseId, RevCommit commit) {
-        String reportPath = PMD_ANALYSIS_BASE_DIR + File.separator + this.project + File.separator + releaseId + ".csv";
+        // CAMBIA QUI L'ESTENSIONE DEL FILE DI REPORT
+        String reportPath = PMD_ANALYSIS_BASE_DIR + File.separator + this.project + File.separator + releaseId + ".xml";
 
         if (new File(reportPath).exists()) {
-            logger.info("Report PMD per la release " + releaseId + " già esistente. Salto l'analisi.");
+            logger.info("Report PMD (XML) per la release " + releaseId + " già esistente. Salto l'analisi.");
             return;
         }
 
@@ -126,15 +127,20 @@ public class NumOfCodeSmells {
             logger.info("Analisi PMD per la release " + releaseId + " terminata con codice di uscita: " + exitCode);
 
             if (exitCode == 0) {
-                logger.severe("PMD ha fallito per la release " + releaseId + ". Output di PMD:\n" + pmdOutput.toString());
-            }else if(exitCode == 4){
-                logger.info("Analisi PMD per la release " + releaseId + " terminata con violazioni trovate. Conteggio violazioni: " + /* (puoi parsare l'output di pmdOutput per contare, o semplicemente loggare) */ "Vedi report CSV.");
-            } else if (pmdOutput.isEmpty()) {
-                logger.warning("PMD ha terminato con successo ma non ha prodotto alcun output per la release " + releaseId + ".");
-            }else {
-                logger.info("PMD ha terminato con successo per la release " + releaseId + ".");
+                // PMD ha terminato con successo e non ha trovato violazioni.
+                // Potrebbe esserci il caso "No files to analyze".
+                if (pmdOutput.toString().contains("No files to analyze")) {
+                    logger.warning("PMD ha terminato con successo per la release " + releaseId + " ma non ha trovato file Java da analizzare. (Commit potrebbe non contenere codice Java o filtri attivi).");
+                } else {
+                    logger.info("PMD ha terminato con successo per la release " + releaseId + " senza trovare violazioni.");
+                }
+            } else if (exitCode == 4) {
+                // PMD ha terminato con successo e ha trovato violazioni.
+                logger.info("PMD ha terminato con successo per la release " + releaseId + " trovando violazioni. (Vedi report XML).");
+            } else {
+                // Qualsiasi altro codice di uscita indica un vero fallimento o errore di configurazione.
+                logger.severe("PMD ha fallito inaspettatamente per la release " + releaseId + ". Codice di uscita: " + exitCode + ". Output di PMD:\n" + pmdOutput.toString());
             }
-
             // --- FINE DIAGNOSTICA AVANZATA ---
 
         } catch (GitAPIException e) {
@@ -164,14 +170,17 @@ public class NumOfCodeSmells {
         // Path ruleset: meglio passarlo come parametro o config, non hardcoded
         String rulesetPath = "src/main/resources/pmd-ruleset.xml";
 
+
         return new ProcessBuilder(
                 pmdExecutablePath, "check",
                 "-d", repoPath,
                 "-R", rulesetPath,
-                "-f", "csv",
-                "--no-cache", // Disabilita la cache per evitare problemi con PMD
-                "-r", reportPath // qui finalmente usi quello giusto
+                "-f", "xml", // CAMBIA QUI: da "csv" a "xml"
+                "--no-cache",
+                "--debug",
+                "-r", reportPath.replace(".csv", ".xml") // AGGIORNA QUI: cambia estensione file a .xml
         ).redirectErrorStream(true).start();
+
     }
 
 

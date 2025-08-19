@@ -88,75 +88,76 @@ public class MetricsController {
 
         }
     }
-    /**
-     * Calcola Fan-in e Fan-out per tutti i metodi nelle classi dello snapshot corrente.
-     */
     private void calculateMethodUsageMetrics() {
         logger.fine("Inizio calcolo Fan-in/Fan-out per lo snapshot.");
 
-        // Mappa per memorizzare le chiamate effettuate da ogni metodo
+        // Mappa per memorizzare le chiamate effettuate da ogni metodo chiamante
         // Chiave: firma completa del metodo chiamante (es. "com.example.MyClass.myMethod(int,String)")
-        // Valore: Set di firme complete dei metodi chiamati (es. "com.example.AnotherClass.calledMethod()")
-        Map<String, Set<String>> methodCallsOut = new HashMap<>();
+        // Valore: Set di nomi semplici dei metodi chiamati (es. "calledMethod")
+        // Questo è per il calcolo Fan-out.
+        Map<String, Set<String>> methodCallsOutSimpleName = new HashMap<>();
 
-        // Mappa per un accesso rapido a tutti i MethodMetrics per firma completa
-        Map<String, MethodMetrics> allMethodMetricsBySignature = new HashMap<>();
-        Map<String, AnalyzedMethod> allAnalyzedMethodsBySignature = new HashMap<>();
+        // Mappa per un accesso rapido a tutti gli AnalyzedMethod per il calcolo del Fan-in
+        // Chiave: "nomeMetodo_numeroParametri" (euristica)
+        // Valore: Lista di AnalyzedMethod che corrispondono a quella firma euristica.
+        // Necessaria una lista perché più metodi possono avere lo stesso nome e numero di parametri
+        // in classi diverse o per overloading (anche se l'overloading per solo numero di parametri è raro).
+        Map<String, List<AnalyzedMethod>> methodsByHeuristicSignature = new HashMap<>();
 
 
-        // Fase 1: Popolare le chiamate in uscita (Fan-out) e raccogliere tutte le firme
-        for (AnalyzedClass jc : analyzedClasses) {
-            String className = jc.getClassName(); // Esempio: "path/to/MyClass.java"
+        // --- Fase 1: Popolare le chiamate in uscita (Fan-out) e preparare la mappa per il Fan-in ---
+        for (AnalyzedClass analyzedClass : analyzedClasses) {
+            String className = analyzedClass.getClassName();
             CompilationUnit cu;
             try {
-                // Parsing dell'intero contenuto della classe
-                cu = StaticJavaParser.parse(jc.getFileContent());
+                cu = StaticJavaParser.parse(analyzedClass.getFileContent());
             } catch (Exception e) {
                 logger.warning("Errore di parsing JavaParser per classe " + className + ": " + e.getMessage());
                 continue;
             }
 
-            for (AnalyzedMethod am : jc.getMethods()) {
-                MethodDeclaration methodDecl = am.getMethodDeclaration();
-                String methodSignature = am.getSignature(); // Ottieni la firma del metodo (es. "myMethod(int,String)")
+            for (AnalyzedMethod analyzedMethod : analyzedClass.getMethods()) {
+                MethodDeclaration methodDecl = analyzedMethod.getMethodDeclaration();
+                String methodSignature = analyzedMethod.getSignature();
                 String fullCallerSignature = className + "." + methodSignature;
 
-                allMethodMetricsBySignature.put(fullCallerSignature, am.getMetrics());
-                allAnalyzedMethodsBySignature.put(fullCallerSignature, am);
+                // Popola la mappa per il Fan-in
+                // Prepara la chiave euristica: nome del metodo + numero di parametri
+                String heuristicSignature = methodDecl.getNameAsString() + "_" + methodDecl.getParameters().size();
+                methodsByHeuristicSignature.computeIfAbsent(heuristicSignature, k -> new ArrayList<>()).add(analyzedMethod);
 
-                // Trova tutte le chiamate a metodi all'interno del corpo del metodo corrente
-                Set<String> callees = new HashSet<>();
+
+                // Raccogli le chiamate per il Fan-out
+                Set<String> calleesSimpleNames = new HashSet<>();
                 methodDecl.findAll(MethodCallExpr.class).forEach(methodCall -> {
-                    // Per Fan-out, ci interessa solo che faccia una chiamata.
-                    // Per identificare il metodo chiamato in modo più preciso (per Fan-in),
-                    // avremmo bisogno di un'analisi di risoluzione dei tipi (type solving),
-                    // che è molto più complessa e richiede un contesto di progetto completo (classpath, librerie, ecc.)
-                    // Qui useremo solo il nome del metodo chiamato.
-                    callees.add(methodCall.getNameAsString());
+                    // Per Fan-out, contiamo i nomi dei metodi distinti.
+                    calleesSimpleNames.add(methodCall.getNameAsString());
                 });
-                methodCallsOut.put(fullCallerSignature, callees);
+                methodCallsOutSimpleName.put(fullCallerSignature, calleesSimpleNames);
             }
         }
 
-        // Fase 2: Calcolare Fan-out per ogni metodo
-        // Ipotizziamo che Fan-out sia il numero di chiamate UNICHE effettuate dal metodo corrente.
-        // Se vogliamo le chiamate a metodi *specifici* del progetto, servirebbe type solving.
-        // Per semplicità, qui si contano i nomi dei metodi chiamati.
-        for (AnalyzedClass jc : analyzedClasses) {
-            String className = jc.getClassName();
-            for (AnalyzedMethod am : jc.getMethods()) {
-                String methodSignature = am.getSignature();
+        // --- Fase 2: Calcolare Fan-out per ogni metodo ---
+        for (AnalyzedClass analyzedClass : analyzedClasses) {
+            String className = analyzedClass.getClassName();
+            for (AnalyzedMethod analyzedMethod : analyzedClass.getMethods()) {
+                String methodSignature = analyzedMethod.getSignature();
                 String fullMethodSignature = className + "." + methodSignature;
 
-                Set<String> callees = methodCallsOut.getOrDefault(fullMethodSignature, Collections.emptySet());
-                am.getMetrics().setFanOut(callees.size());
+                Set<String> callees = methodCallsOutSimpleName.getOrDefault(fullMethodSignature, Collections.emptySet());
+                analyzedMethod.getMetrics().setFanOut(callees.size());
             }
         }
 
-        // Fase 3: Calcolare Fan-in per ogni metodo
-        // Fan-in: quante volte un metodo è chiamato da ALTRI metodi nello snapshot
-        // Questa è la parte più complessa senza type solving. Faremo un match per nome.
-        // Potrebbe contare chiamate a metodi con lo stesso nome ma firme diverse.
+        // --- Fase 3: Calcolare Fan-in per ogni metodo ---
+        // Resetta Fan-in a 0 per tutti i metodi prima di ricalcolare,
+        // per assicurare un conteggio corretto ad ogni esecuzione.
+        for (AnalyzedClass ac : analyzedClasses) {
+            for (AnalyzedMethod am : ac.getMethods()) {
+                am.getMetrics().setFanIn(0);
+            }
+        }
+
         for (AnalyzedClass callerClass : analyzedClasses) {
             CompilationUnit callerCu;
             try {
@@ -168,22 +169,21 @@ public class MetricsController {
 
             for (AnalyzedMethod callerMethod : callerClass.getMethods()) {
                 MethodDeclaration callerMd = callerMethod.getMethodDeclaration();
-                // Assicurati che il corpo esista prima di cercare chiamate
                 callerMd.getBody().ifPresent(body -> {
                     body.findAll(MethodCallExpr.class).forEach(methodCall -> {
                         String calleeSimpleName = methodCall.getNameAsString();
-                        int calleeArgCount = methodCall.getArguments().size(); // Conta gli argomenti per una migliore precisione
+                        int calleeArgCount = methodCall.getArguments().size();
+                        String heuristicSignature = calleeSimpleName + "_" + calleeArgCount;
 
-                        // Cerca in tutte le classi dello snapshot un metodo che corrisponda
-                        for (AnalyzedClass potentialCalleeClass : analyzedClasses) {
-                            for (AnalyzedMethod potentialCalleeMethod : potentialCalleeClass.getMethods()) {
-                                MethodDeclaration potentialCalleeMd = potentialCalleeMethod.getMethodDeclaration();
-                                // Confronta per nome e numero di parametri (euristica per identificare il metodo)
-                                if (potentialCalleeMd.getNameAsString().equals(calleeSimpleName) &&
-                                        potentialCalleeMd.getParameters().size() == calleeArgCount) {
-                                    potentialCalleeMethod.getMetrics().setFanIn(potentialCalleeMethod.getMetrics().getFanIn() + 1);
-                                }
-                            }
+                        // Usa la mappa pre-costruita per trovare i potenziali metodi chiamati
+                        List<AnalyzedMethod> potentialCallees = methodsByHeuristicSignature.getOrDefault(heuristicSignature, Collections.emptyList());
+
+                        for (AnalyzedMethod potentialCalleeMethod : potentialCallees) {
+                            // Incrementa il Fan-in per ogni metodo potenziale corrispondente all'euristica.
+                            // Nota: Questa euristica non distingue se la chiamata è a un metodo nella stessa classe,
+                            // in una superclasse, o in una classe diversa ma con lo stesso nome/parametri.
+                            // Per una precisione maggiore sarebbe necessario il type solving.
+                            potentialCalleeMethod.getMetrics().setFanIn(potentialCalleeMethod.getMetrics().getFanIn() + 1);
                         }
                     });
                 });
@@ -194,34 +194,8 @@ public class MetricsController {
 
 
 
-    private void calculateAge(LocalDate releaseDate) {
-        for (AnalyzedClass jc : analyzedClasses) {
-            for (AnalyzedMethod am : jc.getMethods()) {
-                List<Commit> history = am.getTouchingMethodCommit();
 
-                if (history == null || history.isEmpty()) {
-                    am.getMetrics().setAge(0);
-                    continue;
-                }
 
-                // ordina i commit per data crescente
-                history.sort(Comparator.comparing(c -> c.getRevCommit().getCommitterIdent().getWhen()));
-
-                // primo commit che introduce il metodo
-                Date firstCommitDate = history.getFirst().getRevCommit().getCommitterIdent().getWhen();
-
-                // converto Date → LocalDate
-                LocalDate firstCommitLocalDate = firstCommitDate.toInstant()
-                        .atZone(ZoneId.systemDefault())
-                        .toLocalDate();
-
-                // calcolo la differenza in giorni
-                long diffDays = ChronoUnit.DAYS.between(firstCommitLocalDate, releaseDate);
-
-                am.getMetrics().setAge((int) diffDays);
-            }
-        }
-    }
 
 
 
