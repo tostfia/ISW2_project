@@ -4,7 +4,6 @@ import tech.tablesaw.api.IntColumn;
 import tech.tablesaw.api.Table;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.List;
 import java.util.logging.Logger;
 import java.util.ArrayList;
@@ -83,7 +82,7 @@ public class DatasetController {
 
     // Il metodo generateWalkForwardArffFiles deve ancora essere implementato completamente
     // Questo è lo scheletro che avevo fornito, ora devi completare la parte di conversione da Tablesaw.Table a Weka.Instances
-    public void generateWalkForwardArffFiles(Table datasetA, String projectName, int walkForwardIterations) throws IOException, Exception {
+    public void generateWalkForwardArffFiles(Table datasetA, String projectName, int walkForwardIterations) throws Exception {
         logger.info("Inizio generazione file ARFF per Walk-Forward per il progetto: " + projectName);
 
         final String arffExtension = ".arff";
@@ -120,7 +119,7 @@ public class DatasetController {
             String testingRelease = allReleasesFromDatasetA.get(i + 1);
 
             logger.info(String.format("Iterazione %d: Training su release %s, Testing su release %s",
-                    (i + 1), trainingReleases.toString(), testingRelease));
+                    (i + 1), trainingReleases, testingRelease));
 
             // ***** QUI DEVI CONVERTIRE TABLESLAW.TABLE A WEKA.INSTANCES *****
             // Questa è la parte più complessa e dipenderà dalla tua specifica struttura delle colonne.

@@ -30,9 +30,9 @@ public class WekaController {
 
     public void classify(){
         final String arff= FileExtension.ARFF.toString();
-        final String head= "output"+ File.separator+ "dataset"+ File.separator + projectName + File.separator + FileExtension.ARFF.toString() + File.separator;
-        final String training_path= head + DataSet.TRAINING.toString() + File.separator+ this.projectName ;
-        final String testing_path= head + DataSet.TESTING.toString() + File.separator+ this.projectName ;
+        final String head= "output"+ File.separator+ "dataset"+ File.separator + projectName + File.separator + FileExtension.ARFF + File.separator;
+        final String training_path= head + DataSet.TRAINING+ File.separator+ this.projectName ;
+        final String testing_path= head + DataSet.TESTING + File.separator+ this.projectName ;
 
 
         CountDownLatch countDownLatch = new CountDownLatch(this.iterations);

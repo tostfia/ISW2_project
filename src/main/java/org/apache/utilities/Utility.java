@@ -1,10 +1,9 @@
 package org.apache.utilities;
 
-import com.github.javaparser.ast.body.MethodDeclaration;
 import org.apache.logging.CollectLogger;
 import org.apache.model.ClassifierResult;
 import org.apache.utilities.enumeration.FileExtension;
-import weka.classifiers.Classifier;
+
 
 import java.io.File;
 import java.io.FileWriter;
@@ -31,11 +30,7 @@ public class Utility {
             "TRUE_NEGATIVES," +
             "FALSE_NEGATIVES\n";
 
-    public static String getStringBody(MethodDeclaration md) {
-        return md.getBody()
-                .map(Object::toString)
-                .orElse(""); // Restituisce una stringa vuota se il corpo è vuoto
-    }
+
 
     public static void saveToCsv(String projectName, List<ClassifierResult> classifierResults) {
         final String resultsPath = "output" + File.separator + "results" + File.separator + projectName + File.separator;

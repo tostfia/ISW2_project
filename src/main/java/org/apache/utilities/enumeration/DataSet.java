@@ -1,7 +1,9 @@
 package org.apache.utilities.enumeration;
 
 
+import lombok.Getter;
 
+@Getter
 public enum DataSet {
     TRAINING("TRAINING"),
     TESTING("TESTING");
@@ -12,17 +14,6 @@ public enum DataSet {
         this.id = id;
     }
 
-    public static DataSet fromString(String id) {
-        for (DataSet type : values()) {
-            if (type.getId().equals(id)) {
-                return type;
-            }
-        }
-        return null;
-    }
 
-    public String getId() {
-        return id;
-    }
 
 }
