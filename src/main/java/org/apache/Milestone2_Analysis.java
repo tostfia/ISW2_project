@@ -1,72 +1,111 @@
-package org.apache;
-import org.apache.controller.ClassifierController;
+package  org.apache;
+import java.io.IOException;
+import java.util.logging.Logger;
+
 import org.apache.controller.CorrelationController;
 import org.apache.controller.DatasetController;
-import org.apache.controller.WekaController;
-import org.apache.logging.CollectLogger; // Assicurati che i package siano corretti
-import tech.tablesaw.api.Table;
-import weka.classifiers.Classifier;
 
-import java.util.logging.Logger;
+
+import org.apache.controller.WekaController;
+import org.apache.controller.milestone1.JiraController;
+import org.apache.logging.CollectLogger;
+import tech.tablesaw.api.Table;
 
 public class Milestone2_Analysis {
 
-    private static final Logger logger = CollectLogger.getInstance().getLogger();
+
+    private final static Logger logger = CollectLogger.getInstance().getLogger();
+
+
+    public static final String SYS_CUT_PERCENTAGE = "SYS_CUT_PERCENTAGE";
+    private static final double DEFAULT_CUT_PERCENTAGE = 0.34; // Corrisponde a "ignora l'ultimo 66%"
+
 
     public static void main(String[] args) throws Exception {
 
-        // --- IMPOSTAZIONI ---
+
+        if (args.length == 0) {
+            logger.severe("Errore: Il nome del progetto deve essere passato come primo argomento.");
+            return;
+        }
         String projectName = args[0]; // Nome del progetto passato come argomento
-        logger.info("--- AVVIO MILESTONE 2 PER: " + projectName + " ---");
+        logger.info("--- AVVIO  PER: " + projectName + " ---");
         long overallStart = System.currentTimeMillis();
+        JiraController jiraController = new JiraController(projectName);
+        // Recupera la percentuale di taglio
+        double cutPercentage = getCutPercentage();
+
+        // Numero di iterazioni per il Walk-Forward.
+        // Puoi passarlo come secondo argomento o definirlo qui come costante.
+        int walkForwardIterations = jiraController.getRealeases().size()/2;
+        if (args.length > 1) {
+            try {
+                walkForwardIterations = Integer.parseInt(args[1]);
+                if (walkForwardIterations <= 0) {
+                    throw new NumberFormatException("Le iterazioni devono essere maggiori di 0.");
+                }
+            } catch (NumberFormatException e) {
+                logger.warning("Il secondo argomento non è un numero valido per le iterazioni o è <= 0. Usando il valore di default: " + walkForwardIterations + ". Errore: " + e.getMessage());
+            }
+        }
 
         // ==================================================================
-        // PASSO 1: PREPARAZIONE DEL DATASET "A"
-        // Equivalente alla parte iniziale di "injectAndProcess"
+        // PASSO 1: PREPARAZIONE DEL DATASET "A" E GENERAZIONE DEI FILE ARFF
         // ==================================================================
-        logger.info("Fase 1: Preparazione del Dataset 'A'...");
+        logger.info("Fase 1: Preparazione del Dataset 'A' e generazione dei file ARFF per Walk-Forward...");
         long start = System.currentTimeMillis();
 
         DatasetController datasetController = new DatasetController(projectName);
-        Table datasetA = datasetController.prepareDatasetA(); // Questo metodo carica il CSV e filtra il 50% delle release
+        // Passiamo la percentuale di taglio a prepareDatasetA()
+        Table datasetA = datasetController.prepareDatasetA(cutPercentage);
 
         if (datasetA == null || datasetA.isEmpty()) {
             logger.severe("Analisi interrotta: il dataset 'A' non è stato creato o è vuoto.");
             return;
         }
+
+        // Generazione dei file ARFF per il Walk-Forward
+        try {
+            datasetController.generateWalkForwardArffFiles(datasetA, projectName, walkForwardIterations);
+            logger.info("File ARFF di training e testing generati per " + walkForwardIterations + " iterazioni.");
+        } catch (IOException e) {
+            logger.severe("Errore durante la generazione dei file ARFF per il Walk-Forward: " + e.getMessage());
+            return;
+        } catch (Exception e) {
+            logger.severe("Errore generico durante la generazione dei file ARFF: " + e.getMessage());
+            return;
+        }
+
         long end = System.currentTimeMillis();
         logger.info("Fase 1 completata in " + (end - start) / 1000.0 + " secondi.");
 
         // ==================================================================
-        // PASSO 2: CLASSIFICAZIONE E SCELTA DEL MODELLO
-        // Equivalente alla "Classification Phase" dell'esempio
+        // PASSO 2: CLASSIFICAZIONE CON WEKA CONTROLLER
+        // ... (resto del codice invariato dalla mia ultima proposta) ...
         // ==================================================================
-        logger.info("\nFase 2: Classificazione e Scelta del Miglior Modello...");
+        logger.info("\nFase 2: Esecuzione Classificazione con WekaController...");
         start = System.currentTimeMillis();
 
-        ClassifierController classifierController = new ClassifierController(datasetA);
-        //Classifier bClassifier = classifierController.chooseBestClassifier(); // Questo metodo usa la divisione 66/33
+        WekaController wekaClassifierRunner = new WekaController(projectName, walkForwardIterations);
+        wekaClassifierRunner.classify();
+        wekaClassifierRunner.saveResults();
 
         end = System.currentTimeMillis();
         logger.info("Fase 2 completata in " + (end - start) / 1000.0 + " secondi.");
 
+
         // ==================================================================
         // PASSO 3: ANALISI "WHAT-IF" E RISULTATI FINALI
-        // Equivalente a "WekaProcessing.sinkResults()" ma con la simulazione
         // ==================================================================
         logger.info("\nFase 3: Analisi di Correlazione e Simulazione What-If...");
         start = System.currentTimeMillis();
 
-        // 3a. Analisi di Correlazione
         CorrelationController correlationController = new CorrelationController(datasetA);
-        String aFeature = correlationController.findActionableFeature();
+        String actionableFeature = correlationController.findActionableFeature();
 
-        if (aFeature != null) {
-            correlationController.findMethodToRefactor(aFeature);
-
-            // 3b. Simulazione What-If
-            //WekaController wekaController = new WekaController(datasetA, bClassifier, aFeature);
-            //wekaController.performWhatIfAnalysis();
+        if (actionableFeature != null) {
+            correlationController.findMethodToRefactor(actionableFeature);
+            logger.warning("ATTENZIONE: La simulazione What-If non è implementata. Questo passaggio è stato saltato.");
         } else {
             logger.warning("Nessuna feature actionable trovata, salto della simulazione What-If.");
         }
@@ -76,12 +115,31 @@ public class Milestone2_Analysis {
 
         // ==================================================================
         // PASSO 4: SCRITTURA DEL REPORT FINALE
-        // Equivalente a "ReportUtility.writeFinalResults"
         // ==================================================================
-        // Chiamare una classe 'ReportWriter' che prende i risultati
-        // di ogni fase e li formatta in un file di testo o markdown per il tuo report.
+        logger.info("\nFase 4: Scrittura del Report Finale...");
 
         long overallEnd = System.currentTimeMillis();
-        logger.info("\n--- ANALISI MILESTONE 2 COMPLETATA in " + (overallEnd - overallStart) / 1000.0 + " secondi ---");
+        logger.info("\n--- ANALISI MILESTONE 2 COMPLETATA in " + (overallEnd - overallStart) / 1000.0 + " secondi ---"); // Correzione del logger finale
+    }
+
+    private static double getCutPercentage() {
+        String cut = System.getenv(SYS_CUT_PERCENTAGE);
+        try {
+            double aDouble = Double.parseDouble(cut);
+            String msg = "Checking percentage: " + aDouble;
+            logger.info(msg);
+            System.setProperty(SYS_CUT_PERCENTAGE, cut); // Imposta come proprietà di sistema (potrebbe non servire qui)
+            return aDouble;
+        } catch (NumberFormatException | NullPointerException e) {
+            String exceptionMsg = SYS_CUT_PERCENTAGE  + " exception: " + e.getClass().getSimpleName() + " ";
+            exceptionMsg += e instanceof NumberFormatException ? " " + e.getMessage() : "env variable not setup";
+            String warning = exceptionMsg +  " Invalid percentage: " + cut;
+            logger.warning(warning);
+            System.setProperty(SYS_CUT_PERCENTAGE, "" + DEFAULT_CUT_PERCENTAGE); // Imposta default come proprietà di sistema
+            double aDouble = DEFAULT_CUT_PERCENTAGE; // Usa il default
+            warning = "Now is setup to: " + aDouble;
+            logger.warning(warning);
+            return aDouble;
+        }
     }
 }
