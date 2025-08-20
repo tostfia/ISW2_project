@@ -6,9 +6,11 @@ import org.apache.controller.CorrelationController;
 import org.apache.controller.DatasetController;
 
 
+import org.apache.controller.ReportAnalyzer;
 import org.apache.controller.WekaController;
 import org.apache.controller.milestone1.JiraController;
 import org.apache.logging.CollectLogger;
+import org.apache.model.AggregatedClassifierResult;
 import tech.tablesaw.api.Table;
 
 public class Milestone2_Analysis {
@@ -32,22 +34,13 @@ public class Milestone2_Analysis {
         logger.info("--- AVVIO  PER: " + projectName + " ---");
         long overallStart = System.currentTimeMillis();
         JiraController jiraController = new JiraController(projectName);
+        jiraController.injectRelease();
         // Recupera la percentuale di taglio
         double cutPercentage = getCutPercentage();
 
-        // Numero di iterazioni per il Walk-Forward.
-        // Puoi passarlo come secondo argomento o definirlo qui come costante.
+
         int walkForwardIterations = jiraController.getRealeases().size()/2;
-        if (args.length > 1) {
-            try {
-                walkForwardIterations = Integer.parseInt(args[1]);
-                if (walkForwardIterations <= 0) {
-                    throw new NumberFormatException("Le iterazioni devono essere maggiori di 0.");
-                }
-            } catch (NumberFormatException e) {
-                logger.warning("Il secondo argomento non è un numero valido per le iterazioni o è <= 0. Usando il valore di default: " + walkForwardIterations + ". Errore: " + e.getMessage());
-            }
-        }
+
 
         // ==================================================================
         // PASSO 1: PREPARAZIONE DEL DATASET "A" E GENERAZIONE DEI FILE ARFF
@@ -65,9 +58,11 @@ public class Milestone2_Analysis {
         }
 
         // Generazione dei file ARFF per il Walk-Forward
+        int actualIteration ; // Inizializziamo a 0 per tenere traccia delle iterazioni effettive
         try {
-            datasetController.generateWalkForwardArffFiles(datasetA, projectName, walkForwardIterations);
-            logger.info("File ARFF di training e testing generati per " + walkForwardIterations + " iterazioni.");
+            actualIteration=datasetController.generateWalkForwardArffFiles(datasetA, projectName, walkForwardIterations);
+
+            logger.info("File ARFF di training e testing preparati per " + actualIteration + " iterazioni (questo è il numero massimo richiesto). Verificare i log precedenti per le iterazioni effettivamente generate.");
         } catch (IOException e) {
             logger.severe("Errore durante la generazione dei file ARFF per il Walk-Forward: " + e.getMessage());
             return;
@@ -86,12 +81,26 @@ public class Milestone2_Analysis {
         logger.info("\nFase 2: Esecuzione Classificazione con WekaController...");
         start = System.currentTimeMillis();
 
-        WekaController wekaClassifierRunner = new WekaController(projectName, walkForwardIterations);
+        WekaController wekaClassifierRunner = new WekaController(projectName, actualIteration);
         wekaClassifierRunner.classify();
         wekaClassifierRunner.saveResults();
 
-        end = System.currentTimeMillis();
-        logger.info("Fase 2 completata in " + (end - start) / 1000.0 + " secondi.");
+        // NUOVO: Scegli il miglior classificatore dal report
+        ReportAnalyzer reportAnalyzer = new ReportAnalyzer(projectName);
+        reportAnalyzer.analyzeAllCriteriaAndSave();
+        AggregatedClassifierResult bClassifier = reportAnalyzer.getBestClassifier("AUC");
+        if (bClassifier == null) {
+            logger.severe("Nessun classificatore trovato valido. Analisi interrotta.");
+            return;
+        }
+
+        logger.info("Miglior classificatore (BClassifier) scelto per i passi successivi: " + bClassifier.getClassifierName() +
+                " con configurazione: FS=" + bClassifier.getFeatureSelection() +
+                ", Bal=" + bClassifier.getBalancing() +
+                ", CS=" + bClassifier.getCostSensitive());
+
+        long endFase2 = System.currentTimeMillis();
+        logger.info("Fase 2 completata in " + (endFase2 - start) / 1000.0 + " secondi.");
 
 
         // ==================================================================

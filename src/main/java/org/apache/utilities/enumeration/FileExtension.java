@@ -5,14 +5,15 @@ import lombok.Getter;
 
 @Getter
 public enum FileExtension {
-    ARFF("ARFF"),
-    CSV("CSV");
+    ARFF("arff"),
+    CSV("csv");
 
     private final String id;
 
     FileExtension(String id) {
         this.id = id;
     }
+
 
 
 

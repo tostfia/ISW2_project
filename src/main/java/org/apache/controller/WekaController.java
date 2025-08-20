@@ -29,10 +29,14 @@ public class WekaController {
     }
 
     public void classify(){
-        final String arff= FileExtension.ARFF.toString();
-        final String head= "output"+ File.separator+ "dataset"+ File.separator + projectName + File.separator + FileExtension.ARFF + File.separator;
-        final String training_path= head + DataSet.TRAINING+ File.separator+ this.projectName ;
-        final String testing_path= head + DataSet.TESTING + File.separator+ this.projectName ;
+        final String arffExtension = FileExtension.ARFF.getId(); // Assumiamo restituisca "arff" (senza punto)
+
+        // Questo è il percorso base fino alla cartella del progetto (es. output/dataset/BOOKKEEPER)
+        final String projectBaseDir = "output" + File.separator + "dataset" + File.separator + projectName;
+
+        // I percorsi alle directory TRAINING e TESTING
+        final String trainingDir = projectBaseDir + File.separator + DataSet.TRAINING;
+        final String testingDir = projectBaseDir + File.separator + DataSet.TESTING;
 
 
         CountDownLatch countDownLatch = new CountDownLatch(this.iterations);
@@ -40,10 +44,29 @@ public class WekaController {
             final int iteration = walkForwarIteration;
             Runnable task=()->{
                 try {
-                    ConverterUtils.DataSource trainingSet = new ConverterUtils.DataSource(training_path+"_"+iteration+"."+arff);
-                    ConverterUtils.DataSource testingSet = new ConverterUtils.DataSource(testing_path+"_"+iteration+"."+arff);
+                    // COSTRUZIONE DEL PERCORSO FILE CORRETTA
+                    String currentTrainingPath = trainingDir + File.separator + this.projectName + "_" + iteration + "." + arffExtension;
+                    String currentTestingPath = testingDir + File.separator + this.projectName + "_" + iteration + "." + arffExtension;
+
+                    logger.info("DEBUG (WekaController): Tentativo di caricare Training Set da: " + currentTrainingPath);
+                    logger.info("DEBUG (WekaController): Tentativo di caricare Testing Set da: " + currentTestingPath);
+                    File trainingFile = new File(currentTrainingPath);
+                    File testingFile = new File(currentTestingPath);
+                    if (!trainingFile.exists()) {
+                        logger.severe("ERRORE: File di training non trovato: " + currentTrainingPath);
+                        return; // Salta questa iterazione
+                    }
+                    if (!testingFile.exists()) {
+                        logger.severe("ERRORE: File di testing non trovato: " + currentTestingPath);
+                        return; // Salta questa iterazione
+                    }
+
+                    ConverterUtils.DataSource trainingSet = new ConverterUtils.DataSource(trainingFile.getAbsolutePath());
+                    ConverterUtils.DataSource testingSet = new ConverterUtils.DataSource(testingFile.getAbsolutePath());
+
                     Instances trainInstances = trainingSet.getDataSet();
                     Instances testInstances = testingSet.getDataSet();
+
 
                     int numAttributes = trainInstances.numAttributes();
                     trainInstances.setClassIndex(numAttributes-1);
@@ -80,6 +103,7 @@ public class WekaController {
     public void saveResults(){
         Utility.saveToCsv(this.projectName,this.classifierResults);
     }
+
 
 
 }
