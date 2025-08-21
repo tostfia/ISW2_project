@@ -1,7 +1,6 @@
 package org.apache.controller;
 
 
-
 import org.apache.logging.CollectLogger;
 import org.apache.model.AggregatedClassifierResult;
 import tech.tablesaw.api.Table;
@@ -18,7 +17,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
-
 public class ReportAnalyzer {
 
     private final String projectName;
@@ -26,44 +24,53 @@ public class ReportAnalyzer {
     private final String outputDir;
     private static final Logger logger = CollectLogger.getInstance().getLogger();
 
-    // Costanti per i pesi
-    private static final double WEIGHT_FALSE_POSITIVE = 1.0;
-    private static final double WEIGHT_FALSE_NEGATIVE = 10.0;
+    // Pesi configurabili
+    private final double weightFalsePositive;
+    private final double weightFalseNegative;
+
+    // Pesi configurabili per composite score
+    private double weightAUC = 0.3;
+    private double weightPrecision = 0.25;
+    private double weightRecall = 0.25;
+    private double weightKappa = 0.2;
 
     public ReportAnalyzer(String projectName) {
+        this(projectName, 1.0, 10.0); // default: FN pesa 10 volte FP
+    }
+
+    public ReportAnalyzer(String projectName, double weightFP, double weightFN) {
         this.projectName = projectName;
+         this.weightFalsePositive = weightFP;
+        this.weightFalseNegative = weightFN;
+
         this.outputDir = "output" + File.separator + "results" + File.separator + projectName + File.separator;
         this.reportFilePath = outputDir + projectName + "_report.csv";
-
-        // Crea la directory di output se non esiste
-        new File(outputDir).mkdirs();
+        new File(outputDir);
     }
 
-    /**
-     *  Trova il miglior classificatore basato sul costo atteso minimo e restituisce il risultato.
-     * Questo metodo non salva il risultato, serve per ottenere l'oggetto del BClassifier.
-     */
-    public void getBestClassifierByExpectedCost() { // CAMBIATO NOME e ora restituisce
-        Map<String, AggregatedClassifierResult> aggregatedResults = loadAndAggregateResults();
-        if (aggregatedResults == null || aggregatedResults.isEmpty()) {
-            logger.severe("Nessun risultato aggregato disponibile per scegliere il miglior classificatore per costo atteso.");
-            return;
+    // Setter opzionali per personalizzare i pesi del composite score
+    public void setCompositeWeights(double auc, double precision, double recall, double kappa) {
+        this.weightAUC = auc;
+        this.weightPrecision = precision;
+        this.weightRecall = recall;
+        this.weightKappa = kappa;
+    }
+
+    /** Expected Cost */
+    public void chooseBestClassifierByExpectedCost() {
+        AggregatedClassifierResult bestClassifier = getBestClassifier("EXPECTED_COST");
+        if (bestClassifier != null) {
+            logger.info("Miglior Classificatore Trovato (minimo Expected Cost):");
+            logger.info(bestClassifier.toString());
+            saveBestClassifierToCSV(bestClassifier, "EXPECTED_COST", bestClassifier.getAvgExpectedCost());
+        } else {
+            logger.warning("Nessun miglior classificatore trovato per Expected Cost.");
         }
-
-        AggregatedClassifierResult bestClassifier = aggregatedResults.values().stream()
-                .min(Comparator.comparing(AggregatedClassifierResult::getAvgExpectedCost))
-                .orElse(null);
-
-        logger.info("Miglior Classificatore Trovato (minimo Expected Cost):");
-        logger.info(bestClassifier.toString());
     }
 
-    /**
-     * Trova il miglior classificatore basato sull'AUC massima e salva il risultato.
-     * (Ora chiama getBestClassifier generale per l'ottenimento)
-     */
+    /** AUC */
     public void chooseBestClassifierByAUC() {
-        AggregatedClassifierResult bestClassifier = getBestClassifier("AUC"); // Chiamata al metodo generalizzato
+        AggregatedClassifierResult bestClassifier = getBestClassifier("AUC");
         if (bestClassifier != null) {
             logger.info("Miglior Classificatore Trovato (massima AUC):");
             logger.info(bestClassifier.toString());
@@ -73,12 +80,9 @@ public class ReportAnalyzer {
         }
     }
 
-    /**
-     * Trova il miglior classificatore basato sul Kappa massimo e salva il risultato.
-     * (Ora chiama getBestClassifier generale per l'ottenimento)
-     */
+    /** Kappa */
     public void chooseBestClassifierByKappa() {
-        AggregatedClassifierResult bestClassifier = getBestClassifier("KAPPA"); // Chiamata al metodo generalizzato
+        AggregatedClassifierResult bestClassifier = getBestClassifier("KAPPA");
         if (bestClassifier != null) {
             logger.info("Miglior Classificatore Trovato (massimo Kappa):");
             logger.info(bestClassifier.toString());
@@ -88,33 +92,9 @@ public class ReportAnalyzer {
         }
     }
 
-    /**
-     * Trova il miglior classificatore usando un punteggio composito e salva il risultato.
-     * (Ora chiama getBestClassifier generale per l'ottenimento)
-     */
-    public void chooseBestClassifierByCompositeScore() {
-        AggregatedClassifierResult bestClassifier = getBestClassifier("COMPOSITE_SCORE"); // Chiamata al metodo generalizzato
-        if (bestClassifier != null) {
-            // Ricalcola il punteggio per il log/salvataggio, dato che getBestClassifier potrebbe non restituirlo
-            double compositeScore = (0.3 * bestClassifier.getAvgAreaUnderROC()) +
-                    (0.25 * bestClassifier.getAvgPrecision()) +
-                    (0.25 * bestClassifier.getAvgRecall()) +
-                    (0.2 * Math.max(0, bestClassifier.getAvgKappa()));
-            logger.info("Miglior Classificatore Trovato (punteggio composito: " +
-                    String.format("%.4f", compositeScore) + "):");
-            logger.info(bestClassifier.toString());
-            saveBestClassifierToCSV(bestClassifier, "COMPOSITE_SCORE", compositeScore);
-        } else {
-            logger.warning("Nessun miglior classificatore trovato per punteggio composito.");
-        }
-    }
-
-    /**
-     * Trova il miglior classificatore per F1-Score e salva il risultato.
-     * (Ora chiama getBestClassifier generale per l'ottenimento)
-     */
+    /** F1 */
     public void chooseBestClassifierByF1Score() {
-        AggregatedClassifierResult bestClassifier = getBestClassifier("F1_SCORE"); // Chiamata al metodo generalizzato
+        AggregatedClassifierResult bestClassifier = getBestClassifier("F1_SCORE");
         if (bestClassifier != null) {
             double precision = bestClassifier.getAvgPrecision();
             double recall = bestClassifier.getAvgRecall();
@@ -128,12 +108,25 @@ public class ReportAnalyzer {
         }
     }
 
+    /** Composite Score */
+    public void chooseBestClassifierByCompositeScore() {
+        AggregatedClassifierResult bestClassifier = getBestClassifier("COMPOSITE_SCORE");
+        if (bestClassifier != null) {
+            double compositeScore = (weightAUC * bestClassifier.getAvgAreaUnderROC()) +
+                    (weightPrecision * bestClassifier.getAvgPrecision()) +
+                    (weightRecall * bestClassifier.getAvgRecall()) +
+                    (weightKappa * Math.max(0, bestClassifier.getAvgKappa()));
+            logger.info("Miglior Classificatore Trovato (punteggio composito: " +
+                    String.format("%.4f", compositeScore) + "):");
+            logger.info(bestClassifier.toString());
+            saveBestClassifierToCSV(bestClassifier, "COMPOSITE_SCORE", compositeScore);
+        } else {
+            logger.warning("Nessun miglior classificatore trovato per Composite Score.");
+        }
+    }
 
-    /**
-     * **(NUOVO METODO)** Restituisce il miglior classificatore aggregato basato sul criterio specificato.
-     * Questo è il metodo generalizzato interno.
-     */
-    public AggregatedClassifierResult getBestClassifier(String selectionCriteria) { // Reso privato, chiamato dagli altri
+    /** Metodo interno generalizzato */
+    public AggregatedClassifierResult getBestClassifier(String selectionCriteria) {
         Map<String, AggregatedClassifierResult> aggregatedResults = loadAndAggregateResults();
         if (aggregatedResults == null || aggregatedResults.isEmpty()) {
             return null;
@@ -155,29 +148,98 @@ public class ReportAnalyzer {
                 break;
             case "F1_SCORE":
                 comparator = (r1, r2) -> {
-                    double f1_r1 = (r1.getAvgPrecision() + r1.getAvgRecall() == 0) ? 0 : 2 * (r1.getAvgPrecision() * r1.getAvgRecall()) / (r1.getAvgPrecision() + r1.getAvgRecall());
-                    double f1_r2 = (r2.getAvgPrecision() + r2.getAvgRecall() == 0) ? 0 : 2 * (r2.getAvgPrecision() * r2.getAvgRecall()) / (r2.getAvgPrecision() + r2.getAvgRecall());
+                    double f1_r1 = (r1.getAvgPrecision() + r1.getAvgRecall() == 0) ? 0 :
+                            2 * (r1.getAvgPrecision() * r1.getAvgRecall()) / (r1.getAvgPrecision() + r1.getAvgRecall());
+                    double f1_r2 = (r2.getAvgPrecision() + r2.getAvgRecall() == 0) ? 0 :
+                            2 * (r2.getAvgPrecision() * r2.getAvgRecall()) / (r2.getAvgPrecision() + r2.getAvgRecall());
                     return Double.compare(f1_r1, f1_r2);
                 };
                 break;
             case "COMPOSITE_SCORE":
                 comparator = (r1, r2) -> {
-                    double compositeScore1 = (0.3 * r1.getAvgAreaUnderROC()) + (0.25 * r1.getAvgPrecision()) + (0.25 * r1.getAvgRecall()) + (0.2 * Math.max(0, r1.getAvgKappa()));
-                    double compositeScore2 = (0.3 * r2.getAvgAreaUnderROC()) + (0.25 * r2.getAvgPrecision()) + (0.25 * r2.getAvgRecall()) + (0.2 * Math.max(0, r2.getAvgKappa()));
-                    return Double.compare(compositeScore1, compositeScore2);
+                    double composite1 = (weightAUC * r1.getAvgAreaUnderROC()) +
+                            (weightPrecision * r1.getAvgPrecision()) +
+                            (weightRecall * r1.getAvgRecall()) +
+                            (weightKappa * Math.max(0, r1.getAvgKappa()));
+                    double composite2 = (weightAUC * r2.getAvgAreaUnderROC()) +
+                            (weightPrecision * r2.getAvgPrecision()) +
+                            (weightRecall * r2.getAvgRecall()) +
+                            (weightKappa * Math.max(0, r2.getAvgKappa()));
+                    return Double.compare(composite1, composite2);
                 };
                 break;
             default:
-                logger.severe("Criterio di selezione del miglior classificatore non riconosciuto: " + selectionCriteria + ". Restituisco null.");
-                return null; // O potresti voler lanciare un'eccezione
+                logger.severe("Criterio non riconosciuto: " + selectionCriteria);
+                return null;
         }
 
-        Optional<AggregatedClassifierResult> resultOptional = maximize ?
-                aggregatedResults.values().stream().max(comparator) :
-                aggregatedResults.values().stream().min(comparator);
-
-        return resultOptional.orElse(null);
+        return maximize ?
+                aggregatedResults.values().stream().max(comparator).orElse(null) :
+                aggregatedResults.values().stream().min(comparator).orElse(null);
     }
+
+    /** Carica e aggrega risultati dal CSV */
+    private Map<String, AggregatedClassifierResult> loadAndAggregateResults() {
+        File reportFile = new File(reportFilePath);
+        if (!reportFile.exists()) {
+            logger.severe("ERRORE: File report non trovato: " + reportFilePath);
+            return null;
+        }
+
+        Table reportTable;
+        try {
+            reportTable = Table.read().csv(reportFilePath);
+        } catch (Exception e) {
+            logger.severe("ERRORE: Impossibile leggere il CSV: " + e.getMessage());
+            return null;
+        }
+
+        if (reportTable.isEmpty()) {
+            logger.warning("ATTENZIONE: Il file report è vuoto: " + reportFilePath);
+            return null;
+        }
+
+        Map<String, AggregatedClassifierResult> aggregatedResults = new HashMap<>();
+
+        for (Row row : reportTable) {
+            try {
+                String dataset = row.getString("DATASET");
+                String classifierName = row.getString("CLASSIFIER");
+                String featureSelection = row.getString("FEATURE_SELECTION");
+                String balancing = row.getString("BALANCING");
+                String costSensitive = row.getString("COST_SENSITIVE");
+
+                double precision = row.getDouble("PRECISION");
+                double recall = row.getDouble("RECALL");
+                double areaUnderROC = row.getDouble("AREA_UNDER_ROC");
+                double kappa = row.getDouble("KAPPA");
+                double falsePositives = row.getInt("FALSE_POSITIVES");
+                double falseNegatives = row.getInt("FALSE_NEGATIVES");
+
+                double expectedCost = (falsePositives * weightFalsePositive) +
+                        (falseNegatives * weightFalseNegative);
+
+                String configKey = dataset + "_" + classifierName + "_" + featureSelection + "_" +
+                        balancing + "_" + costSensitive;
+
+                aggregatedResults.putIfAbsent(configKey,
+                        new AggregatedClassifierResult(dataset, classifierName, featureSelection,
+                                balancing, costSensitive));
+                aggregatedResults.get(configKey).addRunResult(precision, recall,
+                        areaUnderROC, kappa, expectedCost);
+            } catch (Exception e) {
+                logger.warning("Errore nel processare una riga del CSV: " + e.getMessage());
+            }
+        }
+
+        logger.info("Caricati e aggregati " + aggregatedResults.size() + " configurazioni diverse");
+        return aggregatedResults;
+    }
+
+    // Gli altri metodi (saveBestClassifierToCSV, saveCompleteRankingToCSV, analyzeAllCriteriaAndSave)
+    // restano uguali a prima.
+
+
 
 
 
@@ -311,7 +373,6 @@ public class ReportAnalyzer {
         logger.info("Inizio analisi completa per progetto: " + projectName);
 
         // Analizza per tutti i criteri
-        getBestClassifierByExpectedCost();
         chooseBestClassifierByAUC();
         chooseBestClassifierByKappa();
         chooseBestClassifierByF1Score();
@@ -326,70 +387,7 @@ public class ReportAnalyzer {
         logger.info("Analisi completa terminata. Tutti i risultati sono stati salvati.");
     }
 
-    /**
-     * Carica e aggrega i risultati dal file CSV
-     */
-    private Map<String, AggregatedClassifierResult> loadAndAggregateResults() {
-        File reportFile = new File(reportFilePath);
-        if (!reportFile.exists()) {
-            logger.severe("ERRORE: File report non trovato: " + reportFilePath);
-            return null;
-        }
 
-        Table reportTable;
-        try {
-            reportTable = Table.read().csv(reportFilePath);
-        } catch (Exception e) {
-            logger.severe("ERRORE: Impossibile leggere il file CSV del report: " +
-                    reportFilePath + " - " + e.getMessage());
-            return null;
-        }
-
-        if (reportTable.isEmpty()) {
-            logger.warning("ATTENZIONE: Il file report è vuoto: " + reportFilePath);
-            return null;
-        }
-
-        Map<String, AggregatedClassifierResult> aggregatedResults = new HashMap<>();
-
-        for (Row row : reportTable) {
-            try {
-                String dataset = row.getString("DATASET");
-                String classifierName = row.getString("CLASSIFIER");
-                String featureSelection = row.getString("FEATURE_SELECTION");
-                String balancing = row.getString("BALANCING");
-                String costSensitive = row.getString("COST_SENSITIVE");
-
-                double precision = row.getDouble("PRECISION");
-                double recall = row.getDouble("RECALL");
-                double areaUnderROC = row.getDouble("AREA_UNDER_ROC");
-                double kappa = row.getDouble("KAPPA");
-                double truePositives = row.getInt("TRUE_POSITIVES");
-                double falsePositives = row.getInt("FALSE_POSITIVES");
-                double falseNegatives = row.getInt("FALSE_NEGATIVES");
-                double trueNegatives = row.getInt("TRUE_NEGATIVES");
-
-                // Calcola il costo atteso
-                double expectedCost = (falsePositives * WEIGHT_FALSE_POSITIVE) +
-                        (falseNegatives * WEIGHT_FALSE_NEGATIVE);
-
-                String configKey = classifierName + "_" + featureSelection + "_" +
-                        balancing + "_" + costSensitive;
-
-                aggregatedResults.putIfAbsent(configKey,
-                        new AggregatedClassifierResult(dataset,classifierName, featureSelection,
-                                balancing, costSensitive));
-                aggregatedResults.get(configKey).addRunResult(precision, recall,
-                        areaUnderROC, kappa, expectedCost);
-            } catch (Exception e) {
-                logger.warning("Errore nel processare una riga del CSV: " + e.getMessage());
-
-            }
-        }
-
-        logger.info("Caricati e aggregati " + aggregatedResults.size() + " configurazioni diverse");
-        return aggregatedResults;
-    }
 
 
 

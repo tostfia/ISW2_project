@@ -71,9 +71,8 @@ public class AnalyzedClass {
 
             if (cu != null) {
                 cu.findAll(MethodDeclaration.class).forEach(method -> this.methods.add(new AnalyzedMethod(method)));
-                // Log di debug corretto
-                String msg = String.format("DEBUG: Parsato con successo %s - Trovati %d metodi.", this.className, this.methods.size());
-                logger.info(msg);
+
+
             } else {
                 String errorMsg = String.format("ATTENZIONE: Parsing fallito ma senza eccezioni per la classe %s nella release %s. La lista dei metodi sarà vuota.", this.className, release.getReleaseID());
                 logger.warning(errorMsg);

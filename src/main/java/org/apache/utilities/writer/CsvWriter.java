@@ -126,7 +126,7 @@ public class CsvWriter implements AutoCloseable {
                 String.valueOf(methodMetrics.getNumberOfCodeSmells()) ,
 
                 // Etichetta (usiamo quella della classe, che è stata calcolata da SZZ)
-                analyzedClass.isBuggy() ? "yes" : "no"
+                analyzedMethod.isBuggy() ? "yes" : "no"
         );
     }
 }

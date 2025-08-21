@@ -36,7 +36,7 @@ public class WhatIfAnalyzer {
     }
 
     public void run() throws Exception {
-        logger.info("Avvio dell'analisi 'What-If'...");
+        logger.info("Avvio dell'analisi 'What-If'..., non ancora iniziata");
 
         // PASSO 1: Identificazione di AFeature (Punti 4 e 5 della Slide 2)
         //String aFeature = identifyAFeature();

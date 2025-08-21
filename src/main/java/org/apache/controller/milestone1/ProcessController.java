@@ -2,6 +2,7 @@ package org.apache.controller.milestone1;
 
 import org.apache.logging.CollectLogger;
 import org.apache.model.AnalyzedClass;
+
 import org.apache.model.Release;
 
 import org.apache.model.Ticket;
@@ -15,12 +16,14 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 import java.io.IOException;
 import java.net.URISyntaxException;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
 
 
 public class ProcessController implements Runnable {
@@ -29,6 +32,8 @@ public class ProcessController implements Runnable {
     private final CountDownLatch latch;
     private final String threadIdentity;
     private static final Logger logger = CollectLogger.getInstance().getLogger();
+    private static final String PMD_REPORTS_BASE_DIR = "pmd_analysis";
+
 
 
 
@@ -72,9 +77,10 @@ public class ProcessController implements Runnable {
         logger.info(threadIdentity+"-Fase 0: Pre-calcolo dati per il cold start di proportion ...");
         List<Double> coldStartProportions = new ArrayList<>();
 
-        logger.info(threadIdentity + "- Calcolo proporzioni per il progetto: " + this.targetName);
+
+        logger.info(threadIdentity + "- Calcolo proportion per il progetto: " + this.targetName);
         JiraController tempJira= new JiraController(this.targetName);
-        tempJira.injectRelease(); // Necessario per popolare le release prima di getFixedTickets
+        tempJira.injectRelease();
         tempJira.injectTickets();
         List<Ticket> ticketsWithIV= tempJira.getFixedTickets().stream().filter(t -> t.getInjectedVersion()!=null).toList();
         ProportionController tempProportionController = new ProportionController();
@@ -84,91 +90,80 @@ public class ProcessController implements Runnable {
         }
 
         logger.info(threadIdentity + "- ESECUZIONE FASE 1: ANALISI ...");
-        JiraController jiraController = performJiraAnalysis(); // Popola il main JiraController con dati
+        JiraController jiraController = performJiraAnalysis();
+        logger.info(threadIdentity + "- Fase 2: Applicazione di Proportion per " + this.targetName);
 
-        logger.info(threadIdentity + "- Fase 2: Applicazione di Proportion (Anti-Snoring) per " + this.targetName);
-
-
+        // Chiama il metodo Proportion del JiraController, passandogli i dati di cold start
         jiraController.applyProportion(coldStartProportions);
-
-        List<Release> releasesForGitAnalysis = jiraController.getRealeases();
-        List<Ticket> ticketsForGitAnalysis = jiraController.getFixedTickets();
-
-        GitController gitController = new GitController(targetName, project, releasesForGitAnalysis);
-
-        // Passa i ticket al GitController per findBuggyFiles() e le etichette di Affected Versions
-        gitController.setTickets(ticketsForGitAnalysis);
-
-        logger.info(threadIdentity + " - Passati " + ticketsForGitAnalysis.size() + " ticket al GitController.");
-
-        gitController.buildCommitHistory(); // Popola allCommits, associa a Release
-        gitController.buildFileCommitHistoryMap(); // Costruisce commitsPerFile map
-
-        gitController.findBuggyFiles(); // Trova fixingCommits, buggyFilesPerCommit (dipende da tickets già settati)
+        List<Release> releases = jiraController.getRealeases();
+        List<Ticket> tickets = jiraController.getFixedTickets();
 
 
+        GitController gitController = new GitController(targetName, project, releases);
+        gitController.setTickets(tickets);
+        // --- AGGIUNGI QUESTO LOG ---
+        logger.info(threadIdentity + " - Passati " + tickets.size() + " ticket al GitController.");
 
+        gitController.buildCommitHistory();
+        gitController.findBuggyFiles();
+        gitController.buildFileCommitHistoryMap();
+        gitController.findAllBugIntroducingCommits();
 
         logger.info(threadIdentity + " --- Controllo prima della generazione PMD ---");
-        logger.info(threadIdentity + " Numero di release trovate e pronte per l'analisi PMD: " + releasesForGitAnalysis.size());
-
-        List<AnalyzedClass> allClassesToLabelAndWrite = new ArrayList<>();
-
+        logger.info(threadIdentity + " Numero di release trovate e pronte per l'analisi PMD: " + releases.size());
+        // AGGIUNGI QUESTA RIGA PRIMA DEL CICLO SULLE RELEASE:
         try {
             CodeSmellParser.setRepoRootPath(gitController.getRepoPath());
 
+
             logger.info(threadIdentity + " --- INIZIO FASE DI GENERAZIONE REPORT PMD  ---");
-            NumOfCodeSmells numofCodeSmells = new NumOfCodeSmells(targetName, gitController.getRepoPath(), gitController.getGit(), releasesForGitAnalysis);
-            numofCodeSmells.generatePmdReports(); // Genera i file XML dei report PMD
+            NumOfCodeSmells numofCodeSmells = new NumOfCodeSmells(targetName, gitController.getRepoPath(), gitController.getGit(), releases);
+            numofCodeSmells.generatePmdReports();
             logger.info(threadIdentity + " --- FINE FASE DI GENERAZIONE REPORT PMD ---");
 
-            // --- Ciclo per Raccogliere Classi e Calcolare Metriche per ogni Release ---
-            // Questo crea gli snapshot delle classi per ogni release e calcola tutte le metriche
-            int totalReleases = releasesForGitAnalysis.size();
-            for (int i = 0; i < totalReleases; i++) {
-                Release release = releasesForGitAnalysis.get(i);
-                logger.info(threadIdentity + " - Processando release per raccolta classi e metriche: " + release.getReleaseID());
-                logger.info("Analisi release " + (i+1) + "/" + totalReleases +
-                        " (ID: " + release.getId() + ", Nome: " + release.getReleaseName() + ")");
-
-                List<AnalyzedClass> classesInRelease = gitController.getClassesForRelease(release);
-
-                // Estrai i code smell da PMD per le classi di questa release
-                String releaseId = release.getReleaseID();
-                CodeSmellParser.extractCodeSmell(classesInRelease, targetName, releaseId);
-
-                // Calcola le altre metriche per le classi di questa release
-                MetricsController metricsController = new MetricsController(classesInRelease, gitController);
-                metricsController.processMetrics();
 
 
-                allClassesToLabelAndWrite.addAll(classesInRelease);
-            }
-
-
-            if (allClassesToLabelAndWrite.isEmpty()) {
-                logger.warning(threadIdentity + "- Nessuna classe da etichettare. Il dataset risulterà vuoto.");
-                return; // Esce se non ci sono classi
-            }
-            gitController.applyBugginessLabels(allClassesToLabelAndWrite); // <<< CHIAMATA AL TUO NUOVO METODO ORCHESTRATORE
-            logger.info(threadIdentity + " - Etichettatura bugginess completata per " + allClassesToLabelAndWrite.size() + " classi.");
-
-
-            // --- 2. Scrittura del CSV del Dataset Finale ---
+            // --- 2. Scrittura del CSV
             String csvFileName = targetName + "_dataset.csv";
             try (CsvWriter writer = new CsvWriter(csvFileName, targetName)) {
                 writer.writeHeader();
+                int total = releases.size();
+                int index = 0;
+                for (Release release : releases) {
+                    logger.info(threadIdentity + " - Processando release: " + release.getReleaseID());
+                    index++;
+                    logger.info("Analisi release " + index + "/" + total +
+                            " (ID: " + release.getId() + ", Nome: " + release.getReleaseName() + ")");
+                    List<AnalyzedClass> classes = gitController.getClassesForRelease(release);
+                    gitController.labelBugginess(classes);
+                    Path baseDir = Paths.get(PMD_REPORTS_BASE_DIR, targetName);
+                    Files.createDirectories(baseDir);  // crea la cartella se non esiste
 
-                writer.writeResultsForClass(allClassesToLabelAndWrite);
+                    String releaseId = release.getReleaseID();
+                    Path reportPath = baseDir.resolve(releaseId + ".xml");  // file unico per release
+
+                    logger.info(threadIdentity + " - Percorso report PMD per release " + releaseId + ": " + reportPath);
+
+
+                    CodeSmellParser.extractCodeSmell(classes, targetName, releaseId);
+
+
+                    MetricsController metricsController = new MetricsController(classes, gitController);
+                    metricsController.processMetrics();
+                    writer.writeResultsForClass(classes);
+                }
+
             }
+            gitController.closeRepo();
             logger.info(threadIdentity + "- MILESTONE 1 COMPLETATA. File CSV creato: " + csvFileName);
+        }catch (Exception e) {
+            logger.log(Level.SEVERE, threadIdentity + " Errore FATALE nel processo di analisi DOPO la generazione PMD: " + e.getMessage(), e);
 
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "Errore critico durante l'elaborazione del progetto " + targetName + ": " + e.getMessage(), e);
-        } finally {
-            gitController.closeRepo(); // Assicurati che il repository venga chiuso anche in caso di errori
+
         }
+
     }
+
 
 
     private JiraController performJiraAnalysis() throws IOException, URISyntaxException {
