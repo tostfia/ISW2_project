@@ -1,6 +1,10 @@
 package org.apache.utilities;
 
+import com.github.javaparser.StaticJavaParser;
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.body.MethodDeclaration;
 import org.apache.logging.CollectLogger;
+import org.apache.model.AnalyzedMethod;
 import org.apache.model.ClassifierResult;
 import org.apache.utilities.enumeration.FileExtension;
 
@@ -8,6 +12,7 @@ import org.apache.utilities.enumeration.FileExtension;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.logging.Logger;
@@ -92,4 +97,47 @@ public class Utility {
 
     }
 
+
+    public static String getSignature(MethodDeclaration md){
+        return md.getSignature().toString();
+    }
+
+    public static String getStringBody(MethodDeclaration md){
+        return md.getBody().map(String::valueOf).orElse("");
+    }
+
+    public static List<AnalyzedMethod> extractMethodRanges(String fileContent) {
+        List<AnalyzedMethod> result = new ArrayList<>();
+
+        if (fileContent == null || fileContent.isBlank()) {
+            return result;
+        }
+
+        CompilationUnit cu;
+        try {
+            cu = StaticJavaParser.parse(fileContent);
+        } catch (Exception e) {
+            logger.warning("Errore di parsing: " + e.getMessage());
+            return result;
+        }
+
+        cu.findAll(MethodDeclaration.class).forEach(md -> {
+            try {
+                String signature = Utility.getSignature(md); // tua utility esistente per firma
+                int start = md.getRange().map(r -> r.begin.line).orElse(-1);
+                int end = md.getRange().map(r -> r.end.line).orElse(-1);
+                if (start != -1 && end != -1) {
+                    result.add(new AnalyzedMethod(signature, start, end));
+                }
+            } catch (Exception ex) {
+                logger.warning("Errore durante estrazione firma metodo: " + ex.getMessage());
+            }
+        });
+
+        // libera subito AST per GC
+        cu = null;
+        return result;
+    }
 }
+
+

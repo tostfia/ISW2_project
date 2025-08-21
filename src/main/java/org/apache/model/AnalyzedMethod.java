@@ -14,21 +14,25 @@ import java.util.List;
 @Getter
 public class AnalyzedMethod {
 
+    @Setter
+    private String signature;
+    private String simpleName;
+    @Setter
+    private int startLine;
+    @Setter
+    private int endLine;
 
-    private final String signature;
-    private final String simpleName;
 
 
 
-
-    private final String body;
+    private  String body;
     @Setter
     private MethodMetrics metrics;
     @Setter
     private boolean isBuggy;
     @Setter
     private List<Commit> touchingMethodCommit;
-    private final MethodDeclaration methodDeclaration;
+    private  MethodDeclaration methodDeclaration;
 
 
     public AnalyzedMethod( MethodDeclaration methodDeclaration) {
@@ -43,6 +47,19 @@ public class AnalyzedMethod {
         this.isBuggy = false;
         this.touchingMethodCommit = new ArrayList<>();
         this.metrics= new MethodMetrics();
+
+    }
+
+    public AnalyzedMethod(String signature, int start, int end) {
+        this.startLine = start;
+        this.endLine = end;
+        this.signature = signature;
+
+    }
+
+
+    public boolean overlaps(int editStart, int editEnd) {
+        return startLine <= editEnd && endLine >= editStart;
     }
 
 

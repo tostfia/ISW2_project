@@ -1,14 +1,14 @@
 package org.apache.controller.milestone1;
 
 
+
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.logging.CollectLogger;
 import org.apache.model.*;
-import org.eclipse.jgit.api.BlameCommand;
+import org.apache.utilities.Utility;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.blame.BlameResult;
 import org.eclipse.jgit.diff.*;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectReader;
@@ -25,9 +25,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.*;
 import java.util.logging.Logger;
@@ -40,11 +38,7 @@ public class GitController {
     private static final String DEFAULT_REPO_BASE_PATH = System.getProperty("user.home") + File.separator + "repo";
 
 
-    // REFACTOR: Costanti per la logica di realismo di SZZ
-    private static final long SZZ_MAX_DAYS_THRESHOLD = 365; // Un anno di soglia temporale
-    private static final Set<String> SZZ_IGNORE_KEYWORDS = Set.of(
-            "refactor", "style", "cleanup", "rename", "reformat", "docs", "javadoc", "comment"
-    );
+
 
     @Getter
     @Setter
@@ -281,186 +275,141 @@ public class GitController {
         return touchedClassesNames;
     }
 
-    /**
-     * REFACTOR: Questo metodo ora è più chiaro nel suo scopo. La logica di "realismo"
-     * è applicata nel metodo `findAllBugIntroducingCommits`.
-     */
-    public void labelBuggynessWithSZZ(List<AnalyzedClass> classList) {
-        Map<String, List<AnalyzedClass>> snapshotsByClassPath = classList.stream()
+
+
+    public void applyBugginessLabels(List<AnalyzedClass> allClassSnapshots) throws IOException {
+        logger.info("Applying bugginess labels (STREAMING mode, memory-safe).");
+
+        // 1. Reset bugginess
+        allClassSnapshots.forEach(ac -> {
+            ac.setBuggy(false);
+            ac.getMethods().forEach(am -> am.getMetrics().setBuggy(false));
+        });
+
+        // 2. Indicizza snapshot per file → ma non in memoria per tutto, solo referenza
+        Map<String, List<AnalyzedClass>> snapshotsByClassPath = allClassSnapshots.stream()
                 .collect(Collectors.groupingBy(AnalyzedClass::getClassName));
 
-        classList.forEach(classSnapshot -> classSnapshot.setBuggy(false));
-
-        for (Map.Entry<Commit, List<Commit>> entry : this.bugIntroducingCommitsMap.entrySet()) {
-            Commit fixingCommit = entry.getKey();
+        // 3. Processa fixing commits uno per uno
+        for (Commit fixingCommit : this.fixingCommits) {
+            Ticket ticket = fixingCommit.getTicket();
+            List<String> modifiedFiles = this.buggyFilesPerCommit.get(fixingCommit);
             Release fixedVersion = fixingCommit.getRelease();
 
-            if (fixedVersion == null) continue; // Sicurezza aggiuntiva
-
-            List<String> affectedFiles = this.buggyFilesPerCommit.get(fixingCommit);
-            if (affectedFiles == null || affectedFiles.isEmpty()) continue;
-
-            for (Commit bugIntroCommit : entry.getValue()) {
-                Release injectedVersion = bugIntroCommit.getRelease();
-                if (injectedVersion == null) continue;
-
-                for (String filePath : affectedFiles) {
-                    List<AnalyzedClass> snapshots = snapshotsByClassPath.get(filePath);
-                    if (snapshots == null) continue;
-
-                    for (AnalyzedClass classSnapshot : snapshots) {
-                        Release snapshotRelease = classSnapshot.getRelease();
-                        boolean isInjectedBeforeOrDuringSnapshot =
-                                !injectedVersion.getReleaseDate().isAfter(snapshotRelease.getReleaseDate());
-                        boolean isFixedAfterSnapshot =
-                                fixedVersion.getReleaseDate().isAfter(snapshotRelease.getReleaseDate());
-
-                        if (isInjectedBeforeOrDuringSnapshot && isFixedAfterSnapshot) {
-                            classSnapshot.setBuggy(true);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-
-    public List<Commit> findBugIntroducingCommits(Commit fixingCommit, String filePath) throws IOException {
-        logger.info("Applying SZZ algorithm for " + filePath + " in fixing commit " + fixingCommit.getRevCommit().getName());
-        List<Commit> bugIntroducingCommits = new ArrayList<>();
-
-        RevCommit revCommit = fixingCommit.getRevCommit();
-
-        if (revCommit.getParentCount() == 0) {
-            logger.info("Commit " + revCommit.getName() + " has no parents, cannot apply SZZ.");
-            return bugIntroducingCommits;
-        }
-
-        RevCommit parentCommit = revCommit.getParent(0);
-
-        try (DiffFormatter df = new DiffFormatter(DisabledOutputStream.INSTANCE)) {
-            df.setRepository(repository);
-            df.setContext(0);
-
-            List<DiffEntry> diffs = df.scan(parentCommit.getTree(), revCommit.getTree());
-
-            for (DiffEntry diff : diffs) {
-                if (diff.getNewPath().equals(filePath)) {
-                    EditList edits = df.toFileHeader(diff).toEditList();
-
-                    BlameCommand blameCommand = git.blame();
-                    blameCommand.setStartCommit(parentCommit.getId());
-                    blameCommand.setFilePath(filePath);
-
-                    try {
-                        BlameResult blameResult = blameCommand.call();
-
-                        if (blameResult == null) {
-                            logger.warning("Cannot perform blame on " + filePath + " for commit " + parentCommit.getName());
-                            continue;
-                        }
-
-                        Set<RevCommit> suspiciousCommits = new HashSet<>();
-
-                        for (Edit edit : edits) {
-                            int startLine = edit.getBeginA();
-                            int endLine = edit.getEndA();
-
-                            for (int i = startLine; i < endLine && i < blameResult.getResultContents().size(); i++) {
-                                RevCommit blameCommit = blameResult.getSourceCommit(i);
-                                if (blameCommit != null) {
-                                    suspiciousCommits.add(blameCommit);
-                                }
-                            }
-                        }
-
-                        for (RevCommit suspiciousCommit : suspiciousCommits) {
-                            Commit bugIntroCommit = allCommits.get(suspiciousCommit.getName());
-                            if (bugIntroCommit != null) {
-                                bugIntroducingCommits.add(bugIntroCommit);
-                            }
-                        }
-                    } catch (GitAPIException e) {
-                        logger.warning("Error during blame execution: " + e.getMessage());
-                    }
-                }
-            }
-        }
-
-        logger.info("Found " + bugIntroducingCommits.size() + " possible bug-introducing commits in " + filePath);
-        return bugIntroducingCommits;
-    }
-
-
-    /**
-     * REFACTOR: Questo metodo ora orchestra SZZ e applica i filtri di realismo.
-     */
-    public void findAllBugIntroducingCommits() {
-        logger.info("Applying SZZ algorithm to all fixing commits...");
-
-        for (Commit fixingCommit : fixingCommits) {
-            List<String> buggyFiles = buggyFilesPerCommit.get(fixingCommit);
-            if (buggyFiles == null || buggyFiles.isEmpty()) {
+            if (ticket == null || modifiedFiles == null || modifiedFiles.isEmpty() || fixedVersion == null) {
                 continue;
             }
 
-            Set<Commit> potentialIntroducers = new HashSet<>();
-            for (String filePath : buggyFiles) {
-                try {
-                    // SZZ puro trova una lista di candidati
-                    List<Commit> candidates = findBugIntroducingCommits(fixingCommit, filePath);
-                    potentialIntroducers.addAll(candidates);
-                } catch (IOException e) {
-                    logger.warning("Error finding bug-introducing commits for " + filePath + ": " + e.getMessage());
+            // --- Calcola introductionVersion ---
+            Release introductionVersion = null;
+            if (ticket.getAffectedVersions() != null && !ticket.getAffectedVersions().isEmpty()) {
+                introductionVersion = ticket.getAffectedVersions().stream()
+                        .min(Comparator.comparing(Release::getReleaseDate))
+                        .orElse(null);
+            }
+            if (introductionVersion == null) introductionVersion = ticket.getInjectedVersion();
+            if (introductionVersion == null) continue;
+
+            // --- Estrai i metodi modificati SOLO per questo commit ---
+            Map<String, Set<String>> modifiedMethodsInFixingCommit =
+                    getModifiedMethodsInCommit(fixingCommit.getRevCommit(), modifiedFiles);
+
+            // --- Etichetta file per file ---
+            for (String filePath : modifiedFiles) {
+                List<AnalyzedClass> snapshots = snapshotsByClassPath.get(filePath);
+                if (snapshots == null) continue;
+
+                for (AnalyzedClass classSnapshot : snapshots) {
+                    Release snapshotRelease = classSnapshot.getRelease();
+
+                    // Verifica se la release della classe cade nel range [intro, fix)
+                    boolean inRange = !snapshotRelease.getReleaseDate().isBefore(introductionVersion.getReleaseDate()) &&
+                            snapshotRelease.getReleaseDate().isBefore(fixedVersion.getReleaseDate());
+
+                    if (!inRange) continue;
+
+                    // Marca la classe come buggy
+                    classSnapshot.setBuggy(true);
+
+                    // Marca i metodi modificati
+                    Set<String> buggyMethods = modifiedMethodsInFixingCommit.getOrDefault(filePath, Collections.emptySet());
+                    for (AnalyzedMethod am : classSnapshot.getMethods()) {
+                        if (buggyMethods.contains(am.getSignature())) {
+                            am.getMetrics().setBuggy(true);
+                        }
+                    }
                 }
             }
 
-            // REFACTOR: Applichiamo la logica di realismo per filtrare i candidati.
-            List<Commit> realisticIntroducers = potentialIntroducers.stream()
-                    .filter(introCommit -> isRealisticBugIntroducingCommit(introCommit, fixingCommit))
-                    .collect(Collectors.toList());
 
-            if (!realisticIntroducers.isEmpty()) {
-                bugIntroducingCommitsMap.put(fixingCommit, realisticIntroducers);
-                realisticIntroducers.forEach(commit -> commit.setBuggy(true));
-            }
+            modifiedMethodsInFixingCommit.clear();
         }
-        logger.info("Found bug-introducing commits for " + bugIntroducingCommitsMap.size() + " fixing commits (after applying realism filters).");
+
+        logger.info("Streaming bugginess labeling completed.");
     }
 
-    /**
-     * REFACTOR: Nuovo metodo helper per applicare i filtri di realismo SZZ.
-     * Scarta i commit che sono probabilmente falsi positivi.
-     *
-     * @param introCommit Il commit sospetto che potrebbe aver introdotto il bug.
-     * @param fixingCommit Il commit che ha corretto il bug.
-     * @return true se il commit è un candidato realistico, false altrimenti.
-     */
-    private boolean isRealisticBugIntroducingCommit(Commit introCommit, Commit fixingCommit) {
-        if (introCommit == null || fixingCommit == null) return false;
 
-        // Filtro 1: Messaggio del Commit (ignora refactoring, stile, ecc.)
-        String message = introCommit.getRevCommit().getFullMessage().toLowerCase();
-        for (String keyword : SZZ_IGNORE_KEYWORDS) {
-            if (message.contains(keyword)) {
-                logger.fine("SZZ false positive filtered by keyword '" + keyword + "': " + introCommit.getRevCommit().getName());
-                return false;
+    private Map<String, Set<String>> getModifiedMethodsInCommit(RevCommit commit, List<String> targetFilePaths) throws IOException {
+        Map<String, Set<String>> modifiedMethods = new HashMap<>();
+
+        if (commit.getParentCount() == 0) return modifiedMethods;
+
+        try (DiffFormatter df = new DiffFormatter(DisabledOutputStream.INSTANCE);
+             RevWalk rw = new RevWalk(repository)) {
+
+            RevCommit parent = rw.parseCommit(commit.getParent(0).getId());
+            df.setRepository(repository);
+            df.setContext(0);
+
+            List<DiffEntry> diffs = df.scan(parent.getTree(), commit.getTree());
+
+            for (DiffEntry diff : diffs) {
+                String filePath = diff.getNewPath();
+                if (!targetFilePaths.contains(filePath) || !filePath.endsWith(".java")) continue;
+
+                String newContent = getFileContentAtCommit(commit, filePath);
+                String oldContent = getFileContentAtCommit(parent, filePath);
+
+                if (diff.getChangeType() == DiffEntry.ChangeType.ADD && newContent != null) {
+                    // Solo parsing UNA volta
+                    List<AnalyzedMethod> methods = Utility.extractMethodRanges(newContent);
+                    methods.forEach(m -> modifiedMethods.computeIfAbsent(filePath, k -> new HashSet<>()).add(m.getSignature()));
+                }
+                else if (diff.getChangeType() == DiffEntry.ChangeType.MODIFY && newContent != null && oldContent != null) {
+                    RawText oldText = new RawText(oldContent.getBytes(StandardCharsets.UTF_8));
+                    RawText newText = new RawText(newContent.getBytes(StandardCharsets.UTF_8));
+                    List<Edit> edits = MyersDiff.INSTANCE.diff(RawTextComparator.DEFAULT, oldText, newText);
+
+                    // Parsing una sola volta
+                    List<AnalyzedMethod> newMethods = Utility.extractMethodRanges(newContent);
+
+                    for (Edit edit : edits) {
+                        int start = edit.getBeginB();
+                        int end = edit.getEndB();
+                        newMethods.stream()
+                                .filter(m -> m.overlaps(start, end))
+                                .forEach(m -> modifiedMethods
+                                        .computeIfAbsent(filePath, k -> new HashSet<>())
+                                        .add(m.getSignature()));
+                    }
+                }
             }
         }
-
-        // Filtro 2: Proporzionalità Temporale
-        LocalDateTime introDate = LocalDateTime.ofInstant(introCommit.getRevCommit().getCommitterIdent().getWhenAsInstant(), ZoneId.systemDefault());
-        LocalDateTime fixDate = LocalDateTime.ofInstant(fixingCommit.getRevCommit().getCommitterIdent().getWhenAsInstant(), ZoneId.systemDefault());
-
-        if (Duration.between(introDate, fixDate).toDays() > SZZ_MAX_DAYS_THRESHOLD) {
-            logger.fine("SZZ false positive filtered by time threshold: " + introCommit.getRevCommit().getName());
-            return false;
-        }
-
-        return true; // Se il commit supera tutti i filtri, è considerato realistico.
+        return modifiedMethods;
     }
 
-   
+
+
+
+
+
+
+
+
+
+
+
+
     public List<AnalyzedClass> getClassesForRelease(Release release) throws IOException {
         List<AnalyzedClass> classList = new ArrayList<>();
         if (release.getCommitList().isEmpty()) {

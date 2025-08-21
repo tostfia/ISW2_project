@@ -40,7 +40,7 @@ public class ReportAnalyzer {
     }
 
     /**
-     * **(NUOVO NOME)** Trova il miglior classificatore basato sul costo atteso minimo e restituisce il risultato.
+     *  Trova il miglior classificatore basato sul costo atteso minimo e restituisce il risultato.
      * Questo metodo non salva il risultato, serve per ottenere l'oggetto del BClassifier.
      */
     public void getBestClassifierByExpectedCost() { // CAMBIATO NOME e ora restituisce

@@ -163,7 +163,7 @@ public class DatasetController {
         logger.info("Salvato file: " + filePath);
     }
 
-    private Instances convertTablesawToWekaInstances(Table sourceTable, List<String> targetReleases, String datasetName) throws Exception {
+    public Instances convertTablesawToWekaInstances(Table sourceTable, List<String> targetReleases, String datasetName) throws Exception {
         Table filteredTable = filterTableByReleases(sourceTable, targetReleases);
 
         if (filteredTable.isEmpty()) {
@@ -220,7 +220,7 @@ public class DatasetController {
         return wekaInstances;
     }
 
-    // MODIFICATO: Accetta il nome della colonna Release come parametro
+
     private Table filterTableByReleases(Table sourceTable, List<String> targetReleases) {
         StringColumn releaseCol = sourceTable.stringColumn("Release");
 

@@ -2,12 +2,9 @@ package  org.apache;
 import java.io.IOException;
 import java.util.logging.Logger;
 
-import org.apache.controller.CorrelationController;
-import org.apache.controller.DatasetController;
+import org.apache.controller.*;
 
 
-import org.apache.controller.ReportAnalyzer;
-import org.apache.controller.WekaController;
 import org.apache.controller.milestone1.JiraController;
 import org.apache.logging.CollectLogger;
 import org.apache.model.AggregatedClassifierResult;
@@ -88,7 +85,7 @@ public class Milestone2_Analysis {
         // NUOVO: Scegli il miglior classificatore dal report
         ReportAnalyzer reportAnalyzer = new ReportAnalyzer(projectName);
         reportAnalyzer.analyzeAllCriteriaAndSave();
-        AggregatedClassifierResult bClassifier = reportAnalyzer.getBestClassifier("AUC");
+        AggregatedClassifierResult bClassifier = reportAnalyzer.getBestClassifier("KAPPA");
         if (bClassifier == null) {
             logger.severe("Nessun classificatore trovato valido. Analisi interrotta.");
             return;
@@ -103,21 +100,22 @@ public class Milestone2_Analysis {
         logger.info("Fase 2 completata in " + (endFase2 - start) / 1000.0 + " secondi.");
 
 
+
+
         // ==================================================================
         // PASSO 3: ANALISI "WHAT-IF" E RISULTATI FINALI
         // ==================================================================
         logger.info("\nFase 3: Analisi di Correlazione e Simulazione What-If...");
         start = System.currentTimeMillis();
 
-        CorrelationController correlationController = new CorrelationController(datasetA);
-        String actionableFeature = correlationController.findActionableFeature();
-
-        if (actionableFeature != null) {
-            correlationController.findMethodToRefactor(actionableFeature);
-            logger.warning("ATTENZIONE: La simulazione What-If non è implementata. Questo passaggio è stato saltato.");
-        } else {
-            logger.warning("Nessuna feature actionable trovata, salto della simulazione What-If.");
+        WhatIfAnalyzer whatIfAnalyzer = new WhatIfAnalyzer(bClassifier, datasetA, projectName);
+        try {
+            whatIfAnalyzer.run();
+        } catch (Exception e) {
+            logger.severe("Errore durante l'analisi What-If: " + e.getMessage());
+            return;
         }
+
 
         end = System.currentTimeMillis();
         logger.info("Fase 3 completata in " + (end - start) / 1000.0 + " secondi.");

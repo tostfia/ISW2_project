@@ -20,7 +20,8 @@ public class JiraController {
     private final List<Ticket> tickets;
     private final String targetName;
     private static final Logger logger = CollectLogger.getInstance().getLogger();
-    //Prendo i ticket fixati
+
+
     @Getter
     private List<Ticket> fixedTickets;
     private static final String JIRA_BASE_URL = "https://issues.apache.org/jira/rest/api/2/";
@@ -161,6 +162,14 @@ public class JiraController {
 
         logger.info(String.format("Processo Proportion completato. Numero finale di ticket validi: %d", this.fixedTickets.size()));
     }
+
+
+
+
+
+
+
+
 
 
 }

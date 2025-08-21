@@ -80,7 +80,7 @@ public class MetricsController {
             mm.setParameterCount(md.getParameters().size());
             mm.setCognitiveComplexity(calculateCognitiveComplexity(md));
             mm.setNestingDepth(calculateNestingDepth(md));
-            mm.setBuggy(ac.isBuggy());
+
 
         }
     }
