@@ -1,0 +1,19 @@
+import weka.classifiers.Classifier;
+import java.io.FileInputStream;
+import java.io.ObjectInputStream;
+
+public class VisualizzaModello {
+    public static void main(String[] args) throws Exception {
+        // Percorso del file .model
+        String percorsoModello ="models/BOOKKEEPER_BClassifierA.model";
+
+        // Carica il modello
+        ObjectInputStream in = new ObjectInputStream(new FileInputStream(percorsoModello));
+        Classifier modello = (Classifier) in.readObject();
+        in.close();
+
+        // Visualizza il modello
+        System.out.println(modello);
+    }
+}
+

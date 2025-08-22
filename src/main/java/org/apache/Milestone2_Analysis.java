@@ -150,10 +150,6 @@ public class Milestone2_Analysis {
         end = System.currentTimeMillis();
         logger.info("Fase 3 completata in " + (end - start) / 1000.0 + " secondi.");
 
-        // ==================================================================
-        // PASSO 4: SCRITTURA DEL REPORT FINALE
-        // ==================================================================
-        logger.info("\nFase 4: Scrittura del Report Finale...");
 
         long overallEnd = System.currentTimeMillis();
         logger.info("\n--- ANALISI MILESTONE 2 COMPLETATA in " + (overallEnd - overallStart) / 1000.0 + " secondi ---"); // Correzione del logger finale
