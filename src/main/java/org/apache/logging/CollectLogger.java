@@ -2,10 +2,10 @@ package org.apache.logging;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.function.Supplier;
+import java.util.logging.Level;
 import java.util.logging.LogManager;
 import java.util.logging.Logger;
-
-
 
 public class CollectLogger {
 
@@ -21,7 +21,7 @@ public class CollectLogger {
         return Holder.INSTANCE;
     }
 
-    public Logger getLogger() {
+    private Logger getInternalLogger() {
         if (logger == null) {
             try (InputStream input = getClass().getClassLoader().getResourceAsStream("logging.properties")) {
                 if (input != null) {
@@ -33,5 +33,31 @@ public class CollectLogger {
             }
         }
         return this.logger;
+    }
+
+    // ---------- API "sicura" che evita Sonar issues ----------
+
+    public void info(String msg, Object... args) {
+        getInternalLogger().log(Level.INFO, msg, args);
+    }
+
+    public void warning(String msg, Object... args) {
+        getInternalLogger().log(Level.WARNING, msg, args);
+    }
+
+    public void severe(String msg, Object... args) {
+        getInternalLogger().log(Level.SEVERE, msg, args);
+    }
+
+    public void log(Level level, String msg, Object... args) {
+        getInternalLogger().log(level, msg, args);
+    }
+
+    // Variante lazy: valutata solo se il livello è abilitato
+    public void log(Level level, Supplier<String> msgSupplier) {
+        Logger l = getInternalLogger();
+        if (l.isLoggable(level)) {
+            l.log(level, msgSupplier);
+        }
     }
 }
