@@ -35,7 +35,7 @@ public class DatasetController {
     public Table prepareDatasetA(double cutPercentage) {
         File inputFile = new File(csvFilePath);
         if (!inputFile.exists()) {
-            logger.severe("ERRORE: File dataset non trovato: " + csvFilePath);
+            logger.severe(()->"ERRORE: File dataset non trovato: " + csvFilePath);
             return null;
         }
 
@@ -43,12 +43,12 @@ public class DatasetController {
         try {
             fullDataset = Table.read().csv(csvFilePath);
         } catch (Exception e) {
-            logger.severe(String.format("ERRORE: File dataset non trovato: " + csvFilePath));
+            logger.severe(()->"ERRORE: File dataset non trovato: " + csvFilePath);
             return null;
         }
 
         if (fullDataset.isEmpty()) {
-            logger.warning(String.format("ATTENZIONE: Il dataset caricato da %s è vuoto. Restituisco un dataset vuoto senza filtri.", csvFilePath));
+            logger.warning(()->"ATTENZIONE: Il dataset caricato da %s è vuoto. Restituisco un dataset vuoto senza filtri."+ csvFilePath);
             return fullDataset;
         }
 
@@ -73,7 +73,7 @@ public class DatasetController {
 
         if (releasesToKeepCount == 0) {
             releasesToKeepCount = 1;
-            logger.warning(String.format("Il calcolo della percentuale (%.2f%%) ha portato a 0 release da mantenere. Mantenuta almeno la prima release.", cutPercentage * 100));
+            logger.warning(()->"Il calcolo della percentuale (%.2f%%) ha portato a 0 release da mantenere. Mantenuta almeno la prima release."+cutPercentage * 100);
         } else if (releasesToKeepCount > totalReleases) {
             releasesToKeepCount = totalReleases;
         }
@@ -91,7 +91,7 @@ public class DatasetController {
 
 
     public int generateWalkForwardArffFiles(Table datasetA, String projectName, int walkForwardIterations) throws IOException {
-        logger.info("Inizio generazione file ARFF per Walk-Forward per il progetto: " + projectName);
+        logger.info(()->"Inizio generazione file ARFF per Walk-Forward per il progetto: " + projectName);
 
         final String arffExtension = ".arff";
         final String outputBaseDir = "output" + File.separator + "dataset" + File.separator + projectName;
@@ -117,10 +117,10 @@ public class DatasetController {
         }
 
         int actualIterations = Math.min(walkForwardIterations, allReleasesFromDatasetA.size() - 1);
-        logger.info("DEBUG: Numero effettivo di iterazioni di Walk-Forward calcolate (actualIterations): " + actualIterations);
+        logger.info(()->"DEBUG: Numero effettivo di iterazioni di Walk-Forward calcolate (actualIterations): " + actualIterations);
 
         if (actualIterations < walkForwardIterations) {
-            logger.warning("Il numero di iterazioni di Walk-Forward richiesto (" + walkForwardIterations + ") è maggiore del numero massimo possibile con le release disponibili (" + actualIterations + "). Verranno eseguite " + actualIterations + " iterazioni.");
+            logger.warning(()->"Il numero di iterazioni di Walk-Forward richiesto (" + walkForwardIterations + ") è maggiore del numero massimo possibile con le release disponibili (" + actualIterations + "). Verranno eseguite " + actualIterations + " iterazioni.");
         }
 
         for (int i = 0; i < actualIterations; i++) {
@@ -162,14 +162,14 @@ public class DatasetController {
         saver.setInstances(instances);
         saver.setFile(new File(filePath));
         saver.writeBatch();
-        logger.info("Salvato file: " + filePath);
+        logger.info(()->"Salvato file: " + filePath);
     }
 
     public Instances convertTablesawToWekaInstances(Table sourceTable, List<String> targetReleases, String datasetName) {
         Table filteredTable = filterTableByReleases(sourceTable, targetReleases);
 
         if (filteredTable.isEmpty()) {
-            logger.warning("Filtered Tablesaw table is empty for releases: " + targetReleases + ". Creating empty Weka Instances.");
+            logger.warning(()->"Filtered Tablesaw table is empty for releases: " + targetReleases + ". Creating empty Weka Instances.");
             return createEmptyWekaInstances(datasetName, sourceTable);
         }
 
@@ -189,7 +189,7 @@ public class DatasetController {
     private void setInstanceValue(DenseInstance instance, Attribute attr, Table table, int rowIndex) {
         String attrName = attr.name();
         if (!table.columnNames().contains(attrName)) {
-            logger.warning("Colonna Tablesaw '" + attrName + "' non trovata nella tabella filtrata. Skippato l'impostazione del valore per questa istanza.");
+            logger.warning(()->"Colonna Tablesaw '" + attrName + "' non trovata nella tabella filtrata. Skippato l'impostazione del valore per questa istanza.");
             return;
         }
         try {
@@ -251,7 +251,7 @@ public class DatasetController {
             } else if (col instanceof StringColumn stringColumn) {
                 attributes.add(createStringOrNominalAttribute(colName, stringColumn));
             } else {
-                logger.warning("Tipo di colonna Tablesaw non riconosciuto per Weka Attribute: " + colName + " (" + col.type() + "). Skippato.");
+                logger.warning(()->"Tipo di colonna Tablesaw non riconosciuto per Weka Attribute: " + colName + " (" + col.type() + "). Skippato.");
             }
         }
 
