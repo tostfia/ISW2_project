@@ -1,5 +1,8 @@
+package org.apache;
+
 import weka.classifiers.Classifier;
 import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.io.ObjectInputStream;
 
 public class VisualizzaModello {
@@ -12,8 +15,10 @@ public class VisualizzaModello {
         Classifier modello = (Classifier) in.readObject();
         in.close();
 
-        // Visualizza il modello
-        System.out.println(modello);
+        // Salva la rappresentazione del modello su un file
+        try (FileWriter writer = new FileWriter("models/BOOKKEPER_modello.txt")) {
+            writer.write(modello.toString());
+        }
     }
 }
 

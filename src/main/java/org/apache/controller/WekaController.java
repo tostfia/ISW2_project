@@ -20,7 +20,7 @@ public class WekaController {
     private final String projectName;
     private final int iterations;
     private final List<ClassifierResult> classifierResults;
-    private final static Logger logger = CollectLogger.getInstance().getLogger();
+    private static final  Logger logger = CollectLogger.getInstance().getLogger();
 
     public WekaController(String projectName,int iterations){
         this.projectName=projectName;
@@ -79,7 +79,7 @@ public class WekaController {
                         wekaClassifier.buildClassifier(trainInstances);
                         evaluation.evaluateModel(wekaClassifier, testInstances);
                         ClassifierResult result = new ClassifierResult(iteration, classifier,evaluation);
-                        result.setTrainingPercent(100.0*(double) trainInstances.numInstances()/(trainInstances.numInstances()+testInstances.numInstances()));
+                        result.setTrainingPercent(100.0* trainInstances.numInstances()/(trainInstances.numInstances()+testInstances.numInstances()));
 
                         synchronized (classifierResults) {
                             classifierResults.add(result);
@@ -96,7 +96,7 @@ public class WekaController {
         try {
             countDownLatch.await();
         } catch (InterruptedException e) {
-            logger.severe("Classification interrupted: " + e.getMessage());
+            throw new RuntimeException(e);
         }
     }
 

@@ -111,7 +111,7 @@ public class CsvWriter implements AutoCloseable {
                 csvEscape(methodNameFormatted),
 
 
-                String.valueOf(methodMetrics.getLOC()),
+                String.valueOf(methodMetrics.getLoc()),
                 String.valueOf(methodMetrics.getParameterCount()),
                 String.valueOf(methodMetrics.getCycloComplexity()),
                 String.valueOf(methodMetrics.getCognitiveComplexity()),

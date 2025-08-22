@@ -26,6 +26,7 @@ public class DatasetController {
 
     private final String csvFilePath;
     private static final Logger logger = CollectLogger.getInstance().getLogger();
+    private static final String RELEASE= "Release";
 
     public DatasetController(String projectName) {
         this.csvFilePath = projectName + "_dataset.csv";
@@ -42,22 +43,22 @@ public class DatasetController {
         try {
             fullDataset = Table.read().csv(csvFilePath);
         } catch (Exception e) {
-            logger.severe("ERRORE: Impossibile leggere il file CSV: " + csvFilePath + " - " + e.getMessage());
+            logger.severe(String.format("ERRORE: File dataset non trovato: " + csvFilePath));
             return null;
         }
 
         if (fullDataset.isEmpty()) {
-            logger.warning("ATTENZIONE: Il file dataset è vuoto: " + csvFilePath);
+            logger.warning(String.format("ATTENZIONE: Il dataset caricato da %s è vuoto. Restituisco un dataset vuoto senza filtri.", csvFilePath));
             return fullDataset;
         }
 
-        if (!fullDataset.columnNames().contains("Release")) {
+        if (!fullDataset.columnNames().contains(RELEASE)) {
             logger.severe("ERRORE: La colonna 'Release' non è presente nel file CSV.");
             return null;
         }
 
         // Recupera le release ID uniche e le ordina
-        StringColumn releaseColumn = fullDataset.stringColumn("Release");
+        StringColumn releaseColumn = fullDataset.stringColumn(RELEASE);
         List<String> uniqueReleases = new ArrayList<>(new HashSet<>(releaseColumn.asList()));
         Collections.sort(uniqueReleases);
 
@@ -89,7 +90,7 @@ public class DatasetController {
     }
 
 
-    public int generateWalkForwardArffFiles(Table datasetA, String projectName, int walkForwardIterations) throws Exception {
+    public int generateWalkForwardArffFiles(Table datasetA, String projectName, int walkForwardIterations) throws IOException {
         logger.info("Inizio generazione file ARFF per Walk-Forward per il progetto: " + projectName);
 
         final String arffExtension = ".arff";
@@ -101,13 +102,9 @@ public class DatasetController {
         new File(trainingBaseDir);
         new File(testingBaseDir);
 
-        List<String> allReleasesFromDatasetAInt = new ArrayList<>(new HashSet<>(datasetA.stringColumn("Release").asList()));
+        List<String> allReleasesFromDatasetAInt = new ArrayList<>(new HashSet<>(datasetA.stringColumn(RELEASE).asList()));
         Collections.sort(allReleasesFromDatasetAInt);
 
-        // --- AGGIUNGI QUESTI LOG DI DEBUG ---
-        logger.info("DEBUG: Release estratte da datasetA per Walk-Forward: " + allReleasesFromDatasetAInt);
-        logger.info("DEBUG: Numero di release estratte da datasetA: " + allReleasesFromDatasetAInt.size());
-        logger.info("DEBUG: walkForwardIterations (calcolato dal JiraController/input): " + walkForwardIterations);
 
         List<String> allReleasesFromDatasetA = new ArrayList<>();
         for (String releaseNum : allReleasesFromDatasetAInt) {
@@ -148,8 +145,13 @@ public class DatasetController {
             String trainingFilePath = trainingBaseDir + File.separator + projectName + "_" + (i + 1) + arffExtension;
             String testingFilePath = testingBaseDir + File.separator + projectName + "_" + (i + 1) + arffExtension;
 
-            saveArffFile(trainingInstances, trainingFilePath);
-            saveArffFile(testingInstances, testingFilePath);
+            try {
+                saveArffFile(trainingInstances, trainingFilePath);
+                saveArffFile(testingInstances, testingFilePath);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
         }
         logger.info("Generazione file ARFF completata.");
         return actualIterations;
@@ -168,7 +170,6 @@ public class DatasetController {
 
         if (filteredTable.isEmpty()) {
             logger.warning("Filtered Tablesaw table is empty for releases: " + targetReleases + ". Creating empty Weka Instances.");
-            // Passa la sourceTable completa per creare gli attributi, anche se la filteredTable è vuota
             return createEmptyWekaInstances(datasetName, sourceTable);
         }
 
@@ -177,52 +178,43 @@ public class DatasetController {
 
         for (int i = 0; i < filteredTable.rowCount(); i++) {
             DenseInstance instance = new DenseInstance(attributes.size());
-
             for (Attribute attr : attributes) {
-                String attrName = attr.name();
-
-                try {
-                    // Assicurati che la colonna esista nella tabella filtrata
-                    if (!filteredTable.columnNames().contains(attrName)) {
-                        logger.warning("Colonna Tablesaw '" + attrName + "' non trovata nella tabella filtrata. Skippato l'impostazione del valore per questa istanza.");
-                        continue; // Passa al prossimo attributo
-                    }
-
-                    if (attr.isNumeric()) {
-                        double value = getNumericValue(filteredTable, attrName, i);
-                        instance.setValue(attr, value);
-                    } else if (attr.isNominal()) {
-                        String value = getStringValue(filteredTable, attrName, i);
-                        if (value != null && !value.trim().isEmpty()) {
-                            if (attr.indexOfValue(value) != -1) { // Verifica che il valore sia tra i nominali definiti
-                                instance.setValue(attr, value);
-                            } else {
-                                logger.warning(String.format("Valore nominale '%s' non riconosciuto per attributo '%s'. Alla riga %d. Assegnato Missing Value.", value, attrName, i));
-                                instance.setMissing(attr); // Imposta come valore mancante di Weka
-                            }
-                        } else {
-                            logger.warning(String.format("Valore nullo/vuoto per attributo nominale '%s' alla riga %d. Assegnato Missing Value.", attrName, i));
-                            instance.setMissing(attr); // Imposta come valore mancante di Weka
-                        }
-                    } else if (attr.isString()) { // Gestione esplicita di attributi di tipo String (testo libero)
-                        String value = getStringValue(filteredTable, attrName, i);
-                        instance.setValue(attr, value);
-                    }
-                } catch (Exception e) {
-                    logger.warning(String.format("Errore imprevisto nell'impostare il valore per l'attributo '%s' (tipo Weka: %d) alla riga %d: %s. Valore sorgente: '%s'. Assegnando Missing Value/Default.",
-                            attrName, attr.type(), i, e.getMessage(), filteredTable.column(attrName).getString(i)));
-                    instance.setMissing(attr); // In caso di errore inaspettato, imposta missing
-                }
+                setInstanceValue(instance, attr, filteredTable, i);
             }
             wekaInstances.add(instance);
         }
-
         return wekaInstances;
+    }
+
+    private void setInstanceValue(DenseInstance instance, Attribute attr, Table table, int rowIndex) {
+        String attrName = attr.name();
+        if (!table.columnNames().contains(attrName)) {
+            logger.warning("Colonna Tablesaw '" + attrName + "' non trovata nella tabella filtrata. Skippato l'impostazione del valore per questa istanza.");
+            return;
+        }
+        try {
+            if (attr.isNumeric()) {
+                instance.setValue(attr, getNumericValue(table, attrName, rowIndex));
+            } else if (attr.isNominal()) {
+                String value = getStringValue(table, attrName, rowIndex);
+                if (value != null && !value.trim().isEmpty() && attr.indexOfValue(value) != -1) {
+                    instance.setValue(attr, value);
+                } else {
+                    logger.warning(String.format("Valore nominale non valido per attributo '%s' alla riga %d. Assegnato Missing Value.", attrName, rowIndex));
+                    instance.setMissing(attr);
+                }
+            } else if (attr.isString()) {
+                instance.setValue(attr, getStringValue(table, attrName, rowIndex));
+            }
+        } catch (Exception e) {
+            logger.warning(String.format("Errore nell'impostare il valore per '%s' alla riga %d: %s. Assegnando Missing Value.", attrName, rowIndex, e.getMessage()));
+            instance.setMissing(attr);
+        }
     }
 
 
     private Table filterTableByReleases(Table sourceTable, List<String> targetReleases) {
-        StringColumn releaseCol = sourceTable.stringColumn("Release");
+        StringColumn releaseCol = sourceTable.stringColumn(RELEASE);
 
         if (targetReleases.size() == 1) {
             return sourceTable.where(releaseCol.isEqualTo(targetReleases.getFirst()));
@@ -241,53 +233,58 @@ public class DatasetController {
         }
     }
 
+
     private ArrayList<Attribute> createWekaAttributes(Table table) {
         ArrayList<Attribute> attributes = new ArrayList<>();
 
         for (Column<?> col : table.columns()) {
             String colName = col.name();
 
-            // Ignora colonne non necessarie per la classificazione
-            if (colName.equalsIgnoreCase("Release") || colName.equalsIgnoreCase("MethodName") || colName.equalsIgnoreCase("ProjectName")) {
+            if (colName.equalsIgnoreCase(RELEASE) || colName.equalsIgnoreCase("MethodName") || colName.equalsIgnoreCase("ProjectName")) {
                 continue;
             }
 
             if (colName.equalsIgnoreCase("bugginess")) {
-                ArrayList<String> classValues = new ArrayList<>();
-                classValues.add("yes");
-                classValues.add("no");
-                attributes.add(new Attribute(colName, classValues));
+                attributes.add(createClassAttribute(colName));
             } else if (col instanceof IntColumn || col instanceof DoubleColumn) {
-                attributes.add(new Attribute(colName)); // Numerico
+                attributes.add(new Attribute(colName));
             } else if (col instanceof StringColumn) {
-                Set<String> uniqueValues = new HashSet<>();
-                for (int i = 0; i < col.size(); i++) {
-                    String value = col.getString(i);
-                    if (value != null && !value.trim().isEmpty()) {
-                        uniqueValues.add(value.trim());
-                    }
-                }
-
-                // Euristiche: se pochi valori unici, è nominale; altrimenti, è stringa
-                if (!uniqueValues.isEmpty() && uniqueValues.size() < 50) { // Limite ragionevole per nominali
-                    ArrayList<String> nominalValues = new ArrayList<>(uniqueValues);
-                    Collections.sort(nominalValues); // Ordina i valori nominali
-                    attributes.add(new Attribute(colName, nominalValues));
-                } else {
-                    // Troppi valori unici o nessun valore, trattato come stringa (testo libero)
-                    logger.warning(String.format("Colonna '%s' ha troppi valori unici (%d) o è vuota. Trattata come attributo String.", colName, uniqueValues.size()));
-                    attributes.add(new Attribute(colName, (ArrayList<String>) null)); // Tipo String Weka
-                }
+                attributes.add(createStringOrNominalAttribute(colName, (StringColumn) col));
             } else {
                 logger.warning("Tipo di colonna Tablesaw non riconosciuto per Weka Attribute: " + colName + " (" + col.type() + "). Skippato.");
             }
         }
 
-        // Sposta l'attributo classe alla fine
         moveClassAttributeToEnd(attributes);
 
         return attributes;
     }
+
+    private Attribute createClassAttribute(String colName) {
+        ArrayList<String> classValues = new ArrayList<>();
+        classValues.add("yes");
+        classValues.add("no");
+        return new Attribute(colName, classValues);
+    }
+
+    private Attribute createStringOrNominalAttribute(String colName, StringColumn col) {
+        Set<String> uniqueValues = new HashSet<>();
+        for (int i = 0; i < col.size(); i++) {
+            String value = col.getString(i);
+            if (value != null && !value.trim().isEmpty()) {
+                uniqueValues.add(value.trim());
+            }
+        }
+        if (!uniqueValues.isEmpty() && uniqueValues.size() < 50) {
+            ArrayList<String> nominalValues = new ArrayList<>(uniqueValues);
+            Collections.sort(nominalValues);
+            return new Attribute(colName, nominalValues);
+        } else {
+            logger.warning(String.format("Colonna '%s' ha troppi valori unici (%d) o è vuota. Trattata come attributo String.", colName, uniqueValues.size()));
+            return new Attribute(colName, (ArrayList<String>) null);
+        }
+    }
+
 
     private void moveClassAttributeToEnd(ArrayList<Attribute> attributes) {
         int classIndex = -1;
@@ -309,10 +306,10 @@ public class DatasetController {
 
     private double getNumericValue(Table table, String columnName, int rowIndex) {
         Column<?> column = table.column(columnName);
-        if (column instanceof DoubleColumn) {
-            return ((DoubleColumn) column).getDouble(rowIndex);
-        } else if (column instanceof IntColumn) {
-            return ((IntColumn) column).getInt(rowIndex);
+        if (column instanceof DoubleColumn doubleColumn) {
+            return doubleColumn.getDouble(rowIndex);
+        } else if (column instanceof IntColumn intColumn) {
+            return intColumn.getInt(rowIndex);
         } else {
             // Se la colonna non è numerica direttamente, prova a parsare da stringa
             String stringValue = column.getString(rowIndex);

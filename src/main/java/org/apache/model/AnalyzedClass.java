@@ -24,7 +24,7 @@ public class AnalyzedClass {
 
     private final String packageName;
     // Nome del package della classe
-    private final String FileName;
+    private final String fileName;
 
     // Struttura della Classe
     private final String className;
@@ -49,7 +49,7 @@ public class AnalyzedClass {
         // --- INIZIO BLOCCO DI CONTROLLO E INIZIALIZZAZIONE ---
         this.className = Objects.requireNonNull(className, "Il nome della classe non può essere nullo");
         this.packageName = packageName;
-        FileName = fileName;
+        this.fileName = fileName;
         if (className.trim().isEmpty()) {
             throw new IllegalArgumentException("Il nome della classe non può essere una stringa vuota.");
         }

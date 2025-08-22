@@ -102,17 +102,16 @@ public  class CognitiveComplexityVisitor extends VoidVisitorAdapter<Void> {
     @Override
     public void visit(BinaryExpr n, Void arg) {
         BinaryExpr.Operator op = n.getOperator();
-        if (op == BinaryExpr.Operator.AND || op == BinaryExpr.Operator.OR) {
+        if (op == BinaryExpr.Operator.AND || op == BinaryExpr.Operator.OR ||!isSameLogicOperator(n.getParentNode().orElse(null), op)) {
             // Incrementa solo se il genitore non è lo stesso tipo di operatore logico
-            if (!isSameLogicOperator(n.getParentNode().orElse(null), op)) {
-                complexity++;
-            }
+            complexity++;
+
         }
         super.visit(n, arg);
     }
 
     private boolean isSameLogicOperator(Node node, BinaryExpr.Operator op) {
-        return node instanceof BinaryExpr && ((BinaryExpr) node).getOperator() == op;
+        return node instanceof BinaryExpr binaryexpr && binaryexpr.getOperator() == op;
     }
 
     // Gestione della ricorsione

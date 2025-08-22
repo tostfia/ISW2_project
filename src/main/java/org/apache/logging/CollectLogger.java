@@ -18,13 +18,14 @@ public class CollectLogger {
         }
         return instance;
     }
-    public Logger getLogger() {
+    public Logger getLogger()  {
         if (logger == null) {
             try (InputStream input = getClass().getClassLoader().getResourceAsStream("logging.properties")) {
                 LogManager.getLogManager().readConfiguration(input);
                 this.logger = Logger.getLogger(CollectLogger.class.getSimpleName());
             }catch(IOException e){
-                throw  new RuntimeException(e);
+                logger.warning("Could not load logging.properties");
+
             }
         }
         return this.logger;

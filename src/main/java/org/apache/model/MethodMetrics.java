@@ -11,7 +11,7 @@ public class MethodMetrics {
     private int size;
     @Setter
     //Metriche di Complessità e Smells
-    private long LOC; // Lines of Code
+    private long loc; // Lines of Code
     @Setter
     private long cycloComplexity;
     @Setter// Cyclomatic Complexity
@@ -49,7 +49,7 @@ public class MethodMetrics {
     public MethodMetrics(){
         this.isBuggy = false;
         this.size = 0;
-        this.LOC = 0;
+        this.loc = 0;
         this.cycloComplexity = 0;
         this.parameterCount=0;
         this.cognitiveComplexity = 0;

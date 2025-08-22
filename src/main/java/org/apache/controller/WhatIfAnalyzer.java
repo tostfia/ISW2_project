@@ -26,6 +26,7 @@ public class WhatIfAnalyzer {
     private final CorrelationController cc;
     private final Logger logger;
     private Classifier loadedWekaClassifier;
+    private final static String OUTPUT_DIR = "output";
 
     public WhatIfAnalyzer(AggregatedClassifierResult bClassifier, Table datasetA, Instances wekaDatasetA, String projectName) {
         this.bClassifier = bClassifier;
@@ -171,60 +172,51 @@ public class WhatIfAnalyzer {
             return new PredictionResult(0, 0, 0);
         }
 
-        int actualBuggy = 0;
-        int predictedBuggy = 0;
-        int correctlyPredictedBuggy = 0;
-        int actualNonBuggy = 0;
-        int predictedNonBuggy = 0;
-        int correctlyPredictedNonBuggy = 0;
-
-        // Assicurati che il dataset abbia la classe impostata
         if (dataToPredict.classIndex() == -1) {
             dataToPredict.setClassIndex(dataToPredict.numAttributes() - 1);
         }
 
-        for (int i = 0; i < dataToPredict.numInstances(); i++) {
-            Instance inst = dataToPredict.instance(i);
-
-            // Valore effettivo della classe (0 = no, 1 = yes per bugginess)
-            double actualClassValue = inst.classValue();
-            boolean isActuallyBuggy = inst.stringValue(inst.classIndex()).equals("yes");
-
-            // Predizione del classificatore
-            double predictedClassValue = loadedWekaClassifier.classifyInstance(inst);
-            boolean isPredictedBuggy = dataToPredict.classAttribute().value((int)predictedClassValue).equals("yes");
-
-            // Conteggi per actual
-            if (isActuallyBuggy) {
-                actualBuggy++;
-            } else {
-                actualNonBuggy++;
-            }
-
-            // Conteggi per predicted
-            if (isPredictedBuggy) {
-                predictedBuggy++;
-                if (isActuallyBuggy) {
-                    correctlyPredictedBuggy++;
-                }
-            } else {
-                predictedNonBuggy++;
-                if (!isActuallyBuggy) {
-                    correctlyPredictedNonBuggy++;
-                }
-            }
-        }
+        int[] counts = countBuggyPredictions(dataToPredict);
 
         logger.info("Predizioni per " + datasetName + ": " +
                 "Totale=" + dataToPredict.numInstances() +
-                ", Actual Buggy=" + actualBuggy +
-                ", Predicted Buggy=" + predictedBuggy +
-                ", Correctly Predicted Buggy=" + correctlyPredictedBuggy);
+                ", Actual Buggy=" + counts[0] +
+                ", Predicted Buggy=" + counts[1] +
+                ", Correctly Predicted Buggy=" + counts[2]);
 
-        return new PredictionResult(actualBuggy, predictedBuggy, correctlyPredictedBuggy,
-                actualNonBuggy, predictedNonBuggy, correctlyPredictedNonBuggy);
+        return new PredictionResult(
+                counts[0], counts[1], counts[2],
+                counts[3], counts[4], counts[5]
+        );
     }
 
+    private int[] countBuggyPredictions(Instances data) throws Exception {
+        int actualBuggy = 0, predictedBuggy = 0, correctlyPredictedBuggy = 0;
+        int actualNonBuggy = 0, predictedNonBuggy = 0, correctlyPredictedNonBuggy = 0;
+
+        for (int i = 0; i < data.numInstances(); i++) {
+            Instance inst = data.instance(i);
+            boolean isActuallyBuggy = inst.stringValue(inst.classIndex()).equals("yes");
+            boolean isPredictedBuggy = data.classAttribute().value(
+                    (int) loadedWekaClassifier.classifyInstance(inst)
+            ).equals("yes");
+
+            if (isActuallyBuggy) actualBuggy++;
+            else actualNonBuggy++;
+
+            if (isPredictedBuggy) {
+                predictedBuggy++;
+                if (isActuallyBuggy) correctlyPredictedBuggy++;
+            } else {
+                predictedNonBuggy++;
+                if (!isActuallyBuggy) correctlyPredictedNonBuggy++;
+            }
+        }
+        return new int[] {
+                actualBuggy, predictedBuggy, correctlyPredictedBuggy,
+                actualNonBuggy, predictedNonBuggy, correctlyPredictedNonBuggy
+        };
+    }
     /**
      * Crea e salva una tabella con i risultati delle predizioni
      */
@@ -262,7 +254,7 @@ public class WhatIfAnalyzer {
                             correctBuggyColumn, correctNonBuggyColumn);
 
             // Salva la tabella come CSV
-            String resultsPath = "output" + File.separator + projectName + "_prediction_results.csv";
+            String resultsPath = OUTPUT_DIR + File.separator + projectName + "_prediction_results.csv";
             resultsTable.write().csv(resultsPath);
             logger.info("Tabella dei risultati salvata in: " + resultsPath);
 
@@ -308,19 +300,19 @@ public class WhatIfAnalyzer {
 
             // Salva bPlusDataset
             saver.setInstances(bPlusDataset);
-            saver.setFile(new File("output" + File.separator + projectName + "_BPlus.csv"));
+            saver.setFile(new File(OUTPUT_DIR + File.separator + projectName + "_BPlus.csv"));
             saver.writeBatch();
             logger.info("Dataset BPlus salvato in: output" + File.separator + projectName + "_BPlus.csv");
 
             // Salva bDataset
             saver.setInstances(bDataset);
-            saver.setFile(new File("output" + File.separator + projectName + "_BDataset.csv"));
+            saver.setFile(new File(OUTPUT_DIR + File.separator + projectName + "_BDataset.csv"));
             saver.writeBatch();
             logger.info("Dataset B salvato in: output" + File.separator + projectName + "_BDataset.csv");
 
             // Salva cDataset
             saver.setInstances(cDataset);
-            saver.setFile(new File("output" + File.separator + projectName + "_CDataset.csv"));
+            saver.setFile(new File(OUTPUT_DIR + File.separator + projectName + "_CDataset.csv"));
             saver.writeBatch();
             logger.info("Dataset C salvato in: output" + File.separator + projectName + "_CDataset.csv");
 

@@ -127,17 +127,15 @@ public class NumOfCodeSmells {
                 // Potrebbe esserci il caso "No files to analyze".
                 if (pmdOutput.toString().contains("No files to analyze")) {
                     logger.warning("PMD ha terminato con successo per la release " + releaseId + " ma non ha trovato file Java da analizzare. (Commit potrebbe non contenere codice Java o filtri attivi).");
-                } else {
-                    logger.info("PMD ha terminato con successo per la release " + releaseId + " senza trovare violazioni.");
                 }
             } else if (exitCode == 4) {
                 // PMD ha terminato con successo e ha trovato violazioni.
                 logger.info("PMD ha terminato con successo per la release " + releaseId + " trovando violazioni. (Vedi report XML).");
-            } else {
-                // Qualsiasi altro codice di uscita indica un vero fallimento o errore di configurazione.
-                logger.severe("PMD ha fallito inaspettatamente per la release " + releaseId + ". Codice di uscita: " + exitCode + ". Output di PMD:\n" + pmdOutput);
             }
-            // --- FINE DIAGNOSTICA AVANZATA ---
+            // Qualsiasi altro codice di uscita indica un vero fallimento o errore di configurazione.
+            logger.severe("PMD ha fallito inaspettatamente per la release " + releaseId + ". Codice di uscita: " + exitCode + ". Output di PMD:\n" + pmdOutput);
+
+
 
         } catch (GitAPIException e) {
             logger.severe("Errore critico di Git durante il checkout del commit " + commit.getName() + ": " + e.getMessage());

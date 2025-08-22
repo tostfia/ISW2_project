@@ -12,7 +12,7 @@ public class ClassMetrics {
     private int size;
     @Setter
     //Metriche di Complessità e Smells
-    private long LOC; // Lines of Code
+    private long loc; // Lines of Code
     @Setter
     private long cycloComplexity;
     @Setter// Cyclomatic Complexity
@@ -39,7 +39,7 @@ public class ClassMetrics {
     public ClassMetrics(){
         this.isBuggy = false;
         this.size = 0;
-        this.LOC = 0;
+        this.loc = 0;
         this.numberOfRevisions = 0;
         this.cycloComplexity = 0;
         this.parameterCount=0;
