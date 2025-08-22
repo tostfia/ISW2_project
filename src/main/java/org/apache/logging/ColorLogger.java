@@ -13,14 +13,14 @@ public class ColorLogger extends Formatter {
     private static final String BLUE = "\u001B[34m";
  
     @Override
-    public String format(@NotNull LogRecord record) {
-        String color= switch (record.getLevel().getName()){
+    public String format(@NotNull LogRecord logRecord) {
+        String color= switch (logRecord.getLevel().getName()){
             case "SEVERE" -> RED;
             case "WARNING" -> YELLOW;
             case "INFO" -> GREEN;
             case "CONFIG" -> BLUE;
             default -> WHITE;
         };
-        return String.format("%s[%s%s%s]%s%n",WHITE ,color,record.getLevel(),WHITE,record.getMessage());
+        return String.format("%s[%s%s%s]%s%n",WHITE ,color,logRecord.getLevel(),WHITE,logRecord.getMessage());
     }
 }

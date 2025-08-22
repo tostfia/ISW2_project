@@ -12,7 +12,7 @@ public class CollectLogger {
     private Logger logger;
 
     private CollectLogger() {}
-    public static CollectLogger getInstance() {
+    public static synchronized CollectLogger getInstance() {
         if (instance == null) {
             instance = new CollectLogger();
         }
@@ -20,11 +20,13 @@ public class CollectLogger {
     }
     public Logger getLogger() {
         if (logger == null) {
-            try (InputStream input = getClass().getClassLoader().getResourceAsStream("logging.properties")) {
+            try {
+                InputStream input = getClass().getClassLoader().getResourceAsStream("logging.properties");
                 LogManager.getLogManager().readConfiguration(input);
                 this.logger = Logger.getLogger(CollectLogger.class.getSimpleName());
-            }catch(IOException e){
-                throw  new RuntimeException(e);
+            } catch (IOException ignored) {
+                System.exit(-1);
+
             }
         }
         return this.logger;

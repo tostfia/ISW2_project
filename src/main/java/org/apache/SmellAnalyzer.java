@@ -28,7 +28,7 @@ public class SmellAnalyzer {
         }
         long endTime = System.currentTimeMillis();
         double elapsedSeconds = (endTime - startTime) / 1000.0;
-        logger.info(String.format("Elapsed Time: %.2f seconds", elapsedSeconds));
+        logger.info(()->"Elapsed Time:"+ elapsedSeconds+"secondi");
 
 
     }

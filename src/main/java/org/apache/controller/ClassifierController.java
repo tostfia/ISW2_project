@@ -34,6 +34,8 @@ public class ClassifierController {
 
 
 
+
+
     public static List<DataClassifier> returnAllClassifiersCombinations(AttributeStats isBuggyAttributeStats) {
         List<Classifier> classifiers = List.of(new RandomForest(), new NaiveBayes(), new IBk());
         List<AttributeSelection> featureSelections = getFeatureSelections();
