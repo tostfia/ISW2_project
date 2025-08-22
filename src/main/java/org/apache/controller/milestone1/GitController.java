@@ -61,8 +61,8 @@ public class GitController {
     @Getter
     private Map<String, List<Commit>> commitsPerFile;
     private final String targetName ;
-    private final static String JAVA=".java";
-    private final static String TEST="/src/test/";
+    private static final  String JAVA=".java";
+    private static final  String TEST="/src/test/";
 
 
 
@@ -286,7 +286,10 @@ public class GitController {
                 classSnapshot.getMethods().forEach(method -> method.setBuggy(false))
         );
 
-        int totalFixingCommitsConsidered = 0, totalAffectedFilesConsidered = 0, totalClassSnapshotsMatched = 0, totalMethodsLabeledBuggy = 0;
+        int totalFixingCommitsConsidered = 0;
+        int  totalAffectedFilesConsidered = 0;
+        int totalClassSnapshotsMatched = 0;
+        int  totalMethodsLabeledBuggy = 0;
 
         for (Map.Entry<Commit, List<Commit>> entry : bugIntroducingCommitsMap.entrySet()) {
             Commit fixingCommit = entry.getKey();

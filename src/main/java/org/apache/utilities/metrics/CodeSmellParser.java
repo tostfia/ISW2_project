@@ -10,9 +10,7 @@ import org.w3c.dom.NodeList;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.File;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Logger;
 
 public class CodeSmellParser {
@@ -34,7 +32,7 @@ public class CodeSmellParser {
     public static void extractCodeSmell(List<AnalyzedClass> analyzedClasses, String targetName, String releaseId) {
         logger.info("Inizio estrazione code smell dal report PMD per release " + releaseId);
 
-        Map<String, AnalyzedMethod> methodsByFqmn = buildMethodLookup(analyzedClasses);
+
 
         String pmdReportPath = "pmd_analysis" + File.separator + targetName + File.separator + releaseId + ".xml";
         File pmdReportFile = new File(pmdReportPath);
@@ -59,19 +57,7 @@ public class CodeSmellParser {
         }
     }
 
-    private static Map<String, AnalyzedMethod> buildMethodLookup(List<AnalyzedClass> analyzedClasses) {
-        Map<String, AnalyzedMethod> methodsByFqmn = new HashMap<>();
-        for (AnalyzedClass ac : analyzedClasses) {
-            String fqcn = ac.getPackageName() + "." + ac.getFileName().replace(".java", "");
-            for (AnalyzedMethod am : ac.getMethods()) {
-                String methodName = am.getMethodDeclaration().getNameAsString();
-                String fqmn = fqcn + "." + methodName;
-                methodsByFqmn.put(fqmn, am);
-            }
-        }
-        logger.fine("Mappa di " + methodsByFqmn.size() + " metodi FQMN creata per lookup.");
-        return methodsByFqmn;
-    }
+
 
     private static void associateViolationsToMethods(NodeList violationList, List<AnalyzedClass> analyzedClasses) {
         for (int i = 0; i < violationList.getLength(); i++) {

@@ -26,7 +26,7 @@ public class WhatIfAnalyzer {
     private final CorrelationController cc;
     private final Logger logger;
     private Classifier loadedWekaClassifier;
-    private final static String OUTPUT_DIR = "output";
+    private static final String OUTPUT_DIR = "output";
 
     public WhatIfAnalyzer(AggregatedClassifierResult bClassifier, Table datasetA, Instances wekaDatasetA, String projectName) {
         this.bClassifier = bClassifier;
@@ -191,8 +191,12 @@ public class WhatIfAnalyzer {
     }
 
     private int[] countBuggyPredictions(Instances data) throws Exception {
-        int actualBuggy = 0, predictedBuggy = 0, correctlyPredictedBuggy = 0;
-        int actualNonBuggy = 0, predictedNonBuggy = 0, correctlyPredictedNonBuggy = 0;
+        int actualBuggy = 0;
+        int predictedBuggy = 0;
+        int correctlyPredictedBuggy = 0;
+        int actualNonBuggy = 0;
+        int predictedNonBuggy = 0;
+        int correctlyPredictedNonBuggy = 0;
 
         for (int i = 0; i < data.numInstances(); i++) {
             Instance inst = data.instance(i);

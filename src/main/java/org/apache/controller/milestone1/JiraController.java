@@ -67,7 +67,8 @@ public class JiraController {
 
     //Fase 2: Scarico i ticket (bug "Fixed") da Jira e li carico nello stato interno
     public void injectTickets() throws IOException, URISyntaxException {
-        int total, startAt = 0;
+        int total;
+        int startAt = 0;
         do {
             String jql = String.format("project = \"%s\" AND issuetype = \"Bug\"", targetName);
             String url = JIRA_BASE_URL + "search?jql=" + java.net.URLEncoder.encode(jql, StandardCharsets.UTF_8)
@@ -115,12 +116,10 @@ public class JiraController {
         if (openingVersion == null || fixedVersion == null || openingVersion.getReleaseDate().isAfter(fixedVersion.getReleaseDate())) {
             return false;
         }
-        if (!affectedVersionList.isEmpty() ||
+        return (!affectedVersionList.isEmpty() ||
                 openingVersion.getReleaseDate().isBefore(affectedVersionList.getFirst().getReleaseDate()) ||
-                !fixedVersion.getReleaseDate().isAfter(affectedVersionList.getLast().getReleaseDate())) {
-            return false;
-        }
-        return true;
+                !fixedVersion.getReleaseDate().isAfter(affectedVersionList.getLast().getReleaseDate()));
+
     }
 
 

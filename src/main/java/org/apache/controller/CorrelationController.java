@@ -5,13 +5,11 @@ package org.apache.controller;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.logging.CollectLogger;
 import tech.tablesaw.api.*;
 
 
 
 import java.util.*;
-import java.util.logging.Logger;
 
 public class CorrelationController {
 

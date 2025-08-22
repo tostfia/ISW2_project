@@ -248,8 +248,8 @@ public class DatasetController {
                 attributes.add(createClassAttribute(colName));
             } else if (col instanceof IntColumn || col instanceof DoubleColumn) {
                 attributes.add(new Attribute(colName));
-            } else if (col instanceof StringColumn) {
-                attributes.add(createStringOrNominalAttribute(colName, (StringColumn) col));
+            } else if (col instanceof StringColumn stringColumn) {
+                attributes.add(createStringOrNominalAttribute(colName, stringColumn));
             } else {
                 logger.warning("Tipo di colonna Tablesaw non riconosciuto per Weka Attribute: " + colName + " (" + col.type() + "). Skippato.");
             }
