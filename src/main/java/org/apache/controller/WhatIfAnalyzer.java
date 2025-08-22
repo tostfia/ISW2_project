@@ -44,8 +44,8 @@ public class WhatIfAnalyzer {
         String aFeature = identifyAFeature();
         String methodName = cc.findBuggyMethodWithMaxFeature(aFeature);
 
-        logger.info("Feature Azionabile (AFeature) identificata: " + aFeature);
-        logger.info("Metodo con il valore massimo di " + aFeature + " tra i metodi buggy: " + methodName + " - Fare il refactor");
+        logger.info(()->"Feature Azionabile (AFeature) identificata: " + aFeature);
+        logger.info(()->"Metodo con il valore massimo di " + aFeature + " tra i metodi buggy: " + methodName + " - Fare il refactor");
 
         // Carica il modello del classificatore BClassifierA
         String modelFilePath = bClassifier.getModelFilePath();
@@ -92,16 +92,16 @@ public class WhatIfAnalyzer {
     private String identifyAFeature() {
         CorrelationController.FeatureCorrelation best = cc.getBestFeature();
         String aFeature = best.featureName();
-        logger.info("Feature azionabile (AFeature): " + aFeature + ", correlazione: " + best.correlation());
+        logger.info(()->"Feature azionabile (AFeature): " + aFeature + ", correlazione: " + best.correlation());
         return aFeature;
     }
 
     private void loadClassifierModel(String modelPath) {
         try {
             loadedWekaClassifier = (Classifier) SerializationHelper.read(modelPath);
-            logger.info("Modello del classificatore caricato con successo da: " + modelPath);
+            logger.info(()->"Modello del classificatore caricato con successo da: " + modelPath);
         } catch (Exception e) {
-            logger.severe("Errore durante il caricamento del modello del classificatore da " + modelPath + ": " + e.getMessage());
+            logger.severe(()->"Errore durante il caricamento del modello del classificatore da " + modelPath + ": " + e.getMessage());
             loadedWekaClassifier = null;
         }
     }
@@ -125,7 +125,7 @@ public class WhatIfAnalyzer {
             }
         }
 
-        logger.info("Dataset B+ creato con " + bPlus.numInstances() + " istanze (mantiene MethodName, Project, Release)");
+        logger.info(()->"Dataset B+ creato con " + bPlus.numInstances() + " istanze (mantiene MethodName, Project, Release)");
         return bPlus;
     }
 
@@ -144,7 +144,7 @@ public class WhatIfAnalyzer {
             }
         }
 
-        logger.info("Dataset C creato con " + cDataset.numInstances() + " istanze (mantiene MethodName, Project, Release)");
+        logger.info(()->"Dataset C creato con " + cDataset.numInstances() + " istanze (mantiene MethodName, Project, Release)");
         return cDataset;
     }
 
@@ -159,7 +159,7 @@ public class WhatIfAnalyzer {
             inst.setValue(smellsIndex, 0); // Azzera solo gli smells
         }
 
-        logger.info("Dataset B creato con " + bDataset.numInstances() + " istanze (B+ con smells azzerati, mantiene MethodName, Project, Release)");
+        logger.info(()->"Dataset B creato con " + bDataset.numInstances() + " istanze (B+ con smells azzerati, mantiene MethodName, Project, Release)");
         return bDataset;
     }
 
@@ -168,7 +168,7 @@ public class WhatIfAnalyzer {
      */
     private PredictionResult predict(Instances dataToPredict, String datasetName) throws Exception {
         if (dataToPredict == null || dataToPredict.isEmpty()) {
-            logger.warning("Dataset '" + datasetName + "' è vuoto. Impossibile effettuare predizioni.");
+            logger.warning(()->"Dataset '" + datasetName + "' è vuoto. Impossibile effettuare predizioni.");
             return new PredictionResult(0, 0, 0);
         }
 
@@ -178,7 +178,7 @@ public class WhatIfAnalyzer {
 
         int[] counts = countBuggyPredictions(dataToPredict);
 
-        logger.info("Predizioni per " + datasetName + ": " +
+        logger.info(()->"Predizioni per " + datasetName + ": " +
                 "Totale=" + dataToPredict.numInstances() +
                 ", Actual Buggy=" + counts[0] +
                 ", Predicted Buggy=" + counts[1] +
@@ -260,14 +260,14 @@ public class WhatIfAnalyzer {
             // Salva la tabella come CSV
             String resultsPath = OUTPUT_DIR + File.separator + projectName + "_prediction_results.csv";
             resultsTable.write().csv(resultsPath);
-            logger.info("Tabella dei risultati salvata in: " + resultsPath);
+            logger.info(()->"Tabella dei risultati salvata in: " + resultsPath);
 
             // Stampa anche la tabella nel log per visibilità immediata
             logger.info("\n--- TABELLA DEI RISULTATI DELLE PREDIZIONI ---");
             logger.info(resultsTable.print());
 
         } catch (Exception e) {
-            logger.severe("Errore durante la creazione della tabella dei risultati: " + e.getMessage());
+            logger.severe(()->"Errore durante la creazione della tabella dei risultati: " + e.getMessage());
         }
     }
 
@@ -281,8 +281,8 @@ public class WhatIfAnalyzer {
             int preventableBuggyMethods = bPlusRes.getPredictedBuggy() - bRes.getPredictedBuggy();
             if (preventableBuggyMethods < 0) preventableBuggyMethods = 0;
 
-            logger.info("Metodi con smells predetti come buggy (B+): " + bPlusRes.getPredictedBuggy());
-            logger.info("Metodi (ex B+ con smells azzerati) predetti come buggy (B): " + bRes.getPredictedBuggy());
+            logger.info(()->"Metodi con smells predetti come buggy (B+): " + bPlusRes.getPredictedBuggy());
+            logger.info(()->"Metodi (ex B+ con smells azzerati) predetti come buggy (B): " + bRes.getPredictedBuggy());
             logger.info("RISPOSTA: Circa " + preventableBuggyMethods +
                     " metodi difettosi avrebbero potuto essere prevenuti azzerando " + aFeature);
 
@@ -306,22 +306,22 @@ public class WhatIfAnalyzer {
             saver.setInstances(bPlusDataset);
             saver.setFile(new File(OUTPUT_DIR + File.separator + projectName + "_BPlus.csv"));
             saver.writeBatch();
-            logger.info("Dataset BPlus salvato in: output" + File.separator + projectName + "_BPlus.csv");
+            logger.info(()->"Dataset BPlus salvato in: output" + File.separator + projectName + "_BPlus.csv");
 
             // Salva bDataset
             saver.setInstances(bDataset);
             saver.setFile(new File(OUTPUT_DIR + File.separator + projectName + "_BDataset.csv"));
             saver.writeBatch();
-            logger.info("Dataset B salvato in: output" + File.separator + projectName + "_BDataset.csv");
+            logger.info(()->"Dataset B salvato in: output" + File.separator + projectName + "_BDataset.csv");
 
             // Salva cDataset
             saver.setInstances(cDataset);
             saver.setFile(new File(OUTPUT_DIR + File.separator + projectName + "_CDataset.csv"));
             saver.writeBatch();
-            logger.info("Dataset C salvato in: output" + File.separator + projectName + "_CDataset.csv");
+            logger.info(()->"Dataset C salvato in: output" + File.separator + projectName + "_CDataset.csv");
 
         } catch (Exception e) {
-            logger.severe("Errore durante il salvataggio dei dataset B+, B, C in CSV: " + e.getMessage());
+            logger.severe(()->"Errore durante il salvataggio dei dataset B+, B, C in CSV: " + e.getMessage());
         }
     }
 
@@ -335,9 +335,9 @@ public class WhatIfAnalyzer {
         String[] importantColumns = {"MethodName", "Project", "Release", "NumberOfCodeSmells", "bugginess"};
         for (String colName : importantColumns) {
             if (dataset.attribute(colName) != null) {
-                logger.info("  ✓ " + colName + " presente (indice: " + dataset.attribute(colName).index() + ")");
+                logger.info(()->"  ✓ " + colName + " presente (indice: " + dataset.attribute(colName).index() + ")");
             } else {
-                logger.warning("  ✗ " + colName + " MANCANTE!");
+                logger.warning(()->"  ✗ " + colName + " MANCANTE!");
             }
         }
 

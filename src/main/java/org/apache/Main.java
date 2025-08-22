@@ -23,6 +23,7 @@ public class Main {
 
 
     public static final String SYS_CUT_PERCENTAGE = "SYS_CUT_PERCENTAGE";
+    public static  final String SECONDI = " secondi.";
     private static final double DEFAULT_CUT_PERCENTAGE = 0.34; // Corrisponde a "ignora l'ultimo 66%"
 
 
@@ -76,7 +77,7 @@ public class Main {
 
         long end = System.currentTimeMillis();
         long time = (end - start) / 1000;
-        logger.info(()->"Fase 2 completata in"+ time+" secondi.");
+        logger.info(()->"Fase 2 completata in"+ time+SECONDI);
 
 
         logger.info("\nFase 2: Esecuzione Classificazione con WekaController...");
@@ -99,7 +100,7 @@ public class Main {
 
         long endFase2 = System.currentTimeMillis();
         long timeFaseDue = (endFase2 - start) / 1000;
-        logger.info(()->"Fase 2 completata in"+ timeFaseDue+" secondi.");
+        logger.info(()->"Fase 2 completata in"+ timeFaseDue+SECONDI);
 
         List<String> allReleases = jiraController.getRealeases()
                 .stream()
@@ -141,7 +142,7 @@ public class Main {
 
         end = System.currentTimeMillis();
         long timeEnd = (end - start) / 1000;
-        logger.info(()->"Fase 3 completata in"+ timeEnd+" secondi.");
+        logger.info(()->"Fase 3 completata in"+ timeEnd+SECONDI);
     }
 
     private static double getCutPercentage() {

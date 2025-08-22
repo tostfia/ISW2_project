@@ -78,10 +78,10 @@ public class GitController {
         Path repoPath = Paths.get(customBasePath, targetName.toLowerCase());
         File repoDir = repoPath.toFile();
         if (!repoDir.exists()) {
-            logger.info("Cloning repository: " + gitUrl);
+            logger.info(()->"Cloning repository: " + gitUrl);
             this.git = Git.cloneRepository().setURI(gitUrl).setDirectory(repoDir).call();
         } else {
-            logger.info("Opening local repository: " + repoPath);
+            logger.info(()->"Opening local repository: " + repoPath);
             this.git = Git.open(repoDir);
         }
         this.repository = git.getRepository();
@@ -311,9 +311,14 @@ public class GitController {
                 }
             }
         }
-        logger.info(String.format("labelBugginess completata. Processati %d fixing commits, considerati %d file affetti, trovati %d snapshot di classi, etichettati %d metodi come buggy.",
-                totalFixingCommitsConsidered, totalAffectedFilesConsidered, totalClassSnapshotsMatched, totalMethodsLabeledBuggy));
+
+        final int fixingCommits = totalFixingCommitsConsidered;
+        final int affectedFiles = totalAffectedFilesConsidered;
+        final int classSnapshots = totalClassSnapshotsMatched;
+        final int methodsLabeledBuggy = totalMethodsLabeledBuggy;
+        logger.info(() -> "labelBugginess completata. Processati" + fixingCommits + "fixing commits, considerati" + affectedFiles + "file affetti, trovati" + classSnapshots + " snapshot di classi, etichettati" + methodsLabeledBuggy + "metodi come buggy.");
         logger.info("Bugginess etichettata a livello di metodo per le classi analizzate.");
+
     }
 
     private int labelSnapshotsBuggy(List<AnalyzedClass> snapshots, Release injectedVersion, Release fixedVersion) {
@@ -357,7 +362,7 @@ public class GitController {
         Map<Release, List<Commit>> commitsByRelease = allCommits.values().stream()
                 .filter(c -> c.getRelease() != null)
                 .collect(Collectors.groupingBy(Commit::getRelease));
-        logger.fine("Mappa dei commit per release creata con " + commitsByRelease.size() + " voci.");
+        logger.fine(()->"Mappa dei commit per release creata con " + commitsByRelease.size() + " voci.");
 
         Map<Release, List<Ticket>> ticketsByFixedRelease = this.tickets.stream()
                 .filter(t -> t.getFixedVersion() != null)
@@ -393,29 +398,29 @@ public class GitController {
     ) {
         Release fixingCommitRelease = fixingCommit.getRelease();
         if (fixingCommitRelease == null) {
-            logger.fine("Saltando il fixing commit " + fixingCommit.getRevCommit().getName() +
+            logger.fine(()->"Saltando il fixing commit " + fixingCommit.getRevCommit().getName() +
                     " (ticket: " + (fixingCommit.getTicket() != null ? fixingCommit.getTicket().getTicketKey() : "N/A") +
                     ") a causa di informazioni sulla release mancanti.");
             return Collections.emptyList();
         }
-        logger.fine("Processing fixing commit: " + fixingCommit.getRevCommit().getName() +
+        logger.fine(()->"Processing fixing commit: " + fixingCommit.getRevCommit().getName() +
                 ", Release: " + fixingCommitRelease.getReleaseName());
 
         List<Ticket> relatedTickets = ticketsByFixedRelease.getOrDefault(fixingCommitRelease, Collections.emptyList());
-        logger.fine("  Trovati " + relatedTickets.size() + " ticket correlati per questa fixing release.");
+        logger.fine(()->"  Trovati " + relatedTickets.size() + " ticket correlati per questa fixing release.");
 
         Set<Commit> bugIntroCommitsForThisFixingCommit = new HashSet<>();
 
         for (Ticket ticket : relatedTickets) {
             Release injectedRelease = ticket.getInjectedVersion();
             if (injectedRelease == null) {
-                logger.fine("  Saltando il ticket " + ticket.getTicketKey() + " a causa della Injected Version mancante.");
+                logger.fine(()->"  Saltando il ticket " + ticket.getTicketKey() + " a causa della Injected Version mancante.");
                 continue;
             }
-            logger.fine("    Ticket " + ticket.getTicketKey() + ", Injected Release: " + injectedRelease.getReleaseName());
+            logger.fine(()->"    Ticket " + ticket.getTicketKey() + ", Injected Release: " + injectedRelease.getReleaseName());
 
             List<Commit> potentialIntroCommitsInRelease = commitsByRelease.getOrDefault(injectedRelease, Collections.emptyList());
-            logger.fine("    Trovati " + potentialIntroCommitsInRelease.size() + " commit potenzialmente introduttivi nella Injected Release.");
+            logger.fine(()->"    Trovati " + potentialIntroCommitsInRelease.size() + " commit potenzialmente introduttivi nella Injected Release.");
 
             bugIntroCommitsForThisFixingCommit.addAll(potentialIntroCommitsInRelease);
         }
