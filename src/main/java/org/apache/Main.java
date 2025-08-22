@@ -35,7 +35,7 @@ public class Main {
             return;
         }
         String projectName = args[0]; // Nome del progetto passato come argomento
-        logger.info(String.format("INIZIO ANALISI per : %s", projectName));
+        logger.info(()->"INIZIO ANALISI per : %s"+ projectName) ;
 
         JiraController jiraController = new JiraController(projectName);
         jiraController.injectRelease();
@@ -65,12 +65,12 @@ public class Main {
         try {
             actualIteration=datasetController.generateWalkForwardArffFiles(datasetA, projectName, walkForwardIterations);
 
-            logger.info(String.format("Generazione dei file ARFF completata per %d iterazioni di Walk-Forward.", actualIteration));
+            logger.info(()->"Generazione dei file ARFF completata per %d iterazioni di Walk-Forward."+ actualIteration);
         } catch (IOException e) {
-            logger.severe("Errore durante la generazione dei file ARFF per il Walk-Forward: " + e.getMessage());
+            logger.severe(()->"Errore durante la generazione dei file ARFF per il Walk-Forward: " + e.getMessage());
             return;
         } catch (Exception e) {
-            logger.severe("Errore generico durante la generazione dei file ARFF: " + e.getMessage());
+            logger.severe(()->"Errore generico durante la generazione dei file ARFF: " + e.getMessage());
             return;
         }
 
@@ -120,7 +120,7 @@ public class Main {
         String modelPath ="models"+ File.separator+ projectName+"_BClassifierA.model";
         SerializationHelper.write(modelPath, classifier);
         bClassifier.setModelFilePath(modelPath);
-        logger.info(String.format("Modello caricato e salvato in: %s", modelPath));
+        logger.info(()->"Modello caricato e salvato in: %s"+ modelPath);
 
 
 
@@ -132,7 +132,7 @@ public class Main {
         try {
             whatIfAnalyzer.run();
         } catch (Exception e) {
-            logger.severe("Errore durante l'analisi What-If: " + e.getMessage());
+            logger.severe(()->"Errore durante l'analisi What-If: " + e.getMessage());
             return;
         }
 
