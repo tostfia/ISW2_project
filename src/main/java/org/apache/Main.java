@@ -75,7 +75,8 @@ public class Main {
         }
 
         long end = System.currentTimeMillis();
-        logger.info(String.format("Fase 1 completata in %.2f secondi.", (end - start) / 1000.0));
+        long time = (end - start) / 1000;
+        logger.info(()->"Fase 2 completata in"+ time+" secondi.");
 
 
         logger.info("\nFase 2: Esecuzione Classificazione con WekaController...");
@@ -97,7 +98,8 @@ public class Main {
         logger.info(String.format("Miglior classificatore selezionato: %s ", bClassifier.getClassifierName()));
 
         long endFase2 = System.currentTimeMillis();
-        logger.info(String.format("Fase 2 completata in %.2f secondi.", (endFase2 - start) / 1000.0));
+        long timeFaseDue = (endFase2 - start) / 1000;
+        logger.info(()->"Fase 2 completata in"+ timeFaseDue+" secondi.");
 
         List<String> allReleases = jiraController.getRealeases()
                 .stream()
@@ -138,7 +140,8 @@ public class Main {
 
 
         end = System.currentTimeMillis();
-        logger.info(String.format("ANALISI COMPLETATA IN %.2f SECONDI.", (end - start) / 1000.0));
+        long timeEnd = (end - start) / 1000;
+        logger.info(()->"Fase 3 completata in"+ timeEnd+" secondi.");
     }
 
     private static double getCutPercentage() {
