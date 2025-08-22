@@ -32,11 +32,10 @@ public class CollectLogger {
                 this.logger = Logger.getLogger(CollectLogger.class.getSimpleName());
             }
         }
-        return this.logger;
+        return logger;
     }
 
-    // ---------- API "sicura" che evita Sonar issues ----------
-
+    // --- Log con placeholder JUL
     public void info(String msg, Object... args) {
         getInternalLogger().log(Level.INFO, msg, args);
     }
@@ -53,7 +52,28 @@ public class CollectLogger {
         getInternalLogger().log(level, msg, args);
     }
 
-    // Variante lazy: valutata solo se il livello è abilitato
+    // --- Log con Supplier (lazy evaluation)
+    public void info(Supplier<String> msgSupplier) {
+        Logger l = getInternalLogger();
+        if (l.isLoggable(Level.INFO)) {
+            l.info(msgSupplier);
+        }
+    }
+
+    public void warning(Supplier<String> msgSupplier) {
+        Logger l = getInternalLogger();
+        if (l.isLoggable(Level.WARNING)) {
+            l.warning(msgSupplier);
+        }
+    }
+
+    public void severe(Supplier<String> msgSupplier) {
+        Logger l = getInternalLogger();
+        if (l.isLoggable(Level.SEVERE)) {
+            l.severe(msgSupplier);
+        }
+    }
+
     public void log(Level level, Supplier<String> msgSupplier) {
         Logger l = getInternalLogger();
         if (l.isLoggable(level)) {
@@ -61,3 +81,4 @@ public class CollectLogger {
         }
     }
 }
+
