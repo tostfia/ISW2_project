@@ -58,10 +58,6 @@ public class AnalyzedMethod {
     }
 
 
-    public boolean overlaps(int editStart, int editEnd) {
-        return startLine <= editEnd && endLine >= editStart;
-    }
-
 
 
 }

@@ -1,7 +1,7 @@
 package org.apache.controller.milestone1;
 
 import lombok.Getter;
-import org.apache.logging.CollectLogger;
+import org.apache.logging.Printer;
 import org.apache.model.Release;
 import org.apache.model.Ticket;
 import org.apache.utilities.JsonReader;
@@ -12,14 +12,13 @@ import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.*;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class JiraController {
     private final List<Release> releases;
     private final List<Ticket> tickets;
     private final String targetName;
-    private static final Logger logger = CollectLogger.getInstance().getLogger();
+
 
 
     @Getter
@@ -50,7 +49,7 @@ public class JiraController {
             if (version.has("name")) releaseName = version.getString("name");
             if (version.has("releaseDate")) releaseDate = version.getString("releaseDate");
             if (releaseID == null || releaseName == null || releaseDate == null) {
-                logger.warning("Incomplete version data: " + version);
+                Printer.printYellow("Incomplete version data: " + version);
                 continue;
             }
             try {
@@ -58,7 +57,7 @@ public class JiraController {
                 Release newRelease = new Release(releaseID, releaseName, releaseDate);
                 this.releases.add(newRelease);
             } catch (NullPointerException e) {
-                logger.severe(e.getMessage());
+                Printer.errorPrint(e.getMessage());
             }
         }
         releases.sort(Comparator.comparing(Release::getReleaseDate));
@@ -70,55 +69,71 @@ public class JiraController {
         int total;
         int startAt = 0;
         do {
+
+
+            // Query JQL Semplificata: "dammi TUTTI i ticket di tipo Bug, indipendentemente dallo stato"
             String jql = String.format("project = \"%s\" AND issuetype = \"Bug\"", targetName);
             String url = JIRA_BASE_URL + "search?jql=" + java.net.URLEncoder.encode(jql, StandardCharsets.UTF_8)
                     + "&fields=key,versions,created,resolutiondate&startAt=" + startAt + "&maxResults=1000";
             JSONObject json = JsonReader.readJsonFromUrl(url);
             JSONArray issues = json.getJSONArray("issues");
             total = json.getInt("total");
-
+            //itero sui ticket ricordo che key è l'identificativo del ticket
             for (Object issueObj : issues) {
+                JSONObject issue = (JSONObject) issueObj;
                 try {
-                    processIssue((JSONObject) issueObj);
+                    JSONObject fields = issue.getJSONObject("fields");
+
+
+                    // Controlliamo se il ticket è stato risolto.
+                    // Usiamo optString per evitare eccezioni su campi null.
+                    String resolutionDateString = fields.optString("resolutiondate");
+
+                    // Procediamo SOLO se la data di risoluzione esiste e non è vuota.
+                    if (resolutionDateString != null && !resolutionDateString.isEmpty()) {
+
+                        String key = issue.getString("key");
+                        String creationDateString = fields.getString("created");
+
+                        // Ora che siamo sicuri che le stringhe esistano, possiamo fare il parsing.
+                        LocalDate creationDate = LocalDate.parse(creationDateString.substring(0, 10));
+                        LocalDate resolutionDate = LocalDate.parse(resolutionDateString.substring(0, 10));
+
+                        JSONArray affectedVersions = fields.optJSONArray("versions");
+
+                        //Prendo OV of the issues
+                        Release openingVersion = Release.getReleaseAfterOrEqualToDate(creationDate, this.releases);
+                        //Prendo FV of the issues
+                        Release fixedVersion = Release.getReleaseAfterOrEqualToDate(resolutionDate, this.releases);
+                        List<Release> affectedVersionList = Release.getAffectedVersions(affectedVersions, this.releases);
+                        // Prima, controlliamo le condizioni di base che causano sempre lo scarto del ticket.
+                        if (openingVersion == null || fixedVersion == null || openingVersion.getReleaseDate().isAfter(fixedVersion.getReleaseDate())) {
+                            continue; // Scarta il ticket e passa al successivo
+                        }
+
+                        // Ora, gestiamo la logica complessa legata alle affected versions.
+                        // Eseguiamo questo controllo SOLO SE la lista delle affected versions NON è vuota.
+                        if (!affectedVersionList.isEmpty()) {
+                            // Se la lista non è vuota, controlliamo la coerenza.
+                            // Se una di queste condizioni è vera, il ticket non è coerente e lo scartiamo.
+                            if (openingVersion.getReleaseDate().isBefore(affectedVersionList.getFirst().getReleaseDate()) ||
+                                    !fixedVersion.getReleaseDate().isAfter(affectedVersionList.getLast().getReleaseDate())) {
+                                continue; // Scarta il ticket
+                            }
+                        }
+                        tickets.add(new Ticket(key, creationDate, resolutionDate, openingVersion, fixedVersion, affectedVersionList));
+                    }
                 } catch (Exception e) {
-                    logger.warning("Impossibile processare un ticket. Causa: " + e.getMessage());
+                    Printer.printYellow("Impossibile processare un ticket. Causa: " + e.getMessage());
                 }
+
             }
             startAt += issues.length();
+
         } while (startAt < total);
-
-        this.fixedTickets = new ArrayList<>(this.tickets);
-        this.fixedTickets.sort(Comparator.comparing(Ticket::getResolutionDate));
-        logger.info(String.format("Trovati e processati %d ticket 'Fixed' per %s", this.fixedTickets.size(), targetName));
-    }
-
-    private void processIssue(JSONObject issue) {
-        JSONObject fields = issue.getJSONObject("fields");
-        String resolutionDateString = fields.optString("resolutiondate");
-        if (resolutionDateString == null || resolutionDateString.isEmpty()) return;
-
-        String key = issue.getString("key");
-        String creationDateString = fields.getString("created");
-        LocalDate creationDate = LocalDate.parse(creationDateString.substring(0, 10));
-        LocalDate resolutionDate = LocalDate.parse(resolutionDateString.substring(0, 10));
-        JSONArray affectedVersions = fields.optJSONArray("versions");
-
-        Release openingVersion = Release.getReleaseAfterOrEqualToDate(creationDate, this.releases);
-        Release fixedVersion = Release.getReleaseAfterOrEqualToDate(resolutionDate, this.releases);
-        List<Release> affectedVersionList = Release.getAffectedVersions(affectedVersions, this.releases);
-
-        if (!isValidTicket(openingVersion, fixedVersion, affectedVersionList)) return;
-
-        tickets.add(new Ticket(key, creationDate, resolutionDate, openingVersion, fixedVersion, affectedVersionList));
-    }
-
-    private boolean isValidTicket(Release openingVersion, Release fixedVersion, List<Release> affectedVersionList) {
-        if (openingVersion == null || fixedVersion == null || openingVersion.getReleaseDate().isAfter(fixedVersion.getReleaseDate())) {
-            return false;
-        }
-        return (!affectedVersionList.isEmpty() ||
-                openingVersion.getReleaseDate().isBefore(affectedVersionList.getFirst().getReleaseDate()) ||
-                !fixedVersion.getReleaseDate().isAfter(affectedVersionList.getLast().getReleaseDate()));
+            this.fixedTickets = new ArrayList<>(this.tickets);
+            this.fixedTickets.sort(Comparator.comparing(Ticket::getResolutionDate));
+            Printer.printGreen(String.format("Trovati e processati %d ticket 'Fixed' per %s \n", this.fixedTickets.size(), targetName));
 
     }
 
@@ -130,7 +145,7 @@ public class JiraController {
 
 
     public void applyProportion(List<Double> coldStartData) {
-        logger.info("Avvio dell'euristica Proportion per stimare le Injected Versions...");
+        Printer.printBlue("Avvio dell'euristica Proportion per stimare le Injected Versions...\n");
 
         ProportionController propController = new ProportionController();
 
@@ -144,7 +159,7 @@ public class JiraController {
                 .sorted(Comparator.comparing(Ticket::getResolutionDate))
                 .collect(Collectors.toList());
 
-        logger.info(String.format("Processo Proportion completato. Numero finale di ticket validi: %d", this.fixedTickets.size()));
+        Printer.printlnBlue("Processo Proportion completato. Numero finale di ticket validi: "+ this.fixedTickets.size()+"\n");
     }
 
 

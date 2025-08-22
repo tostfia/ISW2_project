@@ -1,5 +1,5 @@
 package org.apache.utilities;
-import org.apache.logging.CollectLogger;
+import org.apache.logging.Printer;
 import org.json.JSONObject;
 import java.io.*;
 import java.net.URI;
@@ -30,7 +30,7 @@ public class JsonReader {
             String jsonString= new String(Files.readAllBytes(Paths.get(path)));
             return new  JSONObject(jsonString);
         } catch (IOException e) {
-            CollectLogger.getInstance().getLogger().severe(e.getMessage());
+            Printer.errorPrint(e.getMessage());
             return null;
         }
     }

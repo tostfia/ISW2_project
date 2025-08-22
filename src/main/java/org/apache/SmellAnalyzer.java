@@ -2,14 +2,14 @@ package org.apache;
 
 
 import org.apache.controller.milestone1.AnalysisController;
-import org.apache.logging.CollectLogger;
+import org.apache.logging.Printer;
 
-import java.util.logging.Logger;
+
 
 
 public class SmellAnalyzer {
     public static void main(String[] args)  {
-        Logger logger= CollectLogger.getInstance().getLogger();
+
 
         String configFilePath = args[0];
         //In config.json si trovano le repo Git da analizzare
@@ -17,18 +17,18 @@ public class SmellAnalyzer {
         //"STORM": "https://github.com/tostfia/storm.git"
 
 
-        logger.info("--------------------------------------------ANALISI AVVIATA--------------------------------------------");
+        Printer.printlnGreen("\n--------------------------------------------ANALISI AVVIATA--------------------------------------------\n");
         long startTime = System.currentTimeMillis();
 
         try {
             AnalysisController controller = new AnalysisController();
             controller.startAnalysis(configFilePath);
         }catch (Exception e) {
-            logger.severe(e.getMessage());
+            Printer.errorPrint(e.getMessage());
         }
         long endTime = System.currentTimeMillis();
         double elapsedSeconds = (endTime - startTime) / 1000.0;
-        logger.info(()->"Elapsed Time:"+ elapsedSeconds+"secondi");
+        Printer.printlnBlue("Elapsed Time:"+ elapsedSeconds+"secondi\n");
 
 
     }

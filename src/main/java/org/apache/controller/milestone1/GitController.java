@@ -3,7 +3,7 @@ package org.apache.controller.milestone1;
 
 import lombok.Getter;
 import lombok.Setter;
-import org.apache.logging.CollectLogger;
+import org.apache.logging.Printer;
 import org.apache.model.*;
 
 import org.eclipse.jgit.api.Git;
@@ -31,7 +31,7 @@ import java.time.LocalDateTime;
 
 import java.time.ZoneOffset;
 import java.util.*;
-import java.util.logging.Logger;
+
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -61,12 +61,12 @@ public class GitController {
     @Getter
     private Map<String, List<Commit>> commitsPerFile;
     private final String targetName ;
-    private static final  String JAVA=".java";
-    private static final  String TEST="/src/test/";
+    private final static String JAVA=".java";
+    private final static String TEST="/src/test/";
 
 
 
-    private final Logger logger = CollectLogger.getInstance().getLogger();
+
 
     public GitController(String targetName, String gitUrl, List<Release> releases) throws IOException, GitAPIException {
         this(targetName, gitUrl, releases, DEFAULT_REPO_BASE_PATH);
@@ -78,10 +78,10 @@ public class GitController {
         Path repoPath = Paths.get(customBasePath, targetName.toLowerCase());
         File repoDir = repoPath.toFile();
         if (!repoDir.exists()) {
-            logger.info(()->"Cloning repository: " + gitUrl);
+            Printer.print("Cloning repository: " + gitUrl+"\n");
             this.git = Git.cloneRepository().setURI(gitUrl).setDirectory(repoDir).call();
         } else {
-            logger.info(()->"Opening local repository: " + repoPath);
+            Printer.print("Opening local repository: " + repoPath+"\n");
             this.git = Git.open(repoDir);
         }
         this.repository = git.getRepository();
@@ -94,7 +94,7 @@ public class GitController {
     }
 
     public void buildCommitHistory() throws GitAPIException, IOException {
-        logger.info(()->"Starting commit analysis for " + targetName);
+        Printer.printBlue("Starting commit analysis for " + targetName+"\n");
         Iterable<RevCommit> log = git.log().all().call();
 
         for (RevCommit revCommit : log) {
@@ -114,7 +114,7 @@ public class GitController {
 
 
         releases.removeIf(release -> release.getCommitList().isEmpty());
-        logger.info(()->"Found and processed " + this.allCommits.size() + " commits across " + releases.size() + " valid releases.");
+        Printer.printBlue("Found and processed " + this.allCommits.size() + " commits across " + releases.size() + " valid releases.\n");
     }
 
 
@@ -136,7 +136,7 @@ public class GitController {
 
 
     public void findBuggyFiles() {
-        logger.info("Searching for bug-fixing commits and associated files...");
+        Printer.printBlue("Searching for bug-fixing commits and associated files...\n");
         Map<String, Ticket> ticketMap = new HashMap<>();
 
 
@@ -145,7 +145,7 @@ public class GitController {
 
         }
 
-        logger.info(()->"Found " + ticketMap.size() + " valid bug tickets");
+        Printer.printGreen("Found " + ticketMap.size() + " valid bug tickets\n");
 
         Pattern pattern = Pattern.compile(this.targetName + "-\\d+", Pattern.CASE_INSENSITIVE);
 
@@ -162,12 +162,12 @@ public class GitController {
                         List<String> modifiedFiles = getModifiedFiles(commit.getRevCommit());
                         this.buggyFilesPerCommit.put(commit, modifiedFiles);
                     } catch (IOException e) {
-                        logger.warning("Cannot analyze diff for commit " + commit.getRevCommit().getName() + ". Error: " + e.getMessage());
+                        Printer.errorPrint("Cannot analyze diff for commit " + commit.getRevCommit().getName() + ". Error: " + e.getMessage());
                     }
                 }
             }
         }
-        logger.info(()->"Found " + this.fixingCommits.size() + " bug-fixing commits.");
+        Printer.printlnBlue("Found " + this.fixingCommits.size() + " bug-fixing commits.\n");
     }
 
 
@@ -214,10 +214,10 @@ public class GitController {
         try {
             if (this.git != null) {
                 this.git.close();
-                logger.info(()->"Repository for " + targetName + " closed successfully.");
+                Printer.printGreen("Repository for " + targetName + " closed successfully.\n");
             }
         } catch (Exception e) {
-            logger.warning(()->"Error closing repository: " + e.getMessage());
+            Printer.errorPrint("Error closing repository: " + e.getMessage());
         }
     }
 
@@ -237,7 +237,7 @@ public class GitController {
                         String content = new String(repository.open(treeWalk.getObjectId(0)).getBytes(), StandardCharsets.UTF_8);
                         allClasses.put(path, content);
                     } catch (IOException e) {
-                        logger.warning(()->"Cannot read file " + path + " in commit " + revCommit.getName());
+                        Printer.errorPrint("Cannot read file " + path + " in commit " + revCommit.getName()+"\n");
                     }
                 }
             }
@@ -278,47 +278,42 @@ public class GitController {
         return touchedClassesNames;
     }
 
-    public void labelBugginess(List<AnalyzedClass> classList) {
-        logger.info(()->"Inizio del processo di etichettatura della bugginess per " + classList.size() + " classi.");
+     void labelBugginess(List<AnalyzedClass> classList) {
+        Printer.print("Inizio del processo di etichettatura della bugginess per " + classList.size() + " classi.\n");
         Map<String, List<AnalyzedClass>> snapshotsByClassPath = classList.stream()
                 .collect(Collectors.groupingBy(AnalyzedClass::getClassName));
         classList.forEach(classSnapshot ->
                 classSnapshot.getMethods().forEach(method -> method.setBuggy(false))
         );
 
-        int totalFixingCommitsConsidered = 0;
-        int  totalAffectedFilesConsidered = 0;
-        int totalClassSnapshotsMatched = 0;
-        int  totalMethodsLabeledBuggy = 0;
+        int totalFixingCommitsConsidered = 0, totalAffectedFilesConsidered = 0, totalClassSnapshotsMatched = 0, totalMethodsLabeledBuggy = 0;
 
         for (Map.Entry<Commit, List<Commit>> entry : bugIntroducingCommitsMap.entrySet()) {
             Commit fixingCommit = entry.getKey();
             Release fixedVersion = fixingCommit.getRelease();
             totalFixingCommitsConsidered++;
+            if (fixedVersion == null) continue;
+
             List<String> affectedFiles = buggyFilesPerCommit.get(fixingCommit);
+            if (affectedFiles == null || affectedFiles.isEmpty()) continue;
             totalAffectedFilesConsidered += affectedFiles.size();
 
             for (Commit bugIntroCommit : entry.getValue()) {
                 Release injectedVersion = bugIntroCommit.getRelease();
-
+                if (injectedVersion == null) continue;
 
                 for (String filePath : affectedFiles) {
                     List<AnalyzedClass> snapshots = snapshotsByClassPath.get(filePath);
-
+                    if (snapshots == null) continue;
                     totalClassSnapshotsMatched += snapshots.size();
 
                     totalMethodsLabeledBuggy += labelSnapshotsBuggy(snapshots, injectedVersion, fixedVersion);
                 }
             }
         }
-
-        final int fixingCommits = totalFixingCommitsConsidered;
-        final int affectedFiles = totalAffectedFilesConsidered;
-        final int classSnapshots = totalClassSnapshotsMatched;
-        final int methodsLabeledBuggy = totalMethodsLabeledBuggy;
-        logger.info(() -> "labelBugginess completata. Processati" + fixingCommits + "fixing commits, considerati" + affectedFiles + "file affetti, trovati" + classSnapshots + " snapshot di classi, etichettati" + methodsLabeledBuggy + "metodi come buggy.");
-        logger.info("Bugginess etichettata a livello di metodo per le classi analizzate.");
-
+        Printer.printBlue(String.format("labelBugginess completata. Processati %d fixing commits, considerati %d file affetti, trovati %d snapshot di classi, etichettati %d metodi come buggy.\n",
+                totalFixingCommitsConsidered, totalAffectedFilesConsidered, totalClassSnapshotsMatched, totalMethodsLabeledBuggy));
+        Printer.print("Bugginess etichettata a livello di metodo per le classi analizzate.\n");
     }
 
     private int labelSnapshotsBuggy(List<AnalyzedClass> snapshots, Release injectedVersion, Release fixedVersion) {
@@ -335,7 +330,7 @@ public class GitController {
                     classSnapshot.getMethods().forEach(method -> method.setBuggy(true));
                     buggyMethods += classSnapshot.getMethods().size();
                 } else {
-                    logger.warning(()->"La classe " + classSnapshot.getClassName() + " (Release " + snapshotRelease.getReleaseName() + ") non ha metodi, ma le condizioni per etichettare erano soddisfatte.");
+                    Printer.errorPrint("La classe " + classSnapshot.getClassName() + " (Release " + snapshotRelease.getReleaseName() + ") non ha metodi, ma le condizioni per etichettare erano soddisfatte.\n");
                 }
             }
         }
@@ -344,87 +339,79 @@ public class GitController {
 
     public void findAllBugIntroducingCommits() {
         if (this.tickets == null || this.tickets.isEmpty()) {
-            logger.warning("Nessun ticket ricevuto dal JiraController. Impossibile costruire la mappa dei commit che introducono bug.");
+            Printer.printYellow("Nessun ticket ricevuto dal JiraController. Impossibile costruire la mappa dei commit che introducono bug.\n");
             return;
         }
+        // Il controllo su allCommits e fixingCommits è stato spostato qui per completezza
         if (this.allCommits == null || this.allCommits.isEmpty()) {
-            logger.warning("Nessun commit disponibile (allCommits è vuoto). Assicurarsi che buildCommitHistory sia stata chiamata.");
+            Printer.printYellow("Nessun commit disponibile (allCommits è vuoto). Assicurarsi che buildCommitHistory sia stata chiamata.\n");
             return;
         }
         if (this.fixingCommits == null || this.fixingCommits.isEmpty()) {
-            logger.warning("Nessun fixing commit identificato. Assicurarsi che findBuggyFiles sia stata chiamata.");
+            Printer.printYellow("Nessun fixing commit identificato. Assicurarsi che findBuggyFiles sia stata chiamata.\n");
             return;
         }
 
-        logger.info("Costruzione della mappa dei commit che introducono bug dai ticket del JiraController...");
+        Printer.print("Costruzione della mappa dei commit che introducono bug dai ticket del JiraController...\n");
+
         this.bugIntroducingCommitsMap.clear();
 
         Map<Release, List<Commit>> commitsByRelease = allCommits.values().stream()
                 .filter(c -> c.getRelease() != null)
                 .collect(Collectors.groupingBy(Commit::getRelease));
-        logger.fine(()->"Mappa dei commit per release creata con " + commitsByRelease.size() + " voci.");
+        Printer.print("Mappa dei commit per release creata con " + commitsByRelease.size() + " voci.\n");
+
 
         Map<Release, List<Ticket>> ticketsByFixedRelease = this.tickets.stream()
                 .filter(t -> t.getFixedVersion() != null)
                 .collect(Collectors.groupingBy(Ticket::getFixedVersion));
-        logger.fine(()->"Mappa dei ticket per fixed release creata con " + ticketsByFixedRelease.size() + " voci.");
+        Printer.print("Mappa dei ticket per fixed release creata con " + ticketsByFixedRelease.size() + " voci.\n");
 
         int totalBugIntroCommitsFound = 0;
 
         for (Commit fixingCommit : this.fixingCommits) {
-            List<Commit> bugIntroCommits = collectBugIntroCommitsForFixingCommit(fixingCommit, ticketsByFixedRelease, commitsByRelease);
-            if (!bugIntroCommits.isEmpty()) {
-                this.bugIntroducingCommitsMap.put(fixingCommit, bugIntroCommits);
-                totalBugIntroCommitsFound += bugIntroCommits.size();
-                logger.fine(()->"Aggiunti " + bugIntroCommits.size() + " bug-introducing commits per fixing commit " + fixingCommit.getRevCommit().getName());
+            Release fixingCommitRelease = fixingCommit.getRelease();
+            if (fixingCommitRelease == null) {
+                Printer.print("Saltando il fixing commit " + fixingCommit.getRevCommit().getName() + " (ticket: " + (fixingCommit.getTicket() != null ? fixingCommit.getTicket().getTicketKey() : "N/A") + ") a causa di informazioni sulla release mancanti.\n");
+                continue;
+            }
+            Printer.print("Processing fixing commit: " + fixingCommit.getRevCommit().getName() + ", Release: " + fixingCommitRelease.getReleaseName()+"\n");
+
+            List<Ticket> relatedTickets = ticketsByFixedRelease.getOrDefault(fixingCommitRelease, Collections.emptyList());
+            Printer.print("  Trovati " + relatedTickets.size() + " ticket correlati per questa fixing release.\n");
+
+            Set<Commit> bugIntroCommitsForThisFixingCommit = new HashSet<>();
+
+            for (Ticket ticket : relatedTickets) {
+                Release injectedRelease = ticket.getInjectedVersion();
+                if (injectedRelease == null) {
+                    Printer.print("  Saltando il ticket " + ticket.getTicketKey() + " a causa della Injected Version mancante.\n");
+                    continue;
+                }
+                Printer.print("    Ticket " + ticket.getTicketKey() + ", Injected Release: " + injectedRelease.getReleaseName());
+
+                List<Commit> potentialIntroCommitsInRelease = commitsByRelease.getOrDefault(injectedRelease, Collections.emptyList());
+                Printer.print("    Trovati " + potentialIntroCommitsInRelease.size() + " commit potenzialmente introduttivi nella Injected Release.\n");
+
+                bugIntroCommitsForThisFixingCommit.addAll(potentialIntroCommitsInRelease);
+            }
+
+            if (!bugIntroCommitsForThisFixingCommit.isEmpty()) {
+                this.bugIntroducingCommitsMap.put(fixingCommit, new ArrayList<>(bugIntroCommitsForThisFixingCommit));
+                totalBugIntroCommitsFound += bugIntroCommitsForThisFixingCommit.size();
+                Printer.print("Aggiunti " + bugIntroCommitsForThisFixingCommit.size() + " bug-introducing commits per fixing commit " + fixingCommit.getRevCommit().getName()+"\n");
             } else {
-                logger.fine(()->"Nessun bug-introducing commit realistico trovato per il fixing commit: " + fixingCommit.getRevCommit().getName());
+                Printer.print("Nessun bug-introducing commit realistico trovato per il fixing commit: " + fixingCommit.getRevCommit().getName()+"\n");
             }
         }
 
-        logger.info("Costruzione completata. " + this.bugIntroducingCommitsMap.size() +
-                " fixing commits mappati a " + totalBugIntroCommitsFound + " bug-introducing commits totali (basato su Proportion).");
+        Printer.printBlue("Costruzione completata. " + this.bugIntroducingCommitsMap.size() +
+                " fixing commits mappati a " + totalBugIntroCommitsFound + " bug-introducing commits totali (basato su Proportion).\n");
 
         this.bugIntroducingCommitsMap.values().forEach(
                 commitList -> commitList.forEach(commit -> commit.setBuggy(true))
         );
-        logger.info("Flag 'isBuggy' impostato per tutti i commit che introducono bug.");
-    }
-
-    private List<Commit> collectBugIntroCommitsForFixingCommit(
-            Commit fixingCommit,
-            Map<Release, List<Ticket>> ticketsByFixedRelease,
-            Map<Release, List<Commit>> commitsByRelease
-    ) {
-        Release fixingCommitRelease = fixingCommit.getRelease();
-        if (fixingCommitRelease == null) {
-            logger.fine(()->"Saltando il fixing commit " + fixingCommit.getRevCommit().getName() +
-                    " (ticket: " + (fixingCommit.getTicket() != null ? fixingCommit.getTicket().getTicketKey() : "N/A") +
-                    ") a causa di informazioni sulla release mancanti.");
-            return Collections.emptyList();
-        }
-        logger.fine(()->"Processing fixing commit: " + fixingCommit.getRevCommit().getName() +
-                ", Release: " + fixingCommitRelease.getReleaseName());
-
-        List<Ticket> relatedTickets = ticketsByFixedRelease.getOrDefault(fixingCommitRelease, Collections.emptyList());
-        logger.fine(()->"  Trovati " + relatedTickets.size() + " ticket correlati per questa fixing release.");
-
-        Set<Commit> bugIntroCommitsForThisFixingCommit = new HashSet<>();
-
-        for (Ticket ticket : relatedTickets) {
-            Release injectedRelease = ticket.getInjectedVersion();
-            if (injectedRelease == null) {
-                logger.fine(()->"  Saltando il ticket " + ticket.getTicketKey() + " a causa della Injected Version mancante.");
-                continue;
-            }
-            logger.fine(()->"    Ticket " + ticket.getTicketKey() + ", Injected Release: " + injectedRelease.getReleaseName());
-
-            List<Commit> potentialIntroCommitsInRelease = commitsByRelease.getOrDefault(injectedRelease, Collections.emptyList());
-            logger.fine(()->"    Trovati " + potentialIntroCommitsInRelease.size() + " commit potenzialmente introduttivi nella Injected Release.");
-
-            bugIntroCommitsForThisFixingCommit.addAll(potentialIntroCommitsInRelease);
-        }
-        return new ArrayList<>(bugIntroCommitsForThisFixingCommit);
+        Printer.printBlue("Flag 'isBuggy' impostato per tutti i commit che introducono bug.\n");
     }
 
 
@@ -462,7 +449,7 @@ public class GitController {
 
 
     public void buildFileCommitHistoryMap() {
-        logger.info("Building commit history map for each file...");
+        Printer.print("Building commit history map for each file...\n");
         for (Commit commit : allCommits.values()) {
             if (commit.getRevCommit().getParentCount() > 0) {
                 try {
@@ -471,7 +458,7 @@ public class GitController {
                         commitsPerFile.computeIfAbsent(filePath, k -> new ArrayList<>()).add(commit);
                     }
                 } catch (IOException e) {
-                    logger.warning("Error analyzing touched files for commit " + commit.getRevCommit().getName() + ": " + e.getMessage());
+                    Printer.printYellow("Error analyzing touched files for commit " + commit.getRevCommit().getName() + ": " + e.getMessage());
                 }
             }
         }
@@ -481,7 +468,7 @@ public class GitController {
                 commitList.sort(Comparator.comparing(c -> c.getRevCommit().getCommitTime()))
         );
 
-        logger.info("File history map completed.");
+        Printer.print("File history map completed.\n");
     }
 
 
@@ -515,7 +502,7 @@ public class GitController {
                 changeStats.add(new ClassChangeStats(linesAdded, linesDeleted));
 
             } catch (IOException e) {
-                logger.warning("Cannot calculate class diff for " + filePath + " between commits " +
+                Printer.printYellow("Cannot calculate class diff for " + filePath + " between commits " +
                         parentCommit.getRevCommit().getName() + " and " + currentCommit.getRevCommit().getName());
             }
         }
@@ -531,7 +518,7 @@ public class GitController {
                 return new String(data, StandardCharsets.UTF_8);
             }
         } catch (Exception e) {
-            logger.fine("File " + filePath + " not found in commit " + commit.getName());
+            Printer.errorPrint("File " + filePath + " not found in commit " + commit.getName());
         }
         return null;
     }

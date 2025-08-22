@@ -1,6 +1,6 @@
 package org.apache.controller;
 
-import org.apache.logging.CollectLogger;
+import org.apache.logging.Printer;
 import org.apache.model.AggregatedClassifierResult;
 import tech.tablesaw.api.Row;
 import tech.tablesaw.api.Table;
@@ -11,21 +11,20 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.logging.Logger;
+
 
 public class ReportAnalyzer {
 
     private final String projectName;
     private final String reportFilePath;
     private final String outputDir;
-    private static final Logger logger = CollectLogger.getInstance().getLogger();
     private static final String EXPECTED_COST= "EXPECTED_COST";
     private static final String AUC = "AUC";
     private static final String KAPPA = "KAPPA";
     private static final String F1_SCORE = "F1_SCORE";
-    private static final String COMPOSITE_SCORE = "COMPOSITE_SCORE";
     private static final String PRECISION = "PRECISION";
     private static final String RECALL = "RECALL";
+    private static final String COMPOSITE_SCORE = "COMPOSITE_SCORE";
 
     // Pesi configurabili
     private final double weightFalsePositive;
@@ -65,11 +64,11 @@ public class ReportAnalyzer {
     public void chooseBestClassifierByExpectedCost() {
         AggregatedClassifierResult bestClassifier = getBestClassifier(EXPECTED_COST);
         if (bestClassifier != null) {
-            logger.info("Miglior Classificatore Trovato (minimo Expected Cost):");
-            logger.info(bestClassifier.toString());
+            Printer.print("Miglior Classificatore Trovato (minimo Expected Cost):\n");
+            Printer.print(bestClassifier +"\n");
             saveBestClassifierToCSV(bestClassifier, EXPECTED_COST, bestClassifier.getAvgExpectedCost());
         } else {
-            logger.warning("Nessun miglior classificatore trovato per Expected Cost.");
+            Printer.printYellow("Nessun miglior classificatore trovato per Expected Cost.\n");
         }
     }
 
@@ -77,11 +76,11 @@ public class ReportAnalyzer {
     public void chooseBestClassifierByAUC() {
         AggregatedClassifierResult bestClassifier = getBestClassifier(AUC);
         if (bestClassifier != null) {
-            logger.info("Miglior Classificatore Trovato (massima AUC):");
-            logger.info(bestClassifier.toString());
+            Printer.print("Miglior Classificatore Trovato (massima AUC):\n");
+            Printer.print(bestClassifier +"\n");
             saveBestClassifierToCSV(bestClassifier, AUC, bestClassifier.getAvgAreaUnderROC());
         } else {
-            logger.warning("Nessun miglior classificatore trovato per AUC.");
+            Printer.printYellow("Nessun miglior classificatore trovato per AUC.\n");
         }
     }
 
@@ -89,11 +88,11 @@ public class ReportAnalyzer {
     public void chooseBestClassifierByKappa() {
         AggregatedClassifierResult bestClassifier = getBestClassifier(KAPPA);
         if (bestClassifier != null) {
-            logger.info("Miglior Classificatore Trovato (massimo Kappa):");
-            logger.info(bestClassifier.toString());
+            Printer.print("Miglior Classificatore Trovato (massimo Kappa):\n");
+            Printer.print(bestClassifier +"\n");
             saveBestClassifierToCSV(bestClassifier, KAPPA, bestClassifier.getAvgKappa());
         } else {
-            logger.warning("Nessun miglior classificatore trovato per Kappa.");
+            Printer.printYellow("Nessun miglior classificatore trovato per Kappa.");
         }
     }
 
@@ -104,12 +103,12 @@ public class ReportAnalyzer {
             double precision = bestClassifier.getAvgPrecision();
             double recall = bestClassifier.getAvgRecall();
             double f1Score = (precision + recall == 0) ? 0 : 2 * (precision * recall) / (precision + recall);
-            logger.info("Miglior Classificatore Trovato (massimo F1-Score: " +
-                    String.format("%.4f", f1Score) + "):");
-            logger.info(bestClassifier.toString());
+            Printer.print("Miglior Classificatore Trovato (massimo F1-Score: " +
+                    String.format("%.4f", f1Score) + "):\n");
+            Printer.print(bestClassifier.toString()+"\n");
             saveBestClassifierToCSV(bestClassifier, F1_SCORE, f1Score);
         } else {
-            logger.warning("Nessun miglior classificatore trovato per F1-Score.");
+            Printer.printYellow("Nessun miglior classificatore trovato per F1-Score.");
         }
     }
 
@@ -121,12 +120,12 @@ public class ReportAnalyzer {
                     (weightPrecision * bestClassifier.getAvgPrecision()) +
                     (weightRecall * bestClassifier.getAvgRecall()) +
                     (weightKappa * Math.max(0, bestClassifier.getAvgKappa()));
-            logger.info("Miglior Classificatore Trovato (punteggio composito: " +
-                    String.format("%.4f", compositeScore) + "):");
-            logger.info(bestClassifier.toString());
+            Printer.print("Miglior Classificatore Trovato (punteggio composito: " +
+                    String.format("%.4f", compositeScore) + "):\n");
+            Printer.print(bestClassifier.toString()+"\n");
             saveBestClassifierToCSV(bestClassifier, COMPOSITE_SCORE, compositeScore);
         } else {
-            logger.warning("Nessun miglior classificatore trovato per Composite Score.");
+            Printer.printYellow("Nessun miglior classificatore trovato per Composite Score.");
         }
     }
 
@@ -174,7 +173,7 @@ public class ReportAnalyzer {
                 };
                 break;
             default:
-                logger.severe("Criterio non riconosciuto: " + selectionCriteria);
+                Printer.errorPrint("Criterio non riconosciuto: " + selectionCriteria);
                 return null;
         }
 
@@ -187,7 +186,7 @@ public class ReportAnalyzer {
     private Map<String, AggregatedClassifierResult> loadAndAggregateResults() {
         File reportFile = new File(reportFilePath);
         if (!reportFile.exists()) {
-            logger.severe("ERRORE: File report non trovato: " + reportFilePath);
+            Printer.errorPrint("ERRORE: File report non trovato: " + reportFilePath);
             return new HashMap<>();
         }
 
@@ -195,12 +194,12 @@ public class ReportAnalyzer {
         try {
             reportTable = Table.read().csv(reportFilePath);
         } catch (Exception e) {
-            logger.severe("ERRORE: Impossibile leggere il CSV: " + e.getMessage());
+            Printer.errorPrint("ERRORE: Impossibile leggere il CSV: " + e.getMessage());
             return new HashMap<>();
         }
 
         if (reportTable.isEmpty()) {
-            logger.warning("ATTENZIONE: Il file report è vuoto: " + reportFilePath);
+            Printer.printYellow("ATTENZIONE: Il file report è vuoto: " + reportFilePath);
             return new HashMap<>();
         }
 
@@ -233,11 +232,11 @@ public class ReportAnalyzer {
                 aggregatedResults.get(configKey).addRunResult(precision, recall,
                         areaUnderROC, kappa, expectedCost);
             } catch (Exception e) {
-                logger.warning("Errore nel processare una riga del CSV: " + e.getMessage());
+                Printer.printYellow("Errore nel processare una riga del CSV: " + e.getMessage());
             }
         }
 
-        logger.info("Caricati e aggregati " + aggregatedResults.size() + " configurazioni diverse");
+        Printer.print("Caricati e aggregati " + aggregatedResults.size() + " configurazioni diverse\n");
         return aggregatedResults;
     }
 
@@ -281,10 +280,10 @@ public class ReportAnalyzer {
 
             writer.append("\n");
 
-            logger.info("Risultato salvato in: " + outputFilePath);
+            Printer.print("Risultato salvato in: " + outputFilePath+ "\n");
 
         } catch (IOException e) {
-            logger.severe("ERRORE: Impossibile salvare il risultato nel file CSV: " +
+            Printer.errorPrint("ERRORE: Impossibile salvare il risultato nel file CSV: " +
                     outputFilePath + " - " + e.getMessage());
         }
     }
@@ -295,7 +294,7 @@ public class ReportAnalyzer {
     public void saveCompleteRankingToCSV(String criteria) {
         Map<String, AggregatedClassifierResult> aggregatedResults = loadAndAggregateResults();
         if (aggregatedResults.isEmpty()) {
-            logger.warning("Nessun dato disponibile per generare il ranking.");
+            Printer.printYellow("Nessun dato disponibile per generare il ranking.");
             return;
         }
 
@@ -318,7 +317,7 @@ public class ReportAnalyzer {
             case KAPPA:
                 rankedResults.sort(Comparator.comparing(AggregatedClassifierResult::getAvgKappa).reversed());
                 break;
-            case F1_SCORE:
+            case F1_SCORE: // Nuovo caso per F1-Score
                 rankedResults.sort((r1, r2) -> {
                     double f1R1 = (r1.getAvgPrecision() + r1.getAvgRecall() == 0) ? 0 :
                             2 * (r1.getAvgPrecision() * r1.getAvgRecall()) / (r1.getAvgPrecision() + r1.getAvgRecall());
@@ -341,7 +340,7 @@ public class ReportAnalyzer {
                 });
                 break;
             default:
-                logger.warning("Criterio di ranking non riconosciuto: " + criteria);
+                Printer.printYellow("Criterio di ranking non riconosciuto: " + criteria);
                 return;
         }
 
@@ -371,10 +370,10 @@ public class ReportAnalyzer {
                 rank++;
             }
 
-            logger.info("Ranking completo salvato in: " + outputFilePath);
+            Printer.printGreen("Ranking completo salvato in: " + outputFilePath);
 
         } catch (IOException e) {
-            logger.severe("ERRORE: Impossibile salvare il ranking nel file CSV: " +
+            Printer.errorPrint("ERRORE: Impossibile salvare il ranking nel file CSV: " +
                     outputFilePath + " - " + e.getMessage());
         }
     }
@@ -383,7 +382,7 @@ public class ReportAnalyzer {
      * Metodo convenience per analizzare tutti i criteri e salvare tutti i risultati
      */
     public void analyzeAllCriteriaAndSave() {
-        logger.info("Inizio analisi completa per progetto: " + projectName);
+        Printer.printGreen("Inizio analisi completa per progetto: " + projectName);
 
         // Analizza per tutti i criteri per scegliere il "migliore"
         chooseBestClassifierByExpectedCost(); // Inserito il richiamo per Expected Cost
@@ -402,6 +401,6 @@ public class ReportAnalyzer {
         saveCompleteRankingToCSV(COMPOSITE_SCORE); // Nuovo ranking per Composite Score
 
 
-        logger.info("Analisi completa terminata. Tutti i risultati sono stati salvati.");
+        Printer.printGreen("Analisi completa terminata. Tutti i risultati sono stati salvati.\n");
     }
 }

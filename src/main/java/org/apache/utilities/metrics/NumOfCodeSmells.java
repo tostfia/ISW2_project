@@ -1,6 +1,7 @@
 package org.apache.utilities.metrics;
 
 
+import org.apache.logging.Printer;
 import org.apache.model.Release;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.ResetCommand;
@@ -15,15 +16,12 @@ import java.util.Comparator;
 import java.util.List;
 
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 
 
 public class NumOfCodeSmells {
 
     private static final String PMD_ANALYSIS_BASE_DIR = "pmd_analysis";
-    private static final Logger logger = Logger.getLogger(NumOfCodeSmells.class.getName());
+
 
     private final String project;
     private final String repoPath;
@@ -65,7 +63,7 @@ public class NumOfCodeSmells {
 
             // 3. Controlla se la release ha dei commit. Se non ne ha, saltala.
             if (release.getCommitList().isEmpty()) {
-                logger.warning("La release " + release.getId() + " (" + release.getReleaseName() + ") non ha commit, impossibile analizzare.");
+                Printer.printYellow("La release " + release.getId() + " (" + release.getReleaseName() + ") non ha commit, impossibile analizzare.");
                 continue; // Passa alla prossima release
             }
 
@@ -89,15 +87,15 @@ public class NumOfCodeSmells {
         String reportPath = PMD_ANALYSIS_BASE_DIR + File.separator + this.project + File.separator + releaseId + ".xml";
 
         if (new File(reportPath).exists()) {
-            logger.info("Report PMD (XML) per la release " + releaseId + " già esistente. Salto l'analisi.");
+            Printer.print("Report PMD (XML) per la release " + releaseId + " già esistente. Salto l'analisi.\n");
             return;
         }
 
-        logger.info("Inizio analisi PMD per la release " + releaseId + " (commit: " + commit.getName() + ")");
+        Printer.print("Inizio analisi PMD per la release " + releaseId + " (commit: " + commit.getName() + ")\n");
 
         try {
             git.checkout().setForced(true).setName(commit.getName()).setStartPoint(commit).call();
-            logger.info("Checkout al commit " + commit.getName() + " completato.");
+            Printer.print("Checkout al commit " + commit.getName() + " completato.\n");
 
             Process process = buildPmdProcess(reportPath);
 
@@ -119,33 +117,34 @@ public class NumOfCodeSmells {
                 exitCode = process.exitValue();
             } else {
                 process.destroyForcibly();
-                logger.warning("Analisi PMD per la release " + releaseId + " ha superato il tempo limite.");
+                Printer.printYellow("Analisi PMD per la release " + releaseId + " ha superato il tempo limite.");
             }
 
             // 3. Logga i risultati dettagliati
-            logger.info("Analisi PMD per la release " + releaseId + " terminata con codice di uscita: " + exitCode);
+            Printer.print("Analisi PMD per la release " + releaseId + " terminata con codice di uscita: " + exitCode+ "\n");
 
             if (exitCode == 0) {
                 // PMD ha terminato con successo e non ha trovato violazioni.
                 // Potrebbe esserci il caso "No files to analyze".
                 if (pmdOutput.toString().contains("No files to analyze")) {
-                    logger.warning("PMD ha terminato con successo per la release " + releaseId + " ma non ha trovato file Java da analizzare. (Commit potrebbe non contenere codice Java o filtri attivi).");
+                    Printer.printYellow("PMD ha terminato con successo per la release " + releaseId + " ma non ha trovato file Java da analizzare. (Commit potrebbe non contenere codice Java o filtri attivi).\n");
+                } else {
+                    Printer.print("PMD ha terminato con successo per la release " + releaseId + " senza trovare violazioni.\n");
                 }
             } else if (exitCode == 4) {
                 // PMD ha terminato con successo e ha trovato violazioni.
-                logger.severe("PMD ha terminato con successo per la release " +releaseId + " trovando violazioni. (Vedi report XML).");
-            }else {
+                Printer.print("PMD ha terminato con successo per la release " + releaseId + " trovando violazioni. (Vedi report XML).\n");
+            } else {
                 // Qualsiasi altro codice di uscita indica un vero fallimento o errore di configurazione.
-                logger.severe("PMD ha fallito inaspettatamente per la release " + releaseId + ". Codice di uscita: " + exitCode + ". Output di PMD:\n" + pmdOutput);
+                Printer.errorPrint("PMD ha fallito inaspettatamente per la release " + releaseId + ". Codice di uscita: " + exitCode + ". Output di PMD:\n" + pmdOutput + "\n");
             }
-
-
+            // --- FINE DIAGNOSTICA AVANZATA ---
 
         } catch (GitAPIException e) {
-            logger.severe("Errore critico di Git durante il checkout del commit " + commit.getName() + ": " + e.getMessage());
+            Printer.errorPrint("Errore critico di Git durante il checkout del commit " + commit.getName() + ": " + e.getMessage());
             cleanAndResetGitState();
         } catch (IOException | InterruptedException e) {
-            logger.severe("Errore durante l'esecuzione di PMD per la release " + releaseId + ": " + e.getMessage());
+            Printer.errorPrint("Errore durante l'esecuzione di PMD per la release " + releaseId + ": " + e.getMessage());
             Thread.currentThread().interrupt();
         }
     }
@@ -184,23 +183,23 @@ public class NumOfCodeSmells {
 
     private void cleanAndResetGitState() {
         try {
-            logger.info("Tentativo di ripristinare uno stato pulito del repository...");
+            Printer.print("Tentativo di ripristinare uno stato pulito del repository...\n");
             git.reset().setMode(ResetCommand.ResetType.HARD).call();
             git.clean().setForce(true).setCleanDirectories(true).call();
-            logger.info("Reset e clean completati.");
+            Printer.print("Reset e clean completati.\n");
         } catch (GitAPIException e) {
-            logger.severe("Fallito il ripristino dello stato del repository: " + e.getMessage());
+            Printer.errorPrint("Fallito il ripristino dello stato del repository: " + e.getMessage());
         }
     }
 
     private void restoreRepositoryState() {
-        logger.log(Level.INFO,"Ripristino del repository al branch originale: " ,originalBranch);
+        Printer.print("Ripristino del repository al branch originale: " + originalBranch+ "\n");
         try {
             cleanAndResetGitState(); // Pulisci prima di cambiare branch
             git.checkout().setName(originalBranch).call();
-            logger.info("Repository ripristinato con successo.");
+            Printer.print("Repository ripristinato con successo.\n");
         } catch (GitAPIException e) {
-            logger.severe("Impossibile ripristinare il repository al branch " + originalBranch + ": " + e.getMessage());
+            Printer.errorPrint("Impossibile ripristinare il repository al branch " + originalBranch + ": " + e.getMessage());
         }
     }
 }

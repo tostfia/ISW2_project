@@ -3,7 +3,8 @@ package org.apache.utilities;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.MethodDeclaration;
-import org.apache.logging.CollectLogger;
+
+import org.apache.logging.Printer;
 import org.apache.model.AnalyzedMethod;
 import org.apache.model.ClassifierResult;
 import org.apache.utilities.enumeration.FileExtension;
@@ -15,10 +16,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.logging.Logger;
+
 
 public class Utility {
-    private static final Logger logger = CollectLogger.getInstance().getLogger();
+
     private static final String CSV_HEADER_RESULTS = "DATASET," +
             "#TRAINING_RELEASES," +
             "%TRAINING_INSTANCES," +
@@ -47,7 +48,7 @@ public class Utility {
                 appendResults(projectName, fileWriter, classifierResults);
             }
         }catch(IOException e){
-            logger.severe("Error saving results to CSV: " + e.getMessage());
+            Printer.errorPrint("Error saving results to CSV: " + e.getMessage());
         }
     }
     private static  File getFile(String filename, String path) throws IOException {
@@ -117,7 +118,7 @@ public class Utility {
         try {
             cu = StaticJavaParser.parse(fileContent);
         } catch (Exception e) {
-            logger.warning("Errore di parsing: " + e.getMessage());
+            Printer.printYellow("Errore di parsing: " + e.getMessage());
             return result;
         }
 
@@ -130,7 +131,7 @@ public class Utility {
                     result.add(new AnalyzedMethod(signature, start, end));
                 }
             } catch (Exception ex) {
-                logger.warning("Errore durante estrazione firma metodo: " + ex.getMessage());
+                Printer.errorPrint("Errore durante estrazione firma metodo: " + ex.getMessage());
             }
         });
 

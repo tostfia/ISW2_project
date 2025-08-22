@@ -1,6 +1,6 @@
 package org.apache.controller;
 
-import org.apache.logging.CollectLogger;
+import org.apache.logging.Printer;
 import org.apache.model.ClassifierResult;
 import org.apache.model.DataClassifier;
 import org.apache.utilities.Utility;
@@ -14,13 +14,13 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
-import java.util.logging.Logger;
+
 
 public class WekaController {
     private final String projectName;
     private final int iterations;
     private final List<ClassifierResult> classifierResults;
-    private static final  Logger logger = CollectLogger.getInstance().getLogger();
+
 
     public WekaController(String projectName,int iterations){
         this.projectName=projectName;
@@ -48,16 +48,16 @@ public class WekaController {
                     String currentTrainingPath = trainingDir + File.separator + this.projectName + "_" + iteration + "." + arffExtension;
                     String currentTestingPath = testingDir + File.separator + this.projectName + "_" + iteration + "." + arffExtension;
 
-                    logger.info("DEBUG (WekaController): Tentativo di caricare Training Set da: " + currentTrainingPath);
-                    logger.info("DEBUG (WekaController): Tentativo di caricare Testing Set da: " + currentTestingPath);
+                    Printer.print("DEBUG (WekaController): Tentativo di caricare Training Set da: " + currentTrainingPath+ "\n");
+                    Printer.print("DEBUG (WekaController): Tentativo di caricare Testing Set da: " + currentTestingPath+ "\n");
                     File trainingFile = new File(currentTrainingPath);
                     File testingFile = new File(currentTestingPath);
                     if (!trainingFile.exists()) {
-                        logger.severe("ERRORE: File di training non trovato: " + currentTrainingPath);
+                        Printer.errorPrint("ERRORE: File di training non trovato: " + currentTrainingPath);
                         return; // Salta questa iterazione
                     }
                     if (!testingFile.exists()) {
-                        logger.severe("ERRORE: File di testing non trovato: " + currentTestingPath);
+                        Printer.errorPrint("ERRORE: File di testing non trovato: " + currentTestingPath);
                         return; // Salta questa iterazione
                     }
 
@@ -79,14 +79,14 @@ public class WekaController {
                         wekaClassifier.buildClassifier(trainInstances);
                         evaluation.evaluateModel(wekaClassifier, testInstances);
                         ClassifierResult result = new ClassifierResult(iteration, classifier,evaluation);
-                        result.setTrainingPercent(100.0* trainInstances.numInstances()/(trainInstances.numInstances()+testInstances.numInstances()));
+                        result.setTrainingPercent(100.0*(double) trainInstances.numInstances()/(trainInstances.numInstances()+testInstances.numInstances()));
 
                         synchronized (classifierResults) {
                             classifierResults.add(result);
                         }
                     }
                 } catch (Exception e) {
-                    logger.severe("Error during classification: " + e.getMessage());
+                    Printer.errorPrint("Error during classification: " + e.getMessage());
                 } finally {
                     countDownLatch.countDown();
                 }
@@ -96,7 +96,7 @@ public class WekaController {
         try {
             countDownLatch.await();
         } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+            Printer.errorPrint("Classification interrupted: " + e.getMessage());
         }
     }
 

@@ -32,9 +32,7 @@ public class ClassifierController {
     public static final String NO_SELECTION = "NoSelection";
     public static final String NO_BEST_FIRST = null;
 
-
-
-
+    public ClassifierController() {}
 
     public static List<DataClassifier> returnAllClassifiersCombinations(AttributeStats isBuggyAttributeStats) {
         List<Classifier> classifiers = List.of(new RandomForest(), new NaiveBayes(), new IBk());

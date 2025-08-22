@@ -6,12 +6,12 @@ import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import lombok.Getter;
 import lombok.Setter;
-import org.apache.logging.CollectLogger;
+import org.apache.logging.Printer;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.logging.Logger;
+
 
 @Getter
 public class AnalyzedClass {
@@ -38,7 +38,7 @@ public class AnalyzedClass {
     private boolean isBuggy;
     @Setter
     private int totalLOC;
-    private final Logger logger = CollectLogger.getInstance().getLogger();
+
 
     @Setter
     private ClassMetrics processMetrics;
@@ -75,14 +75,14 @@ public class AnalyzedClass {
 
             } else {
                 String errorMsg = String.format("ATTENZIONE: Parsing fallito ma senza eccezioni per la classe %s nella release %s. La lista dei metodi sarà vuota.", this.className, release.getReleaseID());
-                logger.warning(errorMsg);
+                Printer.printYellow(errorMsg);
             }
         } catch (ParseProblemException e) {
             String errorMsg = String.format("ATTENZIONE: Errore di sintassi durante il parsing di %s nella release %s. La lista dei metodi sarà vuota. Errore: %s", this.className, release.getReleaseID(), e.getMessage());
-            logger.warning(errorMsg);
+            Printer.errorPrint(errorMsg);
         } catch (Exception e) {
             String errorMsg = String.format("ATTENZIONE: Errore generico durante il parsing di %s nella release %s. La lista dei metodi sarà vuota.", this.className, release.getReleaseID());
-            logger.severe(errorMsg);
+            Printer.errorPrint(errorMsg);
         }
 
     }

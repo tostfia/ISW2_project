@@ -1,6 +1,6 @@
 package org.apache.controller.milestone1;
 
-import org.apache.logging.CollectLogger;
+import org.apache.logging.Printer;
 import org.apache.model.AnalyzedClass;
 
 import org.apache.model.Release;
@@ -22,8 +22,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
 
 
 public class ProcessController implements Runnable {
@@ -31,7 +30,7 @@ public class ProcessController implements Runnable {
     private final String project;
     private final CountDownLatch latch;
     private final String threadIdentity;
-    private static final Logger logger = CollectLogger.getInstance().getLogger();
+
     private static final String PMD_REPORTS_BASE_DIR = "pmd_analysis";
 
 
@@ -54,7 +53,7 @@ public class ProcessController implements Runnable {
     public void run() {
         long overallStatTime = System.currentTimeMillis();
         String startMsg = threadIdentity + " avviato";
-        logger.info(startMsg);
+        Printer.printGreen(startMsg);
         try {
             processing();
         } catch (Exception e) {
@@ -64,21 +63,21 @@ public class ProcessController implements Runnable {
             String sStackTrace = sw.toString();
 
             String errorMessage = String.format("Errore critico in %s: %n%s", threadIdentity, sStackTrace);
-            logger.severe(errorMessage);
+            Printer.errorPrint(errorMessage);
         } finally {
             latch.countDown();
             long endOverallTime = System.currentTimeMillis();
             double elapsedSeconds = (endOverallTime - overallStatTime) / 1000.0;
-            String finalMessage = String.format("%s completato. Tempo impiegato: %.2f secondi", threadIdentity, elapsedSeconds);
-            logger.info(finalMessage);
+            String finalMessage = String.format("%s completato. Tempo impiegato: %.2f secondi\n", threadIdentity, elapsedSeconds);
+            Printer.printGreen(finalMessage);
         }
     }
     private void processing() throws IOException, URISyntaxException, GitAPIException {
-        logger.info(threadIdentity+"-Fase 0: Pre-calcolo dati per il cold start di proportion ...");
+        Printer.printlnBlue(threadIdentity+"-Fase 0: Pre-calcolo dati per il cold start di proportion ...\n");
         List<Double> coldStartProportions = new ArrayList<>();
 
 
-        logger.info(threadIdentity + "- Calcolo proportion per il progetto: " + this.targetName);
+        Printer.printBlue(threadIdentity + "- Calcolo proportion per il progetto: " + this.targetName+ "\n");
         JiraController tempJira= new JiraController(this.targetName);
         tempJira.injectRelease();
         tempJira.injectTickets();
@@ -89,9 +88,9 @@ public class ProcessController implements Runnable {
             coldStartProportions.add(p);
         }
 
-        logger.info(threadIdentity + "- ESECUZIONE FASE 1: ANALISI ...");
+        Printer.printBlue(threadIdentity + "- ESECUZIONE FASE 1: ANALISI ...\n");
         JiraController jiraController = performJiraAnalysis();
-        logger.info(threadIdentity + "- Fase 2: Applicazione di Proportion per " + this.targetName);
+        Printer.printBlue(threadIdentity + "- Fase 2: Applicazione di Proportion per " + this.targetName+ "\n");
 
         // Chiama il metodo Proportion del JiraController, passandogli i dati di cold start
         jiraController.applyProportion(coldStartProportions);
@@ -101,25 +100,25 @@ public class ProcessController implements Runnable {
 
         GitController gitController = new GitController(targetName, project, releases);
         gitController.setTickets(tickets);
-        // --- AGGIUNGI QUESTO LOG ---
-        logger.info(threadIdentity + " - Passati " + tickets.size() + " ticket al GitController.");
+
+        Printer.print(threadIdentity + " - Passati " + tickets.size() + " ticket al GitController \n.");
 
         gitController.buildCommitHistory();
         gitController.findBuggyFiles();
         gitController.buildFileCommitHistoryMap();
         gitController.findAllBugIntroducingCommits();
 
-        logger.info(threadIdentity + " --- Controllo prima della generazione PMD ---");
-        logger.info(threadIdentity + " Numero di release trovate e pronte per l'analisi PMD: " + releases.size());
-        // AGGIUNGI QUESTA RIGA PRIMA DEL CICLO SULLE RELEASE:
+        Printer.print(threadIdentity + " --- Controllo prima della generazione PMD ---\n");
+        Printer.print(threadIdentity + " Numero di release trovate e pronte per l'analisi PMD: " + releases.size()+ "\n");
+
         try {
             CodeSmellParser.setRepoRootPath(gitController.getRepoPath());
 
 
-            logger.info(threadIdentity + " --- INIZIO FASE DI GENERAZIONE REPORT PMD  ---");
+            Printer.printBlue(threadIdentity + " --- INIZIO FASE DI GENERAZIONE REPORT PMD  ---\n");
             NumOfCodeSmells numofCodeSmells = new NumOfCodeSmells(targetName, gitController.getRepoPath(), gitController.getGit(), releases);
             numofCodeSmells.generatePmdReports();
-            logger.info(threadIdentity + " --- FINE FASE DI GENERAZIONE REPORT PMD ---");
+            Printer.printBlue(threadIdentity + " --- FINE FASE DI GENERAZIONE REPORT PMD ---\n");
 
 
 
@@ -130,10 +129,10 @@ public class ProcessController implements Runnable {
                 int total = releases.size();
                 int index = 0;
                 for (Release release : releases) {
-                    logger.info(threadIdentity + " - Processando release: " + release.getReleaseID());
+                    Printer.print(threadIdentity + " - Processando release: " + release.getReleaseID()+ "\n");
                     index++;
-                    logger.info("Analisi release " + index + "/" + total +
-                            " (ID: " + release.getId() + ", Nome: " + release.getReleaseName() + ")");
+                    Printer.printBlue("Analisi release " + index + "/" + total +
+                            " (ID: " + release.getId() + ", Nome: " + release.getReleaseName() + ")\n");
                     List<AnalyzedClass> classes = gitController.getClassesForRelease(release);
                     gitController.labelBugginess(classes);
                     Path baseDir = Paths.get(PMD_REPORTS_BASE_DIR, targetName);
@@ -142,7 +141,7 @@ public class ProcessController implements Runnable {
                     String releaseId = release.getReleaseID();
                     Path reportPath = baseDir.resolve(releaseId + ".xml");  // file unico per release
 
-                    logger.info(threadIdentity + " - Percorso report PMD per release " + releaseId + ": " + reportPath);
+                    Printer.print(threadIdentity + " - Percorso report PMD per release " + releaseId + ": " + reportPath+ "\n");
 
 
                     CodeSmellParser.extractCodeSmell(classes, targetName, releaseId);
@@ -155,9 +154,9 @@ public class ProcessController implements Runnable {
 
             }
             gitController.closeRepo();
-            logger.info(threadIdentity + "- MILESTONE 1 COMPLETATA. File CSV creato: " + csvFileName);
+            Printer.printlnGreen(threadIdentity + "- MILESTONE 1 COMPLETATA. File CSV creato: " + csvFileName+ "\n");
         }catch (Exception e) {
-            logger.log(Level.SEVERE, threadIdentity + " Errore FATALE nel processo di analisi DOPO la generazione PMD: " + e.getMessage(), e);
+            Printer.errorPrint( threadIdentity + " Errore FATALE nel processo di analisi DOPO la generazione PMD: " + e.getMessage());
 
 
         }
@@ -167,11 +166,11 @@ public class ProcessController implements Runnable {
 
 
     private JiraController performJiraAnalysis() throws IOException, URISyntaxException {
-        logger.info(threadIdentity + "-Avvio analisi Jira ...");
+        Printer.printGreen(threadIdentity + "-Avvio analisi Jira ...\n");
         JiraController jiraController = new JiraController(targetName);
         jiraController.injectRelease();
         jiraController.injectTickets();
-        logger.info(threadIdentity + "-Analisi Jira completata.");
+        Printer.printGreen(threadIdentity + "-Analisi Jira completata.\n");
         return jiraController;
     }
 }

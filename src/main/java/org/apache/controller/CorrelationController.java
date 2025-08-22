@@ -5,16 +5,17 @@ package org.apache.controller;
 import java.util.ArrayList;
 import java.util.List;
 
+
 import tech.tablesaw.api.*;
 
-
-
 import java.util.*;
+
 
 public class CorrelationController {
 
     private final Table dataset;
-    private static final String BUGGY= "Bugginess";
+    private static final String BUG_COLUMN = "Bugginess";
+
 
     public CorrelationController(Table dataset) {
         this.dataset = dataset;
@@ -30,7 +31,6 @@ public class CorrelationController {
             "NestingDepth"
 
     );
-
 
     /**
          * Classe interna per rappresentare una feature e la sua correlazione
@@ -51,11 +51,11 @@ public class CorrelationController {
         List<FeatureCorrelation> correlations = new ArrayList<>();
 
         // Assicuriamoci che la colonna 'Bugginess' esista
-        if (!dataset.columnNames().contains(BUGGY) || !(dataset.column(BUGGY) instanceof StringColumn)) {
+        if (!dataset.columnNames().contains(BUG_COLUMN) || !(dataset.column(BUG_COLUMN) instanceof StringColumn)) {
             throw new IllegalArgumentException("La colonna 'Bugginess' deve esistere ed essere di tipo String (yes/no).");
         }
 
-        StringColumn bugginessStr = dataset.stringColumn(BUGGY);
+        StringColumn bugginessStr = dataset.stringColumn(BUG_COLUMN);
 
         // Converte yes/no in 1/0
         double[] bugValues = new double[bugginessStr.size()];
@@ -64,12 +64,14 @@ public class CorrelationController {
         }
 
         for (String colName : dataset.columnNames()) {
-            boolean isBuggyCol = colName.equals(BUGGY);
-            boolean isNotActionable = !ACTIONABLE_FEATURES.contains(colName);
-            if (isBuggyCol || isNotActionable) continue;
+            if (colName.equals(BUG_COLUMN)) continue;
+
+            // FILTRA SOLO LE FEATURE ACTIONABLE
+            if (!ACTIONABLE_FEATURES.contains(colName)) continue;
 
             if (dataset.column(colName) instanceof NumericColumn<?> numCol) {
                 double[] featureValues = numCol.asDoubleArray();
+
                 double corr = pearsonCorrelation(featureValues, bugValues);
                 correlations.add(new FeatureCorrelation(colName, corr));
             }
@@ -128,7 +130,7 @@ public class CorrelationController {
             throw new IllegalArgumentException("La colonna 'MethodName' deve esistere nel dataset.");
         }
 
-        StringColumn bugColumn = dataset.stringColumn(BUGGY);
+        StringColumn bugColumn = dataset.stringColumn(BUG_COLUMN);
         NumericColumn<?> featureColumn = (NumericColumn<?>) dataset.column(featureName);
         var methodNameColumn = dataset.column("MethodName");
 

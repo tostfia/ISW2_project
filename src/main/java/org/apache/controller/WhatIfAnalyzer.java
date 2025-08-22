@@ -1,5 +1,5 @@
 package org.apache.controller;
-import org.apache.logging.CollectLogger;
+import org.apache.logging.Printer;
 import org.apache.model.AggregatedClassifierResult;
 import org.apache.model.PredictionResult;
 
@@ -16,7 +16,7 @@ import weka.core.converters.CSVSaver;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.Logger;
+
 
 public class WhatIfAnalyzer {
     private final AggregatedClassifierResult bClassifier;
@@ -24,9 +24,7 @@ public class WhatIfAnalyzer {
     private final Instances wekaDatasetA;
     private final String projectName;
     private final CorrelationController cc;
-    private final Logger logger;
     private Classifier loadedWekaClassifier;
-    private static final String OUTPUT_DIR = "output";
 
     public WhatIfAnalyzer(AggregatedClassifierResult bClassifier, Table datasetA, Instances wekaDatasetA, String projectName) {
         this.bClassifier = bClassifier;
@@ -34,36 +32,36 @@ public class WhatIfAnalyzer {
         this.wekaDatasetA = wekaDatasetA;
         this.projectName = projectName;
         this.cc = new CorrelationController(datasetA);
-        this.logger = CollectLogger.getInstance().getLogger();
+
     }
 
     public void run() throws Exception {
-        logger.info("Avvio dell'analisi 'What-If'...");
+        Printer.printGreen("Avvio dell'analisi 'What-If'...\n");
 
         // PASSO 1: Identificazione di AFeature
         String aFeature = identifyAFeature();
         String methodName = cc.findBuggyMethodWithMaxFeature(aFeature);
 
-        logger.info(()->"Feature Azionabile (AFeature) identificata: " + aFeature);
-        logger.info(()->"Metodo con il valore massimo di " + aFeature + " tra i metodi buggy: " + methodName + " - Fare il refactor");
+        Printer.print("Feature Azionabile (AFeature) identificata: " + aFeature+ "\n");
+        Printer.print("Metodo con il valore massimo di " + aFeature + " tra i metodi buggy: " + methodName + " - Fare il refactor\n");
 
         // Carica il modello del classificatore BClassifierA
         String modelFilePath = bClassifier.getModelFilePath();
         if (modelFilePath == null || modelFilePath.isEmpty()) {
-            logger.severe("Percorso del modello del classificatore non trovato. Impossibile procedere con le predizioni.");
+            Printer.errorPrint("Percorso del modello del classificatore non trovato. Impossibile procedere con le predizioni.");
             return;
         }
 
         loadClassifierModel(modelFilePath);
         if (loadedWekaClassifier == null) {
-            logger.severe("Impossibile caricare il modello del classificatore. Analisi interrotta.");
+            Printer.errorPrint("Impossibile caricare il modello del classificatore. Analisi interrotta.");
             return;
         }
 
         String smells = "NumberOfCodeSmells";
 
         // PASSO 2: Creazione dei dataset B+, C, B
-        logger.info("Creazione dei dataset B+, C e B...");
+        Printer.print("Creazione dei dataset B+, C e B...\n");
         Instances bPlusDataset = createBPlusDataset(smells);
         Instances cDataset = createCDataset(smells);
         Instances bDataset = createBDataset(bPlusDataset, smells);
@@ -72,7 +70,7 @@ public class WhatIfAnalyzer {
         saveDatasetAsCSV(bPlusDataset, cDataset, bDataset);
 
         // PASSO 3: Predizioni su A, B, B+, C
-        logger.info("Esecuzione delle predizioni...");
+        Printer.print("Esecuzione delle predizioni...\n");
         Map<String, PredictionResult> results = new HashMap<>();
 
         results.put("A", predict(wekaDatasetA, "A"));
@@ -86,22 +84,22 @@ public class WhatIfAnalyzer {
         // PASSO 5: Analisi e Risposta
         analyzeResults(results, aFeature);
 
-        logger.info("Analisi 'What-If' completata.");
+        Printer.printlnGreen("Analisi 'What-If' completata.\n");
     }
 
     private String identifyAFeature() {
         CorrelationController.FeatureCorrelation best = cc.getBestFeature();
         String aFeature = best.featureName();
-        logger.info(()->"Feature azionabile (AFeature): " + aFeature + ", correlazione: " + best.correlation());
+        Printer.print("Feature azionabile (AFeature): " + aFeature + ", correlazione: " + best.correlation()+ "\n");
         return aFeature;
     }
 
     private void loadClassifierModel(String modelPath) {
         try {
             loadedWekaClassifier = (Classifier) SerializationHelper.read(modelPath);
-            logger.info(()->"Modello del classificatore caricato con successo da: " + modelPath);
+            Printer.print("Modello del classificatore caricato con successo da: " + modelPath+ "\n");
         } catch (Exception e) {
-            logger.severe(()->"Errore durante il caricamento del modello del classificatore da " + modelPath + ": " + e.getMessage());
+            Printer.errorPrint("Errore durante il caricamento del modello del classificatore da " + modelPath + ": " + e.getMessage());
             loadedWekaClassifier = null;
         }
     }
@@ -125,7 +123,7 @@ public class WhatIfAnalyzer {
             }
         }
 
-        logger.info(()->"Dataset B+ creato con " + bPlus.numInstances() + " istanze (mantiene MethodName, Project, Release)");
+        Printer.printBlue("Dataset B+ creato con " + bPlus.numInstances() + " istanze (mantiene MethodName, Project, Release)\n");
         return bPlus;
     }
 
@@ -144,7 +142,7 @@ public class WhatIfAnalyzer {
             }
         }
 
-        logger.info(()->"Dataset C creato con " + cDataset.numInstances() + " istanze (mantiene MethodName, Project, Release)");
+        Printer.printBlue("Dataset C creato con " + cDataset.numInstances() + " istanze (mantiene MethodName, Project, Release)\n");
         return cDataset;
     }
 
@@ -159,7 +157,7 @@ public class WhatIfAnalyzer {
             inst.setValue(smellsIndex, 0); // Azzera solo gli smells
         }
 
-        logger.info(()->"Dataset B creato con " + bDataset.numInstances() + " istanze (B+ con smells azzerati, mantiene MethodName, Project, Release)");
+        Printer.printBlue("Dataset B creato con " + bDataset.numInstances() + " istanze (B+ con smells azzerati, mantiene MethodName, Project, Release)\n");
         return bDataset;
     }
 
@@ -168,29 +166,10 @@ public class WhatIfAnalyzer {
      */
     private PredictionResult predict(Instances dataToPredict, String datasetName) throws Exception {
         if (dataToPredict == null || dataToPredict.isEmpty()) {
-            logger.warning(()->"Dataset '" + datasetName + "' è vuoto. Impossibile effettuare predizioni.");
+            Printer.printYellow("Dataset '" + datasetName + "' è vuoto. Impossibile effettuare predizioni.");
             return new PredictionResult(0, 0, 0);
         }
 
-        if (dataToPredict.classIndex() == -1) {
-            dataToPredict.setClassIndex(dataToPredict.numAttributes() - 1);
-        }
-
-        int[] counts = countBuggyPredictions(dataToPredict);
-
-        logger.info(()->"Predizioni per " + datasetName + ": " +
-                "Totale=" + dataToPredict.numInstances() +
-                ", Actual Buggy=" + counts[0] +
-                ", Predicted Buggy=" + counts[1] +
-                ", Correctly Predicted Buggy=" + counts[2]);
-
-        return new PredictionResult(
-                counts[0], counts[1], counts[2],
-                counts[3], counts[4], counts[5]
-        );
-    }
-
-    private int[] countBuggyPredictions(Instances data) throws Exception {
         int actualBuggy = 0;
         int predictedBuggy = 0;
         int correctlyPredictedBuggy = 0;
@@ -198,29 +177,53 @@ public class WhatIfAnalyzer {
         int predictedNonBuggy = 0;
         int correctlyPredictedNonBuggy = 0;
 
-        for (int i = 0; i < data.numInstances(); i++) {
-            Instance inst = data.instance(i);
+        // Assicurati che il dataset abbia la classe impostata
+        if (dataToPredict.classIndex() == -1) {
+            dataToPredict.setClassIndex(dataToPredict.numAttributes() - 1);
+        }
+
+        for (int i = 0; i < dataToPredict.numInstances(); i++) {
+            Instance inst = dataToPredict.instance(i);
+
+            // Valore effettivo della classe (0 = no, 1 = yes per bugginess)
+            double actualClassValue = inst.classValue();
             boolean isActuallyBuggy = inst.stringValue(inst.classIndex()).equals("yes");
-            boolean isPredictedBuggy = data.classAttribute().value(
-                    (int) loadedWekaClassifier.classifyInstance(inst)
-            ).equals("yes");
 
-            if (isActuallyBuggy) actualBuggy++;
-            else actualNonBuggy++;
+            // Predizione del classificatore
+            double predictedClassValue = loadedWekaClassifier.classifyInstance(inst);
+            boolean isPredictedBuggy = dataToPredict.classAttribute().value((int)predictedClassValue).equals("yes");
 
+            // Conteggi per actual
+            if (isActuallyBuggy) {
+                actualBuggy++;
+            } else {
+                actualNonBuggy++;
+            }
+
+            // Conteggi per predicted
             if (isPredictedBuggy) {
                 predictedBuggy++;
-                if (isActuallyBuggy) correctlyPredictedBuggy++;
+                if (isActuallyBuggy) {
+                    correctlyPredictedBuggy++;
+                }
             } else {
                 predictedNonBuggy++;
-                if (!isActuallyBuggy) correctlyPredictedNonBuggy++;
+                if (!isActuallyBuggy) {
+                    correctlyPredictedNonBuggy++;
+                }
             }
         }
-        return new int[] {
-                actualBuggy, predictedBuggy, correctlyPredictedBuggy,
-                actualNonBuggy, predictedNonBuggy, correctlyPredictedNonBuggy
-        };
+
+        Printer.printBlue("Predizioni per " + datasetName + ": " +
+                "Totale=" + dataToPredict.numInstances() +
+                ", Actual Buggy=" + actualBuggy +
+                ", Predicted Buggy=" + predictedBuggy +
+                ", Correctly Predicted Buggy=" + correctlyPredictedBuggy);
+
+        return new PredictionResult(actualBuggy, predictedBuggy, correctlyPredictedBuggy,
+                actualNonBuggy, predictedNonBuggy, correctlyPredictedNonBuggy);
     }
+
     /**
      * Crea e salva una tabella con i risultati delle predizioni
      */
@@ -258,21 +261,21 @@ public class WhatIfAnalyzer {
                             correctBuggyColumn, correctNonBuggyColumn);
 
             // Salva la tabella come CSV
-            String resultsPath = OUTPUT_DIR + File.separator + projectName + "_prediction_results.csv";
+            String resultsPath = "output" + File.separator + projectName + "_prediction_results.csv";
             resultsTable.write().csv(resultsPath);
-            logger.info(()->"Tabella dei risultati salvata in: " + resultsPath);
+            Printer.print("Tabella dei risultati salvata in: " + resultsPath+"\n");
 
             // Stampa anche la tabella nel log per visibilità immediata
-            logger.info("\n--- TABELLA DEI RISULTATI DELLE PREDIZIONI ---");
-            logger.info(resultsTable.print());
+            Printer.print("\n--- TABELLA DEI RISULTATI DELLE PREDIZIONI ---\n");
+            Printer.print(resultsTable.print());
 
         } catch (Exception e) {
-            logger.severe(()->"Errore durante la creazione della tabella dei risultati: " + e.getMessage());
+            Printer.errorPrint("Errore durante la creazione della tabella dei risultati: " + e.getMessage());
         }
     }
 
     private void analyzeResults(Map<String, PredictionResult> results, String aFeature) {
-        logger.info("\n--- ANALISI WHAT-IF ---");
+        Printer.print("\n--- ANALISI WHAT-IF ---");
 
         PredictionResult bPlusRes = results.get("B+");
         PredictionResult bRes = results.get("B");
@@ -281,14 +284,14 @@ public class WhatIfAnalyzer {
             int preventableBuggyMethods = bPlusRes.getPredictedBuggy() - bRes.getPredictedBuggy();
             if (preventableBuggyMethods < 0) preventableBuggyMethods = 0;
 
-            logger.info(()->"Metodi con smells predetti come buggy (B+): " + bPlusRes.getPredictedBuggy());
-            logger.info(()->"Metodi (ex B+ con smells azzerati) predetti come buggy (B): " + bRes.getPredictedBuggy());
-            logger.info("RISPOSTA: Circa " + preventableBuggyMethods +
-                    " metodi difettosi avrebbero potuto essere prevenuti azzerando " + aFeature);
+            Printer.print("Metodi con smells predetti come buggy (B+): " + bPlusRes.getPredictedBuggy()+ "\n");
+            Printer.print("Metodi (ex B+ con smells azzerati) predetti come buggy (B): " + bRes.getPredictedBuggy());
+            Printer.print("RISPOSTA: Circa " + preventableBuggyMethods +
+                    " metodi difettosi avrebbero potuto essere prevenuti azzerando " + aFeature+ "\n");
 
             if (bPlusRes.getPredictedBuggy() > 0) {
                 double proportion = (double) preventableBuggyMethods / bPlusRes.getPredictedBuggy() * 100;
-                logger.info(String.format("Proporzione: %.2f%% dei metodi buggy con smells", proportion));
+                Printer.print(String.format("Proporzione: %.2f%% dei metodi buggy con smells\n", proportion));
             }
         }
     }
@@ -304,24 +307,24 @@ public class WhatIfAnalyzer {
 
             // Salva bPlusDataset
             saver.setInstances(bPlusDataset);
-            saver.setFile(new File(OUTPUT_DIR + File.separator + projectName + "_BPlus.csv"));
+            saver.setFile(new File("output" + File.separator + projectName + "_BPlus.csv\n"));
             saver.writeBatch();
-            logger.info(()->"Dataset BPlus salvato in: output" + File.separator + projectName + "_BPlus.csv");
+            Printer.println("Dataset BPlus salvato in: output" + File.separator + projectName + "_BPlus.csv\n");
 
             // Salva bDataset
             saver.setInstances(bDataset);
-            saver.setFile(new File(OUTPUT_DIR + File.separator + projectName + "_BDataset.csv"));
+            saver.setFile(new File("output" + File.separator + projectName + "_BDataset.csv\n"));
             saver.writeBatch();
-            logger.info(()->"Dataset B salvato in: output" + File.separator + projectName + "_BDataset.csv");
+            Printer.println("Dataset B salvato in: output" + File.separator + projectName + "_BDataset.csv\n");
 
             // Salva cDataset
             saver.setInstances(cDataset);
-            saver.setFile(new File(OUTPUT_DIR + File.separator + projectName + "_CDataset.csv"));
+            saver.setFile(new File("output" + File.separator + projectName + "_CDataset.csv\n"));
             saver.writeBatch();
-            logger.info(()->"Dataset C salvato in: output" + File.separator + projectName + "_CDataset.csv");
+            Printer.println("Dataset C salvato in: output" + File.separator + projectName + "_CDataset.csv\n");
 
         } catch (Exception e) {
-            logger.severe(()->"Errore durante il salvataggio dei dataset B+, B, C in CSV: " + e.getMessage());
+            Printer.errorPrint("Errore durante il salvataggio dei dataset B+, B, C in CSV: " + e.getMessage());
         }
     }
 
@@ -329,15 +332,15 @@ public class WhatIfAnalyzer {
      * Logga gli attributi presenti in un dataset per verifica
      */
     private void logDatasetAttributes(String datasetName, Instances dataset) {
-        logger.info("Dataset " + datasetName + " contiene " + dataset.numInstances() + " istanze e " + dataset.numAttributes() + " attributi:");
+        Printer.print("Dataset " + datasetName + " contiene " + dataset.numInstances() + " istanze e " + dataset.numAttributes() + " attributi:\n");
 
         // Verifica specificamente per le colonne che ci interessano
         String[] importantColumns = {"MethodName", "Project", "Release", "NumberOfCodeSmells", "bugginess"};
         for (String colName : importantColumns) {
             if (dataset.attribute(colName) != null) {
-                logger.info(()->"  ✓ " + colName + " presente (indice: " + dataset.attribute(colName).index() + ")");
+                Printer.print("  ✓ " + colName + " presente (indice: " + dataset.attribute(colName).index() + ")");
             } else {
-                logger.warning(()->"  ✗ " + colName + " MANCANTE!");
+                Printer.errorPrint("  ✗ " + colName + " MANCANTE!");
             }
         }
 
@@ -346,6 +349,6 @@ public class WhatIfAnalyzer {
         for (int i = 0; i < Math.min(5, dataset.numAttributes()); i++) {
             attrs.append(dataset.attribute(i).name()).append(", ");
         }
-        logger.info(attrs.toString());
+        Printer.print(attrs.toString());
     }
 }
