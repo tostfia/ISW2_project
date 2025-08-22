@@ -94,7 +94,7 @@ public class GitController {
     }
 
     public void buildCommitHistory() throws GitAPIException, IOException {
-        logger.info("Starting commit analysis for " + targetName);
+        logger.info(()->"Starting commit analysis for " + targetName);
         Iterable<RevCommit> log = git.log().all().call();
 
         for (RevCommit revCommit : log) {
@@ -114,7 +114,7 @@ public class GitController {
 
 
         releases.removeIf(release -> release.getCommitList().isEmpty());
-        logger.info("Found and processed " + this.allCommits.size() + " commits across " + releases.size() + " valid releases.");
+        logger.info(()->"Found and processed " + this.allCommits.size() + " commits across " + releases.size() + " valid releases.");
     }
 
 
@@ -145,7 +145,7 @@ public class GitController {
 
         }
 
-        logger.info("Found " + ticketMap.size() + " valid bug tickets");
+        logger.info(()->"Found " + ticketMap.size() + " valid bug tickets");
 
         Pattern pattern = Pattern.compile(this.targetName + "-\\d+", Pattern.CASE_INSENSITIVE);
 
@@ -167,7 +167,7 @@ public class GitController {
                 }
             }
         }
-        logger.info("Found " + this.fixingCommits.size() + " bug-fixing commits.");
+        logger.info(()->"Found " + this.fixingCommits.size() + " bug-fixing commits.");
     }
 
 
@@ -214,10 +214,10 @@ public class GitController {
         try {
             if (this.git != null) {
                 this.git.close();
-                logger.info("Repository for " + targetName + " closed successfully.");
+                logger.info(()->"Repository for " + targetName + " closed successfully.");
             }
         } catch (Exception e) {
-            logger.warning("Error closing repository: " + e.getMessage());
+            logger.warning(()->"Error closing repository: " + e.getMessage());
         }
     }
 
@@ -237,7 +237,7 @@ public class GitController {
                         String content = new String(repository.open(treeWalk.getObjectId(0)).getBytes(), StandardCharsets.UTF_8);
                         allClasses.put(path, content);
                     } catch (IOException e) {
-                        logger.warning("Cannot read file " + path + " in commit " + revCommit.getName());
+                        logger.warning(()->"Cannot read file " + path + " in commit " + revCommit.getName());
                     }
                 }
             }
@@ -279,7 +279,7 @@ public class GitController {
     }
 
     public void labelBugginess(List<AnalyzedClass> classList) {
-        logger.info("Inizio del processo di etichettatura della bugginess per " + classList.size() + " classi.");
+        logger.info(()->"Inizio del processo di etichettatura della bugginess per " + classList.size() + " classi.");
         Map<String, List<AnalyzedClass>> snapshotsByClassPath = classList.stream()
                 .collect(Collectors.groupingBy(AnalyzedClass::getClassName));
         classList.forEach(classSnapshot ->
@@ -330,7 +330,7 @@ public class GitController {
                     classSnapshot.getMethods().forEach(method -> method.setBuggy(true));
                     buggyMethods += classSnapshot.getMethods().size();
                 } else {
-                    logger.warning("La classe " + classSnapshot.getClassName() + " (Release " + snapshotRelease.getReleaseName() + ") non ha metodi, ma le condizioni per etichettare erano soddisfatte.");
+                    logger.warning(()->"La classe " + classSnapshot.getClassName() + " (Release " + snapshotRelease.getReleaseName() + ") non ha metodi, ma le condizioni per etichettare erano soddisfatte.");
                 }
             }
         }
@@ -362,7 +362,7 @@ public class GitController {
         Map<Release, List<Ticket>> ticketsByFixedRelease = this.tickets.stream()
                 .filter(t -> t.getFixedVersion() != null)
                 .collect(Collectors.groupingBy(Ticket::getFixedVersion));
-        logger.fine("Mappa dei ticket per fixed release creata con " + ticketsByFixedRelease.size() + " voci.");
+        logger.fine(()->"Mappa dei ticket per fixed release creata con " + ticketsByFixedRelease.size() + " voci.");
 
         int totalBugIntroCommitsFound = 0;
 
@@ -371,9 +371,9 @@ public class GitController {
             if (!bugIntroCommits.isEmpty()) {
                 this.bugIntroducingCommitsMap.put(fixingCommit, bugIntroCommits);
                 totalBugIntroCommitsFound += bugIntroCommits.size();
-                logger.fine("Aggiunti " + bugIntroCommits.size() + " bug-introducing commits per fixing commit " + fixingCommit.getRevCommit().getName());
+                logger.fine(()->"Aggiunti " + bugIntroCommits.size() + " bug-introducing commits per fixing commit " + fixingCommit.getRevCommit().getName());
             } else {
-                logger.fine("Nessun bug-introducing commit realistico trovato per il fixing commit: " + fixingCommit.getRevCommit().getName());
+                logger.fine(()->"Nessun bug-introducing commit realistico trovato per il fixing commit: " + fixingCommit.getRevCommit().getName());
             }
         }
 
