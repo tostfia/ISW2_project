@@ -98,8 +98,8 @@ public class DatasetController {
         final String testingBaseDir = outputBaseDir + File.separator + "TESTING";
 
         // Crea le directory se non esistono
-        new File(trainingBaseDir).mkdirs();
-        new File(testingBaseDir).mkdirs();
+        new File(trainingBaseDir);
+        new File(testingBaseDir);
 
         List<String> allReleasesFromDatasetAInt = new ArrayList<>(new HashSet<>(datasetA.stringColumn("Release").asList()));
         Collections.sort(allReleasesFromDatasetAInt);
@@ -163,7 +163,7 @@ public class DatasetController {
         logger.info("Salvato file: " + filePath);
     }
 
-    public Instances convertTablesawToWekaInstances(Table sourceTable, List<String> targetReleases, String datasetName) throws Exception {
+    public Instances convertTablesawToWekaInstances(Table sourceTable, List<String> targetReleases, String datasetName) {
         Table filteredTable = filterTableByReleases(sourceTable, targetReleases);
 
         if (filteredTable.isEmpty()) {
@@ -330,7 +330,7 @@ public class DatasetController {
         return column.getString(rowIndex);
     }
 
-    private Instances createEmptyWekaInstances(String datasetName, Table referenceTable) throws Exception {
+    private Instances createEmptyWekaInstances(String datasetName, Table referenceTable)  {
         ArrayList<Attribute> attributes = createWekaAttributes(referenceTable);
         return new Instances(datasetName, attributes, 0);
     }

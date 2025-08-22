@@ -1,5 +1,7 @@
 package  org.apache;
+import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.logging.Logger;
 
 import org.apache.controller.*;
@@ -8,7 +10,11 @@ import org.apache.controller.*;
 import org.apache.controller.milestone1.JiraController;
 import org.apache.logging.CollectLogger;
 import org.apache.model.AggregatedClassifierResult;
+import org.apache.model.Release;
 import tech.tablesaw.api.Table;
+import weka.classifiers.Classifier;
+import weka.core.Instances;
+import weka.core.SerializationHelper;
 
 public class Milestone2_Analysis {
 
@@ -48,8 +54,10 @@ public class Milestone2_Analysis {
         DatasetController datasetController = new DatasetController(projectName);
         // Passiamo la percentuale di taglio a prepareDatasetA()
         Table datasetA = datasetController.prepareDatasetA(cutPercentage);
+        datasetA.write().csv("output"+File.separator+projectName + "datasetA.csv");
+        logger.info ("Dataset A salvato in: output/datasetA.csv");
 
-        if (datasetA == null || datasetA.isEmpty()) {
+        if (datasetA.isEmpty()) {
             logger.severe("Analisi interrotta: il dataset 'A' non è stato creato o è vuoto.");
             return;
         }
@@ -77,12 +85,12 @@ public class Milestone2_Analysis {
         // ==================================================================
         logger.info("\nFase 2: Esecuzione Classificazione con WekaController...");
         start = System.currentTimeMillis();
-
+        //Comparo l'accuratezza dei tre classifier (Ibk, Naive e RandomForest)
         WekaController wekaClassifierRunner = new WekaController(projectName, actualIteration);
         wekaClassifierRunner.classify();
         wekaClassifierRunner.saveResults();
 
-        // NUOVO: Scegli il miglior classificatore dal report
+        // Scegli il miglior classificatore dal report
         ReportAnalyzer reportAnalyzer = new ReportAnalyzer(projectName);
         reportAnalyzer.analyzeAllCriteriaAndSave();
         AggregatedClassifierResult bClassifier = reportAnalyzer.getBestClassifier("KAPPA");
@@ -99,6 +107,28 @@ public class Milestone2_Analysis {
         long endFase2 = System.currentTimeMillis();
         logger.info("Fase 2 completata in " + (endFase2 - start) / 1000.0 + " secondi.");
 
+        List<String> allReleases = jiraController.getRealeases()
+                .stream()
+                .map(Release::getReleaseName)
+                .toList();
+
+        Instances wekaDatasetA = datasetController.convertTablesawToWekaInstances(datasetA,allReleases,projectName+"_datasetA");
+        Classifier classifier;
+        switch(bClassifier.getClassifierName()) {
+            case "RandomForest" -> classifier = new weka.classifiers.trees.RandomForest();
+            case "NaiveBayes" -> classifier = new weka.classifiers.bayes.NaiveBayes();
+            case "IBk" -> classifier = new weka.classifiers.lazy.IBk();
+            default -> {
+                logger.severe("Classificatore sconosciuto: " + bClassifier.getClassifierName());
+                return;
+            }
+        }
+        wekaDatasetA.setClassIndex(wekaDatasetA.numAttributes() - 1);
+        classifier.buildClassifier(wekaDatasetA);
+        String modelPath ="models"+ File.separator+ projectName+"_BClassifierA.model";
+        SerializationHelper.write(modelPath, classifier);
+        bClassifier.setModelFilePath(modelPath);
+        logger.info("Modello del BClassifier salvato in: " + modelPath);
 
 
 
@@ -108,7 +138,7 @@ public class Milestone2_Analysis {
         logger.info("\nFase 3: Analisi di Correlazione e Simulazione What-If...");
         start = System.currentTimeMillis();
 
-        WhatIfAnalyzer whatIfAnalyzer = new WhatIfAnalyzer(bClassifier, datasetA, projectName);
+        WhatIfAnalyzer whatIfAnalyzer = new WhatIfAnalyzer(bClassifier, datasetA,wekaDatasetA, projectName);
         try {
             whatIfAnalyzer.run();
         } catch (Exception e) {

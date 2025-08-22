@@ -1,21 +1,17 @@
 package org.apache.controller;
 
-
 import org.apache.logging.CollectLogger;
 import org.apache.model.AggregatedClassifierResult;
-import tech.tablesaw.api.Table;
 import tech.tablesaw.api.Row;
+import tech.tablesaw.api.Table;
 
 import java.io.File;
-import java.io.IOException;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.logging.Logger;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.logging.Logger;
 
 public class ReportAnalyzer {
 
@@ -40,12 +36,14 @@ public class ReportAnalyzer {
 
     public ReportAnalyzer(String projectName, double weightFP, double weightFN) {
         this.projectName = projectName;
-         this.weightFalsePositive = weightFP;
+        this.weightFalsePositive = weightFP;
         this.weightFalseNegative = weightFN;
 
         this.outputDir = "output" + File.separator + "results" + File.separator + projectName + File.separator;
+        // Assicurati che la directory di output esista
+         new File(outputDir);
+
         this.reportFilePath = outputDir + projectName + "_report.csv";
-        new File(outputDir);
     }
 
     // Setter opzionali per personalizzare i pesi del composite score
@@ -224,7 +222,7 @@ public class ReportAnalyzer {
 
                 aggregatedResults.putIfAbsent(configKey,
                         new AggregatedClassifierResult(dataset, classifierName, featureSelection,
-                                balancing, costSensitive));
+                                balancing, costSensitive, ""));
                 aggregatedResults.get(configKey).addRunResult(precision, recall,
                         areaUnderROC, kappa, expectedCost);
             } catch (Exception e) {
@@ -235,20 +233,6 @@ public class ReportAnalyzer {
         logger.info("Caricati e aggregati " + aggregatedResults.size() + " configurazioni diverse");
         return aggregatedResults;
     }
-
-    // Gli altri metodi (saveBestClassifierToCSV, saveCompleteRankingToCSV, analyzeAllCriteriaAndSave)
-    // restano uguali a prima.
-
-
-
-
-
-
-
-
-
-
-
 
     /**
      * Salva il miglior classificatore in un file CSV
@@ -266,7 +250,7 @@ public class ReportAnalyzer {
                 writer.append("TIMESTAMP,PROJECT,SELECTION_CRITERIA,CRITERIA_VALUE,CLASSIFIER,")
                         .append("FEATURE_SELECTION,BALANCING,COST_SENSITIVE,RUN_COUNT,")
                         .append("AVG_PRECISION,AVG_RECALL,AVG_AUC,AVG_KAPPA,AVG_EXPECTED_COST")
-                        .append("\n"); // <<< L'HEADER DEVE FINIRE CON UN A CAPO
+                        .append("\n");
             }
 
             // Timestamp corrente
@@ -286,9 +270,9 @@ public class ReportAnalyzer {
                     .append(String.format(Locale.ENGLISH, "%.6f", bestClassifier.getAvgRecall())).append(",")
                     .append(String.format(Locale.ENGLISH, "%.6f", bestClassifier.getAvgAreaUnderROC())).append(",")
                     .append(String.format(Locale.ENGLISH, "%.6f", bestClassifier.getAvgKappa())).append(",")
-                    .append(String.format(Locale.ENGLISH, "%.6f", bestClassifier.getAvgExpectedCost())); // <<< NESSUNA VIRGOLA QUI, È L'ULTIMO CAMPO
+                    .append(String.format(Locale.ENGLISH, "%.6f", bestClassifier.getAvgExpectedCost()));
 
-            writer.append("\n"); // <<< QUESTA RIGA È FONDAMENTALE PER IL NUOVO A CAPO PER OGNI RIGA DI DATI!
+            writer.append("\n");
 
             logger.info("Risultato salvato in: " + outputFilePath);
 
@@ -327,6 +311,28 @@ public class ReportAnalyzer {
             case "KAPPA":
                 rankedResults.sort(Comparator.comparing(AggregatedClassifierResult::getAvgKappa).reversed());
                 break;
+            case "F1_SCORE": // Nuovo caso per F1-Score
+                rankedResults.sort((r1, r2) -> {
+                    double f1_r1 = (r1.getAvgPrecision() + r1.getAvgRecall() == 0) ? 0 :
+                            2 * (r1.getAvgPrecision() * r1.getAvgRecall()) / (r1.getAvgPrecision() + r1.getAvgRecall());
+                    double f1_r2 = (r2.getAvgPrecision() + r2.getAvgRecall() == 0) ? 0 :
+                            2 * (r2.getAvgPrecision() * r2.getAvgRecall()) / (r2.getAvgPrecision() + r2.getAvgRecall());
+                    return Double.compare(f1_r2, f1_r1); // Ordinamento decrescente
+                });
+                break;
+            case "COMPOSITE_SCORE": // Nuovo caso per Composite Score
+                rankedResults.sort((r1, r2) -> {
+                    double composite1 = (weightAUC * r1.getAvgAreaUnderROC()) +
+                            (weightPrecision * r1.getAvgPrecision()) +
+                            (weightRecall * r1.getAvgRecall()) +
+                            (weightKappa * Math.max(0, r1.getAvgKappa()));
+                    double composite2 = (weightAUC * r2.getAvgAreaUnderROC()) +
+                            (weightPrecision * r2.getAvgPrecision()) +
+                            (weightRecall * r2.getAvgRecall()) +
+                            (weightKappa * Math.max(0, r2.getAvgKappa()));
+                    return Double.compare(composite2, composite1); // Ordinamento decrescente
+                });
+                break;
             default:
                 logger.warning("Criterio di ranking non riconosciuto: " + criteria);
                 return;
@@ -349,11 +355,11 @@ public class ReportAnalyzer {
                         .append(result.getBalancing()).append(",")
                         .append(result.getCostSensitive()).append(",")
                         .append(String.valueOf(result.getNumberOfRuns())).append(",")
-                        .append(String.format(Locale.ENGLISH, "%.6f", result.getAvgPrecision())).append(",") // <<< Locale.ENGLISH
-                        .append(String.format(Locale.ENGLISH, "%.6f", result.getAvgRecall())).append(",")    // <<< Locale.ENGLISH
-                        .append(String.format(Locale.ENGLISH, "%.6f", result.getAvgAreaUnderROC())).append(",") // <<< Locale.ENGLISH
-                        .append(String.format(Locale.ENGLISH, "%.6f", result.getAvgKappa())).append(",")      // <<< Locale.ENGLISH
-                        .append(String.format(Locale.ENGLISH, "%.6f", result.getAvgExpectedCost())) // <<< Locale.ENGLISH, Rimosso virgola finale
+                        .append(String.format(Locale.ENGLISH, "%.6f", result.getAvgPrecision())).append(",")
+                        .append(String.format(Locale.ENGLISH, "%.6f", result.getAvgRecall())).append(",")
+                        .append(String.format(Locale.ENGLISH, "%.6f", result.getAvgAreaUnderROC())).append(",")
+                        .append(String.format(Locale.ENGLISH, "%.6f", result.getAvgKappa())).append(",")
+                        .append(String.format(Locale.ENGLISH, "%.6f", result.getAvgExpectedCost()))
                         .append("\n");
                 rank++;
             }
@@ -372,23 +378,23 @@ public class ReportAnalyzer {
     public void analyzeAllCriteriaAndSave() {
         logger.info("Inizio analisi completa per progetto: " + projectName);
 
-        // Analizza per tutti i criteri
+        // Analizza per tutti i criteri per scegliere il "migliore"
+        chooseBestClassifierByExpectedCost(); // Inserito il richiamo per Expected Cost
         chooseBestClassifierByAUC();
         chooseBestClassifierByKappa();
         chooseBestClassifierByF1Score();
         chooseBestClassifierByCompositeScore();
 
-        // Genera i ranking completi
+        // Genera i ranking completi per tutti i criteri rilevanti
         saveCompleteRankingToCSV("AUC");
         saveCompleteRankingToCSV("EXPECTED_COST");
         saveCompleteRankingToCSV("KAPPA");
         saveCompleteRankingToCSV("PRECISION");
+        saveCompleteRankingToCSV("RECALL"); // Aggiunto per completezza
+        saveCompleteRankingToCSV("F1_SCORE"); // Nuovo ranking per F1-Score
+        saveCompleteRankingToCSV("COMPOSITE_SCORE"); // Nuovo ranking per Composite Score
+
 
         logger.info("Analisi completa terminata. Tutti i risultati sono stati salvati.");
     }
-
-
-
-
-
 }

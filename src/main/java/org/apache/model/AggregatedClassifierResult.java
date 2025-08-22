@@ -2,6 +2,7 @@ package org.apache.model;
 
 
 import lombok.Getter;
+import lombok.Setter;
 
 @Getter
 public class AggregatedClassifierResult {
@@ -15,10 +16,12 @@ public class AggregatedClassifierResult {
     private double avgAreaUnderROC;
     private double avgKappa;
     private double avgExpectedCost;
-    private int numberOfRuns; // Numero di iterazioni su cui è basata la media
+    private int numberOfRuns;// Numero di iterazioni su cui è basata la media
+    @Setter
+    private String modelFilePath;
 
     // Costruttore
-    public AggregatedClassifierResult(String project,String classifierName, String featureSelection, String balancing, String costSensitive) {
+    public AggregatedClassifierResult(String project,String classifierName, String featureSelection, String balancing, String costSensitive, String modelFilePath) {
         this.classifierName = classifierName;
         this.featureSelection = featureSelection;
         this.balancing = balancing;
@@ -30,6 +33,7 @@ public class AggregatedClassifierResult {
         this.avgExpectedCost = 0.0;
         this.numberOfRuns = 0;
         this.project = project;
+        this.modelFilePath =modelFilePath;
     }
 
     // Metodo per aggiornare le medie con i risultati di una nuova iterazione
@@ -55,4 +59,6 @@ public class AggregatedClassifierResult {
                 ", Avg AUC: " + String.format("%.2f", avgAreaUnderROC) +
                 " (based on " + numberOfRuns + " runs)";
     }
+
+
 }
