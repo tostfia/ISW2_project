@@ -15,7 +15,10 @@ import java.util.Comparator;
 import java.util.List;
 
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import java.util.logging.Logger;
+
+
 
 public class NumOfCodeSmells {
 
@@ -86,15 +89,16 @@ public class NumOfCodeSmells {
         String reportPath = PMD_ANALYSIS_BASE_DIR + File.separator + this.project + File.separator + releaseId + ".xml";
 
         if (new File(reportPath).exists()) {
-            logger.info("Report PMD (XML) per la release " + releaseId + " già esistente. Salto l'analisi.");
+            logger.log(Level.INFO, "Report PMD (XML) per la release {0} già esistente. Salto l'analisi.", releaseId);
+
             return;
         }
 
-        logger.info("Inizio analisi PMD per la release " + releaseId + " (commit: " + commit.getName() + ")");
+        logger.log(Level.INFO, "Inizio analisi PMD per la release {0} (commit: {1})", new Object[]{releaseId, commit.getName()});
 
         try {
             git.checkout().setForced(true).setName(commit.getName()).setStartPoint(commit).call();
-            logger.info("Checkout al commit " + commit.getName() + " completato.");
+            logger.log(Level.INFO, "Checkout al commit {0} completato.", commit.getName());
 
             Process process = buildPmdProcess(reportPath);
 
@@ -116,32 +120,37 @@ public class NumOfCodeSmells {
                 exitCode = process.exitValue();
             } else {
                 process.destroyForcibly();
-                logger.warning("Analisi PMD per la release " + releaseId + " ha superato il tempo limite.");
+                logger.log(Level.WARNING, "Analisi PMD per la release {0} ha superato il tempo limite.", releaseId);
+
             }
 
             // 3. Logga i risultati dettagliati
-            logger.info("Analisi PMD per la release " + releaseId + " terminata con codice di uscita: " + exitCode);
+            logger.log(Level.INFO, "Analisi PMD per la release {0} terminata con codice di uscita: {1}", new Object[]{releaseId, exitCode});
+
 
             if (exitCode == 0) {
                 // PMD ha terminato con successo e non ha trovato violazioni.
                 // Potrebbe esserci il caso "No files to analyze".
                 if (pmdOutput.toString().contains("No files to analyze")) {
-                    logger.warning("PMD ha terminato con successo per la release " + releaseId + " ma non ha trovato file Java da analizzare. (Commit potrebbe non contenere codice Java o filtri attivi).");
+                    logger.log(Level.WARNING, "PMD ha terminato con successo per la release {0} ma non ha trovato file Java da analizzare.", releaseId);
+
                 }
             } else if (exitCode == 4) {
                 // PMD ha terminato con successo e ha trovato violazioni.
-                logger.info("PMD ha terminato con successo per la release " + releaseId + " trovando violazioni. (Vedi report XML).");
+                logger.log(Level.SEVERE, "PMD ha terminato con successo per la release {0} trovando violazioni. (Vedi report XML).", releaseId);
+
+            }else {
+                logger.log(Level.SEVERE, "PMD ha fallito inaspettatamente per la release {0}. Codice di uscita: {1}. Output di PMD:\n{2}",
+                        new Object[]{releaseId, exitCode, pmdOutput.toString()});
             }
-            // Qualsiasi altro codice di uscita indica un vero fallimento o errore di configurazione.
-            logger.severe("PMD ha fallito inaspettatamente per la release " + releaseId + ". Codice di uscita: " + exitCode + ". Output di PMD:\n" + pmdOutput);
 
 
 
         } catch (GitAPIException e) {
-            logger.severe("Errore critico di Git durante il checkout del commit " + commit.getName() + ": " + e.getMessage());
+            logger.log(Level.SEVERE, "Errore critico di Git durante il checkout del commit {0}: {1}", new Object[]{commit.getName(), e.getMessage()});
             cleanAndResetGitState();
         } catch (IOException | InterruptedException e) {
-            logger.severe("Errore durante l'esecuzione di PMD per la release " + releaseId + ": " + e.getMessage());
+            logger.log(Level.SEVERE, "Errore durante l'esecuzione di PMD per la release {0}: {1}", new Object[]{releaseId, e.getMessage()});
             Thread.currentThread().interrupt();
         }
     }
@@ -185,18 +194,20 @@ public class NumOfCodeSmells {
             git.clean().setForce(true).setCleanDirectories(true).call();
             logger.info("Reset e clean completati.");
         } catch (GitAPIException e) {
-            logger.severe("Fallito il ripristino dello stato del repository: " + e.getMessage());
+            logger.log(Level.SEVERE, "Fallito il ripristino dello stato del repository: {0}", e.getMessage());
+
         }
     }
 
     private void restoreRepositoryState() {
-        logger.info("Ripristino del repository al branch originale: " + originalBranch);
+        logger.log(Level.INFO,"Ripristino del repository al branch originale: " ,originalBranch);
         try {
             cleanAndResetGitState(); // Pulisci prima di cambiare branch
             git.checkout().setName(originalBranch).call();
             logger.info("Repository ripristinato con successo.");
         } catch (GitAPIException e) {
-            logger.severe("Impossibile ripristinare il repository al branch " + originalBranch + ": " + e.getMessage());
+            logger.log(Level.SEVERE, "Impossibile ripristinare il repository al branch {0}: {1}", new Object[]{originalBranch, e.getMessage()});
+
         }
     }
 }
