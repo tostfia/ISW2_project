@@ -1,5 +1,6 @@
 package org.apache.controller;
 
+import java_cup.internal_error;
 import org.apache.logging.Printer;
 import org.apache.model.ClassifierResult;
 import org.apache.model.DataClassifier;
@@ -28,7 +29,7 @@ public class WekaController {
         this.classifierResults = new ArrayList<>();
     }
 
-    public void classify(){
+    public void classify() throws internal_error {
         final String arffExtension = FileExtension.ARFF.getId(); // Assumiamo restituisca "arff" (senza punto)
 
         // Questo è il percorso base fino alla cartella del progetto (es. output/dataset/BOOKKEEPER)
@@ -79,7 +80,7 @@ public class WekaController {
                         wekaClassifier.buildClassifier(trainInstances);
                         evaluation.evaluateModel(wekaClassifier, testInstances);
                         ClassifierResult result = new ClassifierResult(iteration, classifier,evaluation);
-                        result.setTrainingPercent(100.0*(double) trainInstances.numInstances()/(trainInstances.numInstances()+testInstances.numInstances()));
+                        result.setTrainingPercent(100.0* trainInstances.numInstances()/(trainInstances.numInstances()+testInstances.numInstances()));
 
                         synchronized (classifierResults) {
                             classifierResults.add(result);
@@ -96,7 +97,7 @@ public class WekaController {
         try {
             countDownLatch.await();
         } catch (InterruptedException e) {
-            Printer.errorPrint("Classification interrupted: " + e.getMessage());
+           throw new internal_error(e.getMessage());
         }
     }
 

@@ -1,6 +1,7 @@
 package org.apache.controller;
 
 import org.apache.logging.Printer;
+import org.apache.utilities.enumeration.DataSet;
 import tech.tablesaw.api.IntColumn;
 import tech.tablesaw.api.Table;
 import tech.tablesaw.api.DoubleColumn;
@@ -24,6 +25,7 @@ import weka.core.converters.ArffSaver;
 public class DatasetController {
 
     private final String csvFilePath;
+    public  static final  String RELEASE = "Release";
 
 
     public DatasetController(String projectName) {
@@ -50,13 +52,13 @@ public class DatasetController {
             return fullDataset;
         }
 
-        if (!fullDataset.columnNames().contains("Release")) {
+        if (!fullDataset.columnNames().contains(RELEASE)) {
             Printer.errorPrint("ERRORE: La colonna 'Release' non è presente nel file CSV.");
             return null;
         }
 
         // Recupera le release ID uniche e le ordina
-        StringColumn releaseColumn = fullDataset.stringColumn("Release");
+        StringColumn releaseColumn = fullDataset.stringColumn(RELEASE);
         List<String> uniqueReleases = new ArrayList<>(new HashSet<>(releaseColumn.asList()));
         Collections.sort(uniqueReleases);
 
@@ -79,7 +81,7 @@ public class DatasetController {
         List<String> releasesForDatasetA = uniqueReleases.subList(0, releasesToKeepCount);
 
         // 2. Logga le release che verranno mantenute
-        Printer.print(String.format("Filtraggio del dataset: mantenute le prime %d release (corrispondenti a %.2f%% del totale) su %d. Release mantenute per Dataset A: %s\n",
+        Printer.println(String.format("Filtraggio del dataset: mantenute le prime %d release (corrispondenti a %.2f%% del totale) su %d. Release mantenute per Dataset A: %s",
                 releasesToKeepCount, cutPercentage * 100, totalReleases, releasesForDatasetA));
 
         // 3. Filtra il fullDataset usando la lista delle releaseForDatasetA
@@ -88,19 +90,19 @@ public class DatasetController {
     }
 
 
-    public int generateWalkForwardArffFiles(Table datasetA, String projectName, int walkForwardIterations) throws Exception {
+    public int generateWalkForwardArffFiles(Table datasetA, String projectName, int walkForwardIterations) throws IOException {
         Printer.print("Inizio generazione file ARFF per Walk-Forward per il progetto: " + projectName+ "\n");
 
         final String arffExtension = ".arff";
         final String outputBaseDir = "output" + File.separator + "dataset" + File.separator + projectName;
-        final String trainingBaseDir = outputBaseDir + File.separator + "TRAINING";
-        final String testingBaseDir = outputBaseDir + File.separator + "TESTING";
+        final String trainingBaseDir = outputBaseDir + File.separator + DataSet.TRAINING;
+        final String testingBaseDir = outputBaseDir + File.separator + DataSet.TESTING;
 
         // Crea le directory se non esistono
         new File(trainingBaseDir);
         new File(testingBaseDir);
 
-        List<String> allReleasesFromDatasetAInt = new ArrayList<>(new HashSet<>(datasetA.stringColumn("Release").asList()));
+        List<String> allReleasesFromDatasetAInt = new ArrayList<>(new HashSet<>(datasetA.stringColumn(RELEASE).asList()));
         Collections.sort(allReleasesFromDatasetAInt);
 
         // --- AGGIUNGI QUESTI LOG DI DEBUG ---
@@ -129,7 +131,7 @@ public class DatasetController {
             List<String> trainingReleases = allReleasesFromDatasetA.subList(0, i + 1);
             String testingRelease = allReleasesFromDatasetA.get(i + 1);
 
-            Printer.print(String.format("Iterazione %d: Training su release %s, Testing su release %s\n",
+            Printer.println(String.format("Iterazione %d: Training su release %s, Testing su release %s",
                     (i + 1), trainingReleases, testingRelease));
 
             Instances trainingInstances = convertTablesawToWekaInstances(datasetA, trainingReleases, projectName + "_Training_" + (i+1));
@@ -221,7 +223,7 @@ public class DatasetController {
 
 
     private Table filterTableByReleases(Table sourceTable, List<String> targetReleases) {
-        StringColumn releaseCol = sourceTable.stringColumn("Release");
+        StringColumn releaseCol = sourceTable.stringColumn(RELEASE);
 
         if (targetReleases.size() == 1) {
             return sourceTable.where(releaseCol.isEqualTo(targetReleases.getFirst()));
@@ -247,7 +249,7 @@ public class DatasetController {
             String colName = col.name();
 
             // Ignora colonne non necessarie per la classificazione
-            if (colName.equalsIgnoreCase("Release") || colName.equalsIgnoreCase("MethodName") || colName.equalsIgnoreCase("ProjectName")) {
+            if (colName.equalsIgnoreCase(RELEASE) || colName.equalsIgnoreCase("MethodName") || colName.equalsIgnoreCase("ProjectName")) {
                 continue;
             }
 
@@ -308,10 +310,10 @@ public class DatasetController {
 
     private double getNumericValue(Table table, String columnName, int rowIndex) {
         Column<?> column = table.column(columnName);
-        if (column instanceof DoubleColumn) {
-            return ((DoubleColumn) column).getDouble(rowIndex);
-        } else if (column instanceof IntColumn) {
-            return ((IntColumn) column).getInt(rowIndex);
+        if (column instanceof DoubleColumn doubleColumn) {
+            return (doubleColumn.getDouble(rowIndex));
+        } else if (column instanceof IntColumn intColumn) {
+            return (intColumn.getInt(rowIndex));
         } else {
             // Se la colonna non è numerica direttamente, prova a parsare da stringa
             String stringValue = column.getString(rowIndex);

@@ -28,6 +28,7 @@ public class NumOfCodeSmells {
     private final Git git;
     private final List<Release> releases;
     private final String originalBranch;
+    private static final String PMD_RESULTS="PMD ha terminato con successo per la release ";
 
     /**
      * Costruttore per l'orchestratore di analisi PMD.
@@ -127,13 +128,13 @@ public class NumOfCodeSmells {
                 // PMD ha terminato con successo e non ha trovato violazioni.
                 // Potrebbe esserci il caso "No files to analyze".
                 if (pmdOutput.toString().contains("No files to analyze")) {
-                    Printer.printYellow("PMD ha terminato con successo per la release " + releaseId + " ma non ha trovato file Java da analizzare. (Commit potrebbe non contenere codice Java o filtri attivi).\n");
+                    Printer.printYellow(PMD_RESULTS + releaseId + " ma non ha trovato file Java da analizzare. (Commit potrebbe non contenere codice Java o filtri attivi).\n");
                 } else {
-                    Printer.print("PMD ha terminato con successo per la release " + releaseId + " senza trovare violazioni.\n");
+                    Printer.print(PMD_RESULTS + releaseId + " senza trovare violazioni.\n");
                 }
             } else if (exitCode == 4) {
                 // PMD ha terminato con successo e ha trovato violazioni.
-                Printer.print("PMD ha terminato con successo per la release " + releaseId + " trovando violazioni. (Vedi report XML).\n");
+                Printer.print(PMD_RESULTS + releaseId + " trovando violazioni. (Vedi report XML).\n");
             } else {
                 // Qualsiasi altro codice di uscita indica un vero fallimento o errore di configurazione.
                 Printer.errorPrint("PMD ha fallito inaspettatamente per la release " + releaseId + ". Codice di uscita: " + exitCode + ". Output di PMD:\n" + pmdOutput + "\n");

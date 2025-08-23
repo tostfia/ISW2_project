@@ -25,6 +25,7 @@ public class WhatIfAnalyzer {
     private final String projectName;
     private final CorrelationController cc;
     private Classifier loadedWekaClassifier;
+    private static final String OUTPUT_DIR = "output";
 
     public WhatIfAnalyzer(AggregatedClassifierResult bClassifier, Table datasetA, Instances wekaDatasetA, String projectName) {
         this.bClassifier = bClassifier;
@@ -261,7 +262,7 @@ public class WhatIfAnalyzer {
                             correctBuggyColumn, correctNonBuggyColumn);
 
             // Salva la tabella come CSV
-            String resultsPath = "output" + File.separator + projectName + "_prediction_results.csv";
+            String resultsPath = OUTPUT_DIR + File.separator + projectName + "_prediction_results.csv";
             resultsTable.write().csv(resultsPath);
             Printer.print("Tabella dei risultati salvata in: " + resultsPath+"\n");
 
@@ -291,7 +292,7 @@ public class WhatIfAnalyzer {
 
             if (bPlusRes.getPredictedBuggy() > 0) {
                 double proportion = (double) preventableBuggyMethods / bPlusRes.getPredictedBuggy() * 100;
-                Printer.print(String.format("Proporzione: %.2f%% dei metodi buggy con smells\n", proportion));
+                Printer.println(String.format("Proporzione: %.2f%% dei metodi buggy con smells", proportion));
             }
         }
     }
@@ -307,19 +308,19 @@ public class WhatIfAnalyzer {
 
             // Salva bPlusDataset
             saver.setInstances(bPlusDataset);
-            saver.setFile(new File("output" + File.separator + projectName + "_BPlus.csv\n"));
+            saver.setFile(new File(OUTPUT_DIR + File.separator + projectName + "_BPlus.csv\n"));
             saver.writeBatch();
             Printer.println("Dataset BPlus salvato in: output" + File.separator + projectName + "_BPlus.csv\n");
 
             // Salva bDataset
             saver.setInstances(bDataset);
-            saver.setFile(new File("output" + File.separator + projectName + "_BDataset.csv\n"));
+            saver.setFile(new File(OUTPUT_DIR + File.separator + projectName + "_BDataset.csv\n"));
             saver.writeBatch();
             Printer.println("Dataset B salvato in: output" + File.separator + projectName + "_BDataset.csv\n");
 
             // Salva cDataset
             saver.setInstances(cDataset);
-            saver.setFile(new File("output" + File.separator + projectName + "_CDataset.csv\n"));
+            saver.setFile(new File(OUTPUT_DIR + File.separator + projectName + "_CDataset.csv\n"));
             saver.writeBatch();
             Printer.println("Dataset C salvato in: output" + File.separator + projectName + "_CDataset.csv\n");
 

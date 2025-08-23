@@ -105,7 +105,7 @@ public class CodeSmellParser {
 
                     }
                 } else {
-                    Printer.println("Classe " + className + " non trovata tra le classi analizzate.\n");
+                    Printer.println("Classe " + className + " non trovata tra le classi già analizzate.\n");
                 }
             }
             Printer.printGreen("Estrazione code smell completata per release " + releaseId + ". Trovate " + violationList.getLength() + " violazioni.\n");

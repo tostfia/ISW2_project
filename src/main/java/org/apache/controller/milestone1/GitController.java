@@ -61,8 +61,8 @@ public class GitController {
     @Getter
     private Map<String, List<Commit>> commitsPerFile;
     private final String targetName ;
-    private final static String JAVA=".java";
-    private final static String TEST="/src/test/";
+    private  static final String JAVA=".java";
+    private static final String TEST="/src/test/";
 
 
 
@@ -286,7 +286,10 @@ public class GitController {
                 classSnapshot.getMethods().forEach(method -> method.setBuggy(false))
         );
 
-        int totalFixingCommitsConsidered = 0, totalAffectedFilesConsidered = 0, totalClassSnapshotsMatched = 0, totalMethodsLabeledBuggy = 0;
+        int totalFixingCommitsConsidered = 0;
+        int totalAffectedFilesConsidered = 0;
+        int totalClassSnapshotsMatched = 0;
+        int totalMethodsLabeledBuggy = 0;
 
         for (Map.Entry<Commit, List<Commit>> entry : bugIntroducingCommitsMap.entrySet()) {
             Commit fixingCommit = entry.getKey();
@@ -311,7 +314,7 @@ public class GitController {
                 }
             }
         }
-        Printer.printBlue(String.format("labelBugginess completata. Processati %d fixing commits, considerati %d file affetti, trovati %d snapshot di classi, etichettati %d metodi come buggy.\n",
+        Printer.printlnBlue(String.format("labelBugginess completata. Processati %d fixing commits, considerati %d file affetti, trovati %d snapshot di classi, etichettati %d metodi come buggy.",
                 totalFixingCommitsConsidered, totalAffectedFilesConsidered, totalClassSnapshotsMatched, totalMethodsLabeledBuggy));
         Printer.print("Bugginess etichettata a livello di metodo per le classi analizzate.\n");
     }
@@ -330,7 +333,7 @@ public class GitController {
                     classSnapshot.getMethods().forEach(method -> method.setBuggy(true));
                     buggyMethods += classSnapshot.getMethods().size();
                 } else {
-                    Printer.errorPrint("La classe " + classSnapshot.getClassName() + " (Release " + snapshotRelease.getReleaseName() + ") non ha metodi, ma le condizioni per etichettare erano soddisfatte.\n");
+                    Printer.printlnBlue("La classe " + classSnapshot.getClassName() + " (Release " + snapshotRelease.getReleaseName() + ") non ha metodi, potrebbe essere enum o interfaccia, le condizioni per etichettare erano soddisfatte.");
                 }
             }
         }

@@ -68,8 +68,8 @@ public class ProcessController implements Runnable {
             latch.countDown();
             long endOverallTime = System.currentTimeMillis();
             double elapsedSeconds = (endOverallTime - overallStatTime) / 1000.0;
-            String finalMessage = String.format("%s completato. Tempo impiegato: %.2f secondi\n", threadIdentity, elapsedSeconds);
-            Printer.printGreen(finalMessage);
+            String finalMessage = String.format("%s completato. Tempo impiegato: %.2f secondi", threadIdentity, elapsedSeconds);
+            Printer.printlnGreen(finalMessage);
         }
     }
     private void processing() throws IOException, URISyntaxException, GitAPIException {
