@@ -67,7 +67,7 @@ public class Main {
         try {
             actualIteration=datasetController.generateWalkForwardArffFiles(datasetA, projectName, walkForwardIterations);
 
-            Printer.print("Generazione dei file ARFF completata per %d iterazioni di Walk-Forward."+ actualIteration+"\n");
+            Printer.println("Generazione dei file ARFF completata per"+ actualIteration+"iterazioni di Walk-Forward.");
         } catch (IOException e) {
             Printer.errorPrint("Errore durante la generazione dei file ARFF per il Walk-Forward: " + e.getMessage());
             return;

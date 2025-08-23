@@ -43,7 +43,7 @@ public class WhatIfAnalyzer {
         String aFeature = identifyAFeature();
         String methodName = cc.findBuggyMethodWithMaxFeature(aFeature);
 
-        Printer.print("Feature Azionabile (AFeature) identificata: " + aFeature+ "\n");
+        Printer.print("Feature Azionabile (AFeature) identificata: " + aFeature + "\n");
         Printer.print("Metodo con il valore massimo di " + aFeature + " tra i metodi buggy: " + methodName + " - Fare il refactor\n");
 
         // Carica il modello del classificatore BClassifierA
@@ -91,14 +91,14 @@ public class WhatIfAnalyzer {
     private String identifyAFeature() {
         CorrelationController.FeatureCorrelation best = cc.getBestFeature();
         String aFeature = best.featureName();
-        Printer.print("Feature azionabile (AFeature): " + aFeature + ", correlazione: " + best.correlation()+ "\n");
+        Printer.print("Feature azionabile (AFeature): " + aFeature + ", correlazione: " + best.correlation() + "\n");
         return aFeature;
     }
 
     private void loadClassifierModel(String modelPath) {
         try {
             loadedWekaClassifier = (Classifier) SerializationHelper.read(modelPath);
-            Printer.print("Modello del classificatore caricato con successo da: " + modelPath+ "\n");
+            Printer.print("Modello del classificatore caricato con successo da: " + modelPath + "\n");
         } catch (Exception e) {
             Printer.errorPrint("Errore durante il caricamento del modello del classificatore da " + modelPath + ": " + e.getMessage());
             loadedWekaClassifier = null;
@@ -186,13 +186,12 @@ public class WhatIfAnalyzer {
         for (int i = 0; i < dataToPredict.numInstances(); i++) {
             Instance inst = dataToPredict.instance(i);
 
-            // Valore effettivo della classe (0 = no, 1 = yes per bugginess)
-            double actualClassValue = inst.classValue();
+
             boolean isActuallyBuggy = inst.stringValue(inst.classIndex()).equals("yes");
 
             // Predizione del classificatore
             double predictedClassValue = loadedWekaClassifier.classifyInstance(inst);
-            boolean isPredictedBuggy = dataToPredict.classAttribute().value((int)predictedClassValue).equals("yes");
+            boolean isPredictedBuggy = dataToPredict.classAttribute().value((int) predictedClassValue).equals("yes");
 
             // Conteggi per actual
             if (isActuallyBuggy) {
@@ -264,7 +263,7 @@ public class WhatIfAnalyzer {
             // Salva la tabella come CSV
             String resultsPath = OUTPUT_DIR + File.separator + projectName + "_prediction_results.csv";
             resultsTable.write().csv(resultsPath);
-            Printer.print("Tabella dei risultati salvata in: " + resultsPath+"\n");
+            Printer.print("Tabella dei risultati salvata in: " + resultsPath + "\n");
 
             // Stampa anche la tabella nel log per visibilità immediata
             Printer.print("\n--- TABELLA DEI RISULTATI DELLE PREDIZIONI ---\n");
@@ -285,10 +284,10 @@ public class WhatIfAnalyzer {
             int preventableBuggyMethods = bPlusRes.getPredictedBuggy() - bRes.getPredictedBuggy();
             if (preventableBuggyMethods < 0) preventableBuggyMethods = 0;
 
-            Printer.print("Metodi con smells predetti come buggy (B+): " + bPlusRes.getPredictedBuggy()+ "\n");
+            Printer.print("Metodi con smells predetti come buggy (B+): " + bPlusRes.getPredictedBuggy() + "\n");
             Printer.print("Metodi (ex B+ con smells azzerati) predetti come buggy (B): " + bRes.getPredictedBuggy());
             Printer.print("RISPOSTA: Circa " + preventableBuggyMethods +
-                    " metodi difettosi avrebbero potuto essere prevenuti azzerando " + aFeature+ "\n");
+                    " metodi difettosi avrebbero potuto essere prevenuti azzerando " + aFeature + "\n");
 
             if (bPlusRes.getPredictedBuggy() > 0) {
                 double proportion = (double) preventableBuggyMethods / bPlusRes.getPredictedBuggy() * 100;
@@ -301,55 +300,44 @@ public class WhatIfAnalyzer {
         CSVSaver saver = new CSVSaver();
 
         try {
-            // Verifica e logga gli attributi presenti nei dataset
-            logDatasetAttributes("B+", bPlusDataset);
-            logDatasetAttributes("C", cDataset);
-            logDatasetAttributes("B", bDataset);
+            // *** NUOVA LOGICA: Assicurati che la directory di output esista ***
+            File outputDirectory = new File(OUTPUT_DIR);
+            if (!outputDirectory.exists()) {
+                if (outputDirectory.mkdirs()) { // Tenta di creare la/le directory
+                    Printer.print("Creata directory di output: " + outputDirectory.getAbsolutePath() + "\n");
+                } else {
+                    Printer.errorPrint("Impossibile creare la directory di output: " + outputDirectory.getAbsolutePath() + ". Impossibile salvare i file CSV.");
+                    return; // Interrompe il salvataggio se la directory non può essere creata
+                }
+            }
 
+
+            // *** MODIFICA QUI: Rimuovi \n dai percorsi dei file ***
             // Salva bPlusDataset
+            String bPlusPath = OUTPUT_DIR + File.separator + projectName + "_BPlus.csv";
             saver.setInstances(bPlusDataset);
-            saver.setFile(new File(OUTPUT_DIR + File.separator + projectName + "_BPlus.csv\n"));
+            saver.setFile(new File(bPlusPath));
             saver.writeBatch();
-            Printer.println("Dataset BPlus salvato in: output" + File.separator + projectName + "_BPlus.csv\n");
+            Printer.println("Dataset BPlus salvato in: " + bPlusPath); // Stampa qui la newline
 
             // Salva bDataset
+            String bDatasetPath = OUTPUT_DIR + File.separator + projectName + "_BDataset.csv";
             saver.setInstances(bDataset);
-            saver.setFile(new File(OUTPUT_DIR + File.separator + projectName + "_BDataset.csv\n"));
+            saver.setFile(new File(bDatasetPath));
             saver.writeBatch();
-            Printer.println("Dataset B salvato in: output" + File.separator + projectName + "_BDataset.csv\n");
+            Printer.println("Dataset B salvato in: " + bDatasetPath); // Stampa qui la newline
 
             // Salva cDataset
+            String cDatasetPath = OUTPUT_DIR + File.separator + projectName + "_CDataset.csv";
             saver.setInstances(cDataset);
-            saver.setFile(new File(OUTPUT_DIR + File.separator + projectName + "_CDataset.csv\n"));
+            saver.setFile(new File(cDatasetPath));
             saver.writeBatch();
-            Printer.println("Dataset C salvato in: output" + File.separator + projectName + "_CDataset.csv\n");
+            Printer.println("Dataset C salvato in: " + cDatasetPath); // Stampa qui la newline
 
         } catch (Exception e) {
             Printer.errorPrint("Errore durante il salvataggio dei dataset B+, B, C in CSV: " + e.getMessage());
         }
     }
 
-    /**
-     * Logga gli attributi presenti in un dataset per verifica
-     */
-    private void logDatasetAttributes(String datasetName, Instances dataset) {
-        Printer.print("Dataset " + datasetName + " contiene " + dataset.numInstances() + " istanze e " + dataset.numAttributes() + " attributi:\n");
 
-        // Verifica specificamente per le colonne che ci interessano
-        String[] importantColumns = {"MethodName", "Project", "Release", "NumberOfCodeSmells", "bugginess"};
-        for (String colName : importantColumns) {
-            if (dataset.attribute(colName) != null) {
-                Printer.print("  ✓ " + colName + " presente (indice: " + dataset.attribute(colName).index() + ")");
-            } else {
-                Printer.errorPrint("  ✗ " + colName + " MANCANTE!");
-            }
-        }
-
-        // Mostra i primi 3 attributi per debug
-        StringBuilder attrs = new StringBuilder("  Primi attributi: ");
-        for (int i = 0; i < Math.min(5, dataset.numAttributes()); i++) {
-            attrs.append(dataset.attribute(i).name()).append(", ");
-        }
-        Printer.print(attrs.toString());
-    }
 }

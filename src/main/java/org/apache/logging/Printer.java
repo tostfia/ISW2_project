@@ -44,8 +44,8 @@ public class Printer {
                 ConsoleHandler handler = new ConsoleHandler();
                 handler.setFormatter(new Formatter() {
                     @Override
-                    public String format(LogRecord record) {
-                        String color = switch (record.getLevel().getName()) {
+                    public String format(LogRecord logRecord) {
+                        String color = switch (logRecord.getLevel().getName()) {
                             case "SEVERE"  -> RED;
                             case "WARNING" -> YELLOW;
                             case "INFO"    -> GREEN;
@@ -58,10 +58,10 @@ public class Printer {
                                 "%s[%s%s%s%s] %s%n",
                                 WHITE,      // apre parentesi bianca
                                 color,      // colore del livello
-                                record.getLevel(),
+                                logRecord.getLevel(),
                                 RESET,      // reset colore
                                 WHITE,      // chiusura parentesi bianca
-                                record.getMessage() // il messaggio viene deciso dal chiamante
+                                logRecord.getMessage() // il messaggio viene deciso dal chiamante
                         );
                     }
 
@@ -79,19 +79,19 @@ public class Printer {
 
     // --- Metodi pubblici compatibili ---
     public static void print(String s) {
-        getInstance().getLogger().log(Level.INFO, WHITE+ s+ RESET);
+        getInstance().getLogger().log(Level.INFO,()-> WHITE+ s+ RESET);
     }
 
     public static void println(String s) {
-        getInstance().getLogger().log(Level.INFO, WHITE +s+ RESET);
+        getInstance().getLogger().log(Level.INFO,()-> WHITE +s+ RESET);
     }
 
     public static void printlnBlue(String s) {
-        getInstance().getLogger().log(Level.INFO, BLUE + s + RESET);
+        getInstance().getLogger().log(Level.INFO,()-> BLUE + s + RESET);
     }
 
     public static void printBlue(String s) {
-        getInstance().getLogger().log(Level.INFO, BLUE + s + RESET);
+        getInstance().getLogger().log(Level.INFO,()-> BLUE + s + RESET);
     }
 
     public static void printlnGreen(String s) {

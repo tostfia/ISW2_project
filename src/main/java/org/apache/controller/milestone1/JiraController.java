@@ -133,7 +133,7 @@ public class JiraController {
         } while (startAt < total);
             this.fixedTickets = new ArrayList<>(this.tickets);
             this.fixedTickets.sort(Comparator.comparing(Ticket::getResolutionDate));
-            Printer.printGreen(String.format("Trovati e processati %d ticket 'Fixed' per %s \n", this.fixedTickets.size(), targetName));
+            Printer.printGreen(String.format("Trovati e processati %d ticket 'Fixed' per %s ", this.fixedTickets.size(), targetName));
 
     }
 
