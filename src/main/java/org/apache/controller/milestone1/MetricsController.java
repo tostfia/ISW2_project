@@ -59,7 +59,7 @@ public class MetricsController {
         cm.setSize(ac.getFileContent()!=null? ac.getFileContent().split("\\r?\\n").length : 0);
         cm.setNumberOfRevisions(history.size());
         cm.setNumAuthors((int) history.stream().map(Commit::getAuthor).distinct().count());
-        if(history.size()>1){
+        if(gitController!=null && history.size()>1){
             List<GitController.ClassChangeStats> changes = gitController.calculateClassChangeHistory(history, ac.getClassName());
             int totalChurn=changes.stream().mapToInt(c-> c.linesAdded() + c.linesDeleted()).sum();
             double avgChurn=changes.stream().mapToInt(GitController.ClassChangeStats::linesAdded).average().orElse(0.0);

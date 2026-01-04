@@ -24,7 +24,7 @@ public class CsvWriter implements AutoCloseable {
     private final String targetName;
 
 
-    // Il tuo orchestratore usa questo costruttore, quindi lo manteniamo così.
+
     public CsvWriter(String fileName,String targetName) throws IOException {
         this.writer = new BufferedWriter(new FileWriter(fileName));
         this.targetName = targetName;
