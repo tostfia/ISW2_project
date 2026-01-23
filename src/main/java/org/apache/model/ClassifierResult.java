@@ -5,6 +5,7 @@ package org.apache.model;
 import lombok.Getter;
 import lombok.Setter;
 import weka.classifiers.Evaluation;
+;
 
 public class ClassifierResult {
 
@@ -41,6 +42,11 @@ public class ClassifierResult {
     private final double trueNegatives;
     @Getter
     private final double falseNegatives;
+    @Getter
+    private final String samplingName;
+    @Getter
+    private final String featureSelectionName;
+
 
     public ClassifierResult(int walkForwardIteration, DataClassifier dataClassifier, Evaluation evaluation) {
         this.walkForwardIteration = walkForwardIteration;
@@ -48,7 +54,9 @@ public class ClassifierResult {
         this.classifierName = dataClassifier.getClassifierName();
         this.featureSelection = (!dataClassifier.getFeatureSelectionFilterName().equals("NoSelection"));
         this.hasSampling = (!dataClassifier.getSamplingFilterName().equals("NoSampling"));
-        this.costSensitive = dataClassifier.isCostSensitive();
+        this.samplingName = dataClassifier.getSamplingFilterName();
+        this.featureSelectionName = dataClassifier.getFeatureSelectionFilterName();
+        this.costSensitive=dataClassifier.isCostSensitive();
 
         trainingPercent = 0.0;
         truePositives = evaluation.numTruePositives(0);

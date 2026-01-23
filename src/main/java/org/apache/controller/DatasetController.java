@@ -1,14 +1,12 @@
 package org.apache.controller;
 
 import org.apache.logging.Printer;
-import org.apache.utilities.enumeration.DataSet;
 import tech.tablesaw.api.IntColumn;
 import tech.tablesaw.api.Table;
 import tech.tablesaw.api.DoubleColumn;
 import tech.tablesaw.api.StringColumn;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -20,7 +18,6 @@ import tech.tablesaw.selection.Selection;
 import weka.core.Attribute;
 import weka.core.Instances;
 import weka.core.DenseInstance;
-import weka.core.converters.ArffSaver;
 
 public class DatasetController {
 
@@ -89,80 +86,6 @@ public class DatasetController {
         return filterTableByReleases(fullDataset, releasesForDatasetA);
     }
 
-
-    public int generateWalkForwardArffFiles(Table datasetA, String projectName, int walkForwardIterations) throws IOException {
-        Printer.print("Inizio generazione file ARFF per Walk-Forward per il progetto: " + projectName+ "\n");
-
-        final String arffExtension = ".arff";
-        final String outputBaseDir = "output" + File.separator + "dataset" + File.separator + projectName;
-        final String trainingBaseDir = outputBaseDir + File.separator + DataSet.TRAINING;
-        final String testingBaseDir = outputBaseDir + File.separator + DataSet.TESTING;
-
-        // Crea le directory se non esistono
-        new File(trainingBaseDir);
-        new File(testingBaseDir);
-
-        List<String> allReleasesFromDatasetAInt = new ArrayList<>(new HashSet<>(datasetA.stringColumn(RELEASE).asList()));
-        Collections.sort(allReleasesFromDatasetAInt);
-
-        // --- AGGIUNGI QUESTI LOG DI DEBUG ---
-        Printer.print("DEBUG: Release estratte da datasetA per Walk-Forward: " + allReleasesFromDatasetAInt+ "\n");
-        Printer.print("DEBUG: Numero di release estratte da datasetA: " + allReleasesFromDatasetAInt.size()+ "\n");
-        Printer.print("DEBUG: walkForwardIterations (calcolato dal JiraController/input): " + walkForwardIterations+ "\n");
-
-        List<String> allReleasesFromDatasetA = new ArrayList<>();
-        for (String releaseNum : allReleasesFromDatasetAInt) {
-            allReleasesFromDatasetA.add(String.valueOf(releaseNum));
-        }
-
-        if (allReleasesFromDatasetA.size() < 2) {
-            Printer.errorPrint("Dataset A ha meno di 2 release. Impossibile eseguire Walk-Forward.");
-            return 0;
-        }
-
-        int actualIterations = Math.min(walkForwardIterations, allReleasesFromDatasetA.size() - 1);
-        Printer.print("DEBUG: Numero effettivo di iterazioni di Walk-Forward calcolate (actualIterations): " + actualIterations+ "\n");
-
-        if (actualIterations < walkForwardIterations) {
-            Printer.printYellow("Il numero di iterazioni di Walk-Forward richiesto (" + walkForwardIterations + ") è maggiore del numero massimo possibile con le release disponibili (" + actualIterations + "). Verranno eseguite " + actualIterations + " iterazioni.");
-        }
-
-        for (int i = 0; i < actualIterations; i++) {
-            List<String> trainingReleases = allReleasesFromDatasetA.subList(0, i + 1);
-            String testingRelease = allReleasesFromDatasetA.get(i + 1);
-
-            Printer.println(String.format("Iterazione %d: Training su release %s, Testing su release %s",
-                    (i + 1), trainingReleases, testingRelease));
-
-            Instances trainingInstances = convertTablesawToWekaInstances(datasetA, trainingReleases, projectName + "_Training_" + (i+1));
-            Instances testingInstances = convertTablesawToWekaInstances(datasetA, List.of(testingRelease), projectName + "_Testing_" + (i+1));
-
-            if (trainingInstances.numAttributes() > 0) {
-                trainingInstances.setClassIndex(trainingInstances.numAttributes() - 1);
-            }
-            if (testingInstances.numAttributes() > 0) {
-                testingInstances.setClassIndex(testingInstances.numAttributes() - 1);
-            } else {
-                Printer.printYellow("Il test set per l'iterazione " + (i+1) + " non contiene attributi o è vuoto. Potrebbe essere un problema.");
-            }
-
-            String trainingFilePath = trainingBaseDir + File.separator + projectName + "_" + (i + 1) + arffExtension;
-            String testingFilePath = testingBaseDir + File.separator + projectName + "_" + (i + 1) + arffExtension;
-
-            saveArffFile(trainingInstances, trainingFilePath);
-            saveArffFile(testingInstances, testingFilePath);
-        }
-        Printer.print("Generazione file ARFF completata.\n");
-        return actualIterations;
-    }
-
-    private void saveArffFile(Instances instances, String filePath) throws IOException {
-        ArffSaver saver = new ArffSaver();
-        saver.setInstances(instances);
-        saver.setFile(new File(filePath));
-        saver.writeBatch();
-        Printer.printGreen("Salvato file: " + filePath+ "\n");
-    }
 
     public Instances convertTablesawToWekaInstances(Table sourceTable, List<String> targetReleases, String datasetName) {
         Table filteredTable = filterTableByReleases(sourceTable, targetReleases);

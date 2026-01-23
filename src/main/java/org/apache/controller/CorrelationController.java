@@ -1,155 +1,138 @@
 package org.apache.controller;
 
-
-
-import java.util.ArrayList;
-import java.util.List;
-
-
+import org.apache.commons.math3.distribution.TDistribution;
+import org.apache.commons.math3.stat.correlation.SpearmansCorrelation;
 import tech.tablesaw.api.*;
-
 import java.util.*;
-
 
 public class CorrelationController {
 
     private final Table dataset;
     private static final String BUG_COLUMN = "Bugginess";
-
+    private static final String RELEASE_COLUMN = "ReleaseID"; // Preso da AFMethodFinder
 
     public CorrelationController(Table dataset) {
         this.dataset = dataset;
     }
 
-    // Definisce le feature actionable
+    // Feature actionable di riferimento
     private static final Set<String> ACTIONABLE_FEATURES = Set.of(
-            "NumberOfCodeSmells",
-            "CycloComplexity",
-            "LOC",
-            "CognitiveComplexity",
-            "ParameterCount",
-            "NestingDepth"
-
+            "NumberOfCodeSmells", "CycloComplexity", "LOC",
+            "CognitiveComplexity", "ParameterCount", "NestingDepth"
     );
 
     /**
-         * Classe interna per rappresentare una feature e la sua correlazione
-         */
-
-        public record FeatureCorrelation(String featureName, double correlation) {
-
+     * Record esteso con Rho di Spearman e P-Value (Concetto da SpearmanWithPValue)
+     */
+    public record FeatureCorrelation(String featureName, double correlation, double pValue) {
         @Override
-            public String toString() {
-                return featureName + " -> " + correlation;
-            }
+        public String toString() {
+            return String.format("%s -> Rho: %.3f (p-val: %.4f)", featureName, correlation, pValue);
         }
+    }
 
     /**
-     * Calcola la correlazione di Pearson tra ogni feature numerica e la colonna 'bug'
+     * Calcola la correlazione di Spearman e la significatività (Concetto da SpearmanCalculator)
      */
     public List<FeatureCorrelation> computeCorrelations() {
         List<FeatureCorrelation> correlations = new ArrayList<>();
 
-        // Assicuriamoci che la colonna 'Bugginess' esista
-        if (!dataset.columnNames().contains(BUG_COLUMN) || !(dataset.column(BUG_COLUMN) instanceof StringColumn)) {
-            throw new IllegalArgumentException("La colonna 'Bugginess' deve esistere ed essere di tipo String (yes/no).");
+        if (!dataset.columnNames().contains(BUG_COLUMN)) {
+            throw new IllegalArgumentException("Colonna Bugginess mancante.");
         }
 
+        // Preparazione target (1.0 per yes, 0.0 per no)
         StringColumn bugginessStr = dataset.stringColumn(BUG_COLUMN);
-
-        // Converte yes/no in 1/0
         double[] bugValues = new double[bugginessStr.size()];
         for (int i = 0; i < bugginessStr.size(); i++) {
             bugValues[i] = "yes".equalsIgnoreCase(bugginessStr.get(i)) ? 1.0 : 0.0;
         }
 
         for (String colName : dataset.columnNames()) {
-            if (colName.equals(BUG_COLUMN)) continue;
+            if (colName.equalsIgnoreCase(BUG_COLUMN) || colName.equalsIgnoreCase(RELEASE_COLUMN)) continue;
 
-            // FILTRA SOLO LE FEATURE ACTIONABLE
-            if (!ACTIONABLE_FEATURES.contains(colName)) continue;
+            // Filtro feature actionable
+            if (!isActionable(colName)) continue;
 
             if (dataset.column(colName) instanceof NumericColumn<?> numCol) {
                 double[] featureValues = numCol.asDoubleArray();
 
-                double corr = pearsonCorrelation(featureValues, bugValues);
-                correlations.add(new FeatureCorrelation(colName, corr));
+                // Calcolo Spearman + P-Value
+                FeatureCorrelation result = calculateSpearman(colName, featureValues, bugValues);
+                correlations.add(result);
             }
         }
 
-        // Ordina per valore assoluto della correlazione (decrescente)
+        // Ordina per Rho decrescente
         correlations.sort((a, b) -> Double.compare(Math.abs(b.correlation()), Math.abs(a.correlation())));
-
         return correlations;
     }
 
     /**
-     * Calcola la correlazione di Pearson tra due array
+     * Implementazione della statistica di Spearman con p-value (Concetto da SpearmanWithPValue)
      */
-    private double pearsonCorrelation(double[] x, double[] y) {
-        if (x.length != y.length) throw new IllegalArgumentException("Gli array devono avere la stessa lunghezza");
+    private FeatureCorrelation calculateSpearman(String name, double[] x, double[] y) {
+        SpearmansCorrelation sc = new SpearmansCorrelation();
+        double rho = sc.correlation(x, y);
 
-        double meanX = Arrays.stream(x).average().orElse(0);
-        double meanY = Arrays.stream(y).average().orElse(0);
+        // Calcolo p-value tramite distribuzione T di Student
+        int n = x.length;
+        double t = rho * Math.sqrt((n - 2.0) / (1.0 - rho * rho));
+        TDistribution tDist = new TDistribution(n - 2.0);
+        double pValue = 2.0 * (1.0 - tDist.cumulativeProbability(Math.abs(t)));
 
-        double numerator = 0;
-        double sumSqX = 0;
-        double sumSqY = 0;
-
-        for (int i = 0; i < x.length; i++) {
-            double dx = x[i] - meanX;
-            double dy = y[i] - meanY;
-            numerator += dx * dy;
-            sumSqX += dx * dx;
-            sumSqY += dy * dy;
-        }
-
-        double denominator = Math.sqrt(sumSqX * sumSqY);
-        return denominator == 0 ? 0 : numerator / denominator;
+        return new FeatureCorrelation(name, rho, pValue);
     }
 
     /**
-     * Ritorna la feature azionabile con correlazione assoluta più alta
-     */
-    public FeatureCorrelation getBestFeature() {
-        List<FeatureCorrelation> list = computeCorrelations();
-        return list.isEmpty() ? null : list.getFirst();
-    }
-
-    /**
-     * Trova il metodo buggy con il valore più alto per la feature specificata
-     * @param featureName nome della feature actionable
-     * @return indice della riga del metodo con valore massimo per quella feature
+     * Trova il metodo target nell'ULTIMA RELEASE
      */
     public String findBuggyMethodWithMaxFeature(String featureName) {
-        if (!ACTIONABLE_FEATURES.contains(featureName)) {
-            throw new IllegalArgumentException("Feature non actionable: " + featureName);
-        }
-
-        if (!dataset.columnNames().contains("MethodName")) {
-            throw new IllegalArgumentException("La colonna 'MethodName' deve esistere nel dataset.");
-        }
-
         StringColumn bugColumn = dataset.stringColumn(BUG_COLUMN);
         NumericColumn<?> featureColumn = (NumericColumn<?>) dataset.column(featureName);
-        var methodNameColumn = dataset.column("MethodName");
+        TextColumn methodNameColumn = dataset.textColumn("MethodName");
+
+        // Identifica l'ultima release
+        String lastRelease = "";
+        if (dataset.columnNames().contains(RELEASE_COLUMN)) {
+            StringColumn uniqueReleases = dataset.column(RELEASE_COLUMN).unique().asStringColumn();
+            uniqueReleases.sortDescending(); // sortDescending() è void -> non va messo in chain
+            if (!uniqueReleases.isEmpty()) {
+                lastRelease = uniqueReleases.get(0);
+            }
+        }
 
         double maxValue = Double.NEGATIVE_INFINITY;
-        int bestMethodIndex = -1;
+        int bestIndex = -1;
 
         for (int i = 0; i < dataset.rowCount(); i++) {
-            // Considera solo i metodi buggy
-            if ("yes".equalsIgnoreCase(bugColumn.get(i))) {
-                double featureValue = featureColumn.getDouble(i);
-                if (featureValue > maxValue) {
-                    maxValue = featureValue;
-                    bestMethodIndex = i;
+            // Filtro: Buggy AND (se esiste la colonna release) appartiene all'ultima release
+            boolean isBuggy = "yes".equalsIgnoreCase(bugColumn.get(i));
+            boolean isLastRelease = lastRelease.isEmpty() || lastRelease.equals(dataset.column(RELEASE_COLUMN).getString(i));
+
+            if (isBuggy && isLastRelease) {
+                double val = featureColumn.getDouble(i);
+                if (val > maxValue) {
+                    maxValue = val;
+                    bestIndex = i;
                 }
             }
         }
 
-        return bestMethodIndex == -1 ? null : methodNameColumn.getString(bestMethodIndex);
+        return bestIndex == -1 ? "Nessun metodo trovato" : methodNameColumn.get(bestIndex);
     }
 
+    /**
+     * Helper per matchare i nomi delle feature ignorando case e caratteri speciali
+     */
+    private boolean isActionable(String colName) {
+        String normalized = colName.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
+        return ACTIONABLE_FEATURES.stream()
+                .anyMatch(f -> f.toLowerCase().equals(normalized));
+    }
 
+    public FeatureCorrelation getBestFeature() {
+        List<FeatureCorrelation> list = computeCorrelations();
+        return list.isEmpty() ? null : list.get(0);
+    }
 }

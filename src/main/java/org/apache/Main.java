@@ -1,169 +1,149 @@
-package  org.apache;
-import java.io.File;
-import java.io.IOException;
-import java.util.List;
+package org.apache;
 
-
-import org.apache.controller.*;
-
-
+import org.apache.controller.WekaController;
+import org.apache.controller.DatasetController;
+import org.apache.controller.ReportAnalyzer;
+import org.apache.controller.WhatIfAnalyzer;
 import org.apache.controller.milestone1.JiraController;
 import org.apache.logging.Printer;
 import org.apache.model.AggregatedClassifierResult;
 import org.apache.model.Release;
+import org.apache.utilities.ClassifierFactory;
 import tech.tablesaw.api.Table;
 import weka.classifiers.Classifier;
-import weka.classifiers.bayes.NaiveBayes;
-import weka.classifiers.lazy.IBk;
-import weka.classifiers.trees.RandomForest;
 import weka.core.Instances;
 import weka.core.SerializationHelper;
 
+import java.util.List;
+
 public class Main {
 
-
-
-    public static final String SYS_CUT_PERCENTAGE = "SYS_CUT_PERCENTAGE";
-    public static  final String SECONDI = " secondi.";
-    private static final double DEFAULT_CUT_PERCENTAGE = 0.34; // Corrisponde a "ignora l'ultimo 66%"
-
-
+    private static final double DEFAULT_CUT_PERCENTAGE = 0.34;
+    private static final int SEED = 42;
 
     public static void main(String[] args) throws Exception {
 
-
         if (args.length == 0) {
-            Printer.errorPrint("Errore: Il nome del progetto deve essere passato come primo argomento.");
+            Printer.errorPrint("Project name required.");
             return;
         }
-        String projectName = args[0]; // Nome del progetto passato come argomento
-        Printer.printlnGreen("INIZIO ANALISI per : %s"+ projectName+"\n");
 
-        JiraController jiraController = new JiraController(projectName);
-        jiraController.injectRelease();
-        // Recupera la percentuale di taglio
+        String projectName = args[0];
+        Printer.printlnGreen("START ANALYSIS: " + projectName);
+
+        // =========================
+        // Step 0: Jira & Releases
+        // =========================
+        JiraController jira = new JiraController(projectName);
+        jira.injectRelease();
+        List<Release> releases = jira.getRealeases();
+        if (releases.isEmpty()) {
+            Printer.errorPrint("No releases found for project " + projectName);
+            return;
+        }
+
         double cutPercentage = getCutPercentage();
 
-
-        int walkForwardIterations = jiraController.getRealeases().size()/2;
-
-
-        Printer.println("Fase 1: Preparazione del Dataset 'A' e generazione dei file ARFF per Walk-Forward...\n");
-        long start = System.currentTimeMillis();
-
+        // =========================
+        // Step 0.1: Dataset A
+        // =========================
         DatasetController datasetController = new DatasetController(projectName);
-        // Passiamo la percentuale di taglio a prepareDatasetA()
         Table datasetA = datasetController.prepareDatasetA(cutPercentage);
-        datasetA.write().csv("output"+File.separator+projectName + "datasetA.csv");
-        Printer.println ("Dataset A salvato in: output/datasetA.csv\n");
-
         if (datasetA.isEmpty()) {
-            Printer.errorPrint("Analisi interrotta: il dataset 'A' non è stato creato o è vuoto.");
+            Printer.errorPrint("Dataset A is empty.");
             return;
         }
 
-        // Generazione dei file ARFF per il Walk-Forward
-        int actualIteration ; // Inizializziamo a 0 per tenere traccia delle iterazioni effettive
-        try {
-            actualIteration=datasetController.generateWalkForwardArffFiles(datasetA, projectName, walkForwardIterations);
+        // =========================
+        // Step 1: CROSS-VALIDATION → MODEL & FEATURE SELECTION
+        // =========================
+        Printer.printlnGreen("STEP 1: Cross-Validation for classifier & feature selection");
+        long start= System.currentTimeMillis();
+        Instances allData = datasetController.convertTablesawToWekaInstances(
+                datasetA,
+                releases.stream().map(Release::getReleaseName).toList(),
+                projectName + "_CV"
+        );
+        allData.setClassIndex(allData.numAttributes() - 1);
 
-            Printer.println("Generazione dei file ARFF completata per"+ actualIteration+"iterazioni di Walk-Forward.");
-        } catch (IOException e) {
-            Printer.errorPrint("Errore durante la generazione dei file ARFF per il Walk-Forward: " + e.getMessage());
-            return;
-        } catch (Exception e) {
-            Printer.errorPrint("Errore generico durante la generazione dei file ARFF: " + e.getMessage());
-            return;
-        }
+        WekaController cvController = new WekaController(projectName); // CV controller
 
-        long end = System.currentTimeMillis();
-        long time = (end - start) / 1000;
-        Printer.println("Fase 2 completata in"+ time+SECONDI+ "\n");
-
-
-        Printer.println("\nFase 2: Esecuzione Classificazione con WekaController...\n");
-        start = System.currentTimeMillis();
-        //Comparo l'accuratezza dei tre classifier (Ibk, Naive e RandomForest)
-        WekaController wekaClassifierRunner = new WekaController(projectName, actualIteration);
-        wekaClassifierRunner.classify();
-        wekaClassifierRunner.saveResults();
-
-        // Scegli il miglior classificatore dal report
-        ReportAnalyzer reportAnalyzer = new ReportAnalyzer(projectName);
-        reportAnalyzer.analyzeAllCriteriaAndSave();
-        AggregatedClassifierResult bClassifier = reportAnalyzer.getBestClassifier("AUC");
-        if (bClassifier == null) {
-            Printer.errorPrint("Nessun classificatore trovato valido. Analisi interrotta.");
-            return;
-        }
-
-        Printer.println(String.format("Miglior classificatore selezionato: %s\n ", bClassifier.getClassifierName()));
-
-        long endFase2 = System.currentTimeMillis();
-        long timeFaseDue = (endFase2 - start) / 1000;
-        Printer.println("Fase 2 completata in"+ timeFaseDue + SECONDI+ "\n");
-
-        List<String> allReleases = jiraController.getRealeases()
-                .stream()
-                .map(Release::getReleaseName)
-                .toList();
-
-        Instances wekaDatasetA = datasetController.convertTablesawToWekaInstances(datasetA,allReleases,projectName+"_datasetA");
-        Classifier classifier;
-        switch(bClassifier.getClassifierName()) {
-            case "RandomForest" -> classifier = new RandomForest();
-            case "NaiveBayes" -> classifier = new NaiveBayes();
-            case "IBk" -> classifier = new IBk();
-            default -> {
-                Printer.errorPrint(String.format("Classificatore non supportato: %s. Analisi interrotta.", bClassifier.getClassifierName()));
-                return;
+        // Esegui CV su tutti i classificatori definiti in ClassifierFactory
+        List<String> classifiersToTest = List.of("NaiveBayes", "RandomForest", "IBk");
+        for (String clsName : classifiersToTest) {
+            Classifier cls = ClassifierFactory.build(clsName, SEED);
+            boolean applyFS = true;      // sempre InfoGain
+            boolean applySmote = false;
+            boolean applyDownsampling = false;
+            int maxInstances = Integer.MAX_VALUE;
+            if (projectName.equalsIgnoreCase("STORM")) {
+                applyDownsampling = true;
+                maxInstances = 20000; // downsampling per dataset grande
+            } else if (clsName.equals("RandomForest")) {
+                applySmote = true; // oversampling solo su RF per progetti più piccoli
             }
-        }
-        wekaDatasetA.setClassIndex(wekaDatasetA.numAttributes() - 1);
-        classifier.buildClassifier(wekaDatasetA);
-        String modelPath ="models"+ File.separator+ projectName+"_BClassifierA.model";
-        SerializationHelper.write(modelPath, classifier);
-        bClassifier.setModelFilePath(modelPath);
-        Printer.println("Modello caricato e salvato in: %s"+ modelPath+ "\n");
 
+            AggregatedClassifierResult cvResult = cvController.runCrossValidation(
+                    cls,
+                    allData,
+                    applyFS,
+                    applySmote,
+                    applyDownsampling,
+                    maxInstances
+            );
 
-
-
-        Printer.println("\nFase 3: Analisi di Correlazione e Simulazione What-If...\n");
-        start = System.currentTimeMillis();
-
-        WhatIfAnalyzer whatIfAnalyzer = new WhatIfAnalyzer(bClassifier, datasetA,wekaDatasetA, projectName);
-        try {
-            whatIfAnalyzer.run();
-        } catch (Exception e) {
-            Printer.errorPrint("Errore durante l'analisi What-If: " + e.getMessage());
-            return;
+            cvController.addResult(cvResult); // memorizza i risultati CV
         }
 
+        // Recupera il miglior classificatore dai risultati CV
+        ReportAnalyzer analyzer = new ReportAnalyzer(projectName);
+        AggregatedClassifierResult best = analyzer.getBestClassifierByCompositeScore();
+        analyzer.printRanking();
+        Printer.println("Best classifier (from CV): " + best.getClassifierName());
+        long middle = System.currentTimeMillis();
+        long tot= start-middle;
+        Printer.print("Sono passati "+ tot);
+        // =========================
+        // Step 2: TRAIN FINAL MODEL
+        // =========================
+        Printer.printlnGreen("STEP 2: Training final model on full dataset (no leakage)");
 
-        end = System.currentTimeMillis();
-        long timeEnd = (end - start) / 1000;
-        Printer.println("Fase 3 completata in"+ timeEnd+SECONDI+ "\n");
+        Instances finalTraining = datasetController.convertTablesawToWekaInstances(
+                datasetA,
+                releases.stream().map(Release::getReleaseName).toList(),
+                projectName + "_final"
+        );
+        finalTraining.setClassIndex(finalTraining.numAttributes() - 1);
+
+
+
+        Classifier finalClassifier = ClassifierFactory.build(best.getClassifierName(), SEED);
+        finalClassifier.buildClassifier(finalTraining);
+        long middle1=System.currentTimeMillis();
+        long tot1= start-middle1;
+        Printer.print("Sono passati "+ tot1);
+        String modelPath = "models/" + projectName + "_best.model";
+        SerializationHelper.write(modelPath, finalClassifier);
+        best.setModelFilePath(modelPath);
+
+        Printer.printlnGreen("Final model saved to: " + modelPath);
+
+        // =========================
+        // Step 3: WHAT-IF ANALYSIS
+        // =========================
+        Printer.printlnGreen("STEP 3: Running What-If Analysis");
+        WhatIfAnalyzer whatIf = new WhatIfAnalyzer(best, datasetA, finalTraining, projectName);
+        whatIf.run();
+
+        Printer.printlnGreen("ANALYSIS COMPLETED for project: " + projectName);
     }
 
     private static double getCutPercentage() {
-        String cut = System.getenv(SYS_CUT_PERCENTAGE);
         try {
-            double aDouble = Double.parseDouble(cut);
-            String msg = "Checking percentage: " + aDouble;
-            Printer.print(msg);
-            System.setProperty(SYS_CUT_PERCENTAGE, cut); // Imposta come proprietà di sistema (potrebbe non servire qui)
-            return aDouble;
-        } catch (NumberFormatException | NullPointerException e) {
-            String exceptionMsg = SYS_CUT_PERCENTAGE  + " exception: " + e.getClass().getSimpleName() + " ";
-            exceptionMsg += e instanceof NumberFormatException ? " " + e.getMessage() : "env variable not setup";
-            String warning = exceptionMsg +  " Invalid percentage: " + cut;
-            Printer.printYellow(warning);
-            System.setProperty(SYS_CUT_PERCENTAGE, "" + DEFAULT_CUT_PERCENTAGE); // Imposta default come proprietà di sistema
-            double aDouble = DEFAULT_CUT_PERCENTAGE; // Usa il default
-            warning = "Now is setup to: " + aDouble;
-            Printer.printYellow(warning);
-            return aDouble;
+            return Double.parseDouble(System.getenv().getOrDefault("SYS_CUT_PERCENTAGE",
+                    String.valueOf(DEFAULT_CUT_PERCENTAGE)));
+        } catch (Exception e) {
+            return DEFAULT_CUT_PERCENTAGE;
         }
     }
 }
