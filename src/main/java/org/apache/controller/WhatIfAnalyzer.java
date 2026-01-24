@@ -59,9 +59,9 @@ public class WhatIfAnalyzer {
         this.wekaDatasetA = reorderBugginessValues(this.wekaDatasetA);
         // 1. Identificazione feature e metodo target
         String aFeature = identifyActionableFeature();
-        String buggyMethod = findBuggyMethod(aFeature);
+        CorrelationController.FeatureValue buggyMethod = findBuggyMethod(aFeature);
 
-        Printer.print("Feature azionabile: " + aFeature + ", Metodo target: " + buggyMethod + "\n");
+        Printer.print("Feature azionabile: " + aFeature + " (valore): "+ buggyMethod.value() + ", Metodo target: " + buggyMethod.methodName() + "\n");
 
         // 2. Caricamento modello
         loadedWekaClassifier = loadClassifier(bClassifier.getModelFilePath());
@@ -141,7 +141,7 @@ public class WhatIfAnalyzer {
     }
 
     /** Trova il metodo buggy con valore massimo della feature */
-    private String findBuggyMethod(String feature) {
+    private CorrelationController.FeatureValue findBuggyMethod(String feature) {
         return cc.findBuggyMethodWithMaxFeature(feature);
     }
 

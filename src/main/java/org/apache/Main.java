@@ -79,8 +79,6 @@ public class Main {
             if (projectName.equalsIgnoreCase("STORM")) {
                 applyDownsampling = true;
                 maxInstances = 20000; // downsampling per dataset grande
-            } else if (clsName.equals("RandomForest")) {
-                applySmote = true; // oversampling solo su RF per progetti più piccoli
             }
 
             AggregatedClassifierResult cvResult = cvController.runCrossValidation(

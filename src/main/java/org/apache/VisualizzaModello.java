@@ -8,7 +8,7 @@ import java.io.ObjectInputStream;
 public class VisualizzaModello {
     public static void main(String[] args) throws Exception {
         // Percorso del file .model
-        String percorsoModello ="models/STORM_BClassifierA.model";
+        String percorsoModello ="models/STORM_best.model";
 
         // Carica il modello
         ObjectInputStream in = new ObjectInputStream(new FileInputStream(percorsoModello));

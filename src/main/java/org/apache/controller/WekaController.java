@@ -3,12 +3,14 @@ package org.apache.controller;
 import org.apache.logging.Printer;
 import org.apache.model.AggregatedClassifierResult;
 import org.apache.model.AggregatedClassifierResultStore;
+import org.apache.model.EvaluationFoldResult;
 import weka.classifiers.Classifier;
 import weka.classifiers.Evaluation;
-import weka.core.Instance;
+
 import weka.core.Instances;
 import weka.filters.Filter;
 import weka.filters.supervised.instance.SMOTE;
+import weka.filters.unsupervised.attribute.Remove;
 import weka.filters.unsupervised.attribute.RemoveUseless;
 import weka.attributeSelection.AttributeSelection;
 import weka.attributeSelection.InfoGainAttributeEval;
@@ -35,57 +37,114 @@ public class WekaController {
         int folds = 10;
         int repeats = 10;
 
+        int releaseIdIndex = data.attribute("Release") != null ? data.attribute("Release").index() : -1;
+        if (releaseIdIndex != -1) {
+            Remove remove = new Remove();
+            remove.setAttributeIndicesArray(new int[]{releaseIdIndex});
+            remove.setInputFormat(data);
+            data = Filter.useFilter(data, remove);
+        }
+
+
+        double totalPrecision = 0;
+        double totalRecall = 0;
+        double totalF1 = 0;
+        double totalAUC = 0;
+        double totalKappa = 0;
+        int totalFolds = (folds - 1) * repeats;
+
+
         AggregatedClassifierResult aggregated = new AggregatedClassifierResult(projectName, cls.getClass().getSimpleName());
 
         for (int r = 0; r < repeats; r++) {
+            Printer.printlnGreen("Starting runCrossValidation" + " repetition " + (r + 1) + "/" + repeats);
 
-            // Copia e randomizza il dataset per questa ripetizione
-            Instances dataset = new Instances(data);
-            dataset.randomize(new Random(SEED + r));
+            // Copia e randomizza il trainFull per questa ripetizione
+            Instances trainFull = new Instances(data);
+            trainFull.randomize(new Random(SEED + r));
 
             // Applica feature selection se richiesto
-            if (applyFS) dataset = applyFeatureSelection(dataset);
+            if (applyFS) trainFull = applyFeatureSelection(trainFull);
 
             // Applica SMOTE se richiesto
-            if (applySmote) dataset = applySMOTE(dataset);
+            if (projectName.equalsIgnoreCase("BOOKKEEPER")) {
+                applySmote = true;
+                trainFull = applySMOTE(trainFull);
+            }
+
 
             // Applica downsampling se richiesto
-            if (applyDownsampling) dataset = downsample(dataset, maxInstances);
+            if (applyDownsampling) trainFull = downsample(trainFull, maxInstances);
 
+            List<EvaluationFoldResult> foldResults = new ArrayList<>();
             // Calcola fold size
-            int foldSize = dataset.numInstances() / folds;
-
+            int foldSize = trainFull.numInstances() / folds;
+            int totalInstances = trainFull.numInstances();
             for (int f = 0; f < folds; f++) {
-                int start = f * foldSize;
-                int end = Math.min(start + foldSize, dataset.numInstances());
 
-                Instances test = new Instances(dataset, start, end - start);
-                Instances train = new Instances(dataset);
-                for (int i = end - 1; i >= start; i--) train.delete(i);
+                int foldStart = f * foldSize;
+                int foldEnd = Math.min(foldStart + foldSize, totalInstances);
 
-                if (train.numInstances() == 0 || test.numInstances() == 0) continue;
+                // Test set: il fold corrente
+                Instances test = new Instances(trainFull, foldStart, foldEnd - foldStart);
+
+                // Train set: tutte le altre istanze
+                Instances train = new Instances(trainFull);
+                for (int i = foldEnd - 1; i >= foldStart; i--) {
+                    train.delete(i); // rimuove il fold di test dal training
+                }
 
                 // Copia del classificatore
                 Classifier clsCopy = weka.classifiers.AbstractClassifier.makeCopy(cls);
                 clsCopy.buildClassifier(train);
 
-                // Valutazione
-                Evaluation eval = new Evaluation(train);
-                eval.evaluateModel(clsCopy, test);
 
-                double npofb20 = computeNPofB20(clsCopy, test);
+                // Valutazione
+                Evaluation foldEval = new Evaluation(train);
+                foldEval.evaluateModel(clsCopy, test);
+
+                double npofb20Fold = computeNPofB20(clsCopy, test);
+
+
+                EvaluationFoldResult foldResult = new EvaluationFoldResult(
+                        cls.toString(), applyFS, applySmote, SEED, r, f
+                );
+                foldResult.setAccuracy(foldEval.weightedPrecision());
+                foldResult.setRecall(foldEval.weightedRecall());
+                foldResult.setF1(foldEval.weightedFMeasure());
+                foldResult.setAuc(foldEval.weightedAreaUnderROC());
+                foldResult.setKappa(foldEval.kappa());
+                foldResult.setNpofb20(npofb20Fold);
+
+                foldResults.add(foldResult);
+
+
+                totalPrecision += foldEval.weightedPrecision();
+                totalRecall += foldEval.weightedRecall();
+                totalF1 += foldEval.weightedFMeasure();
+                totalAUC += foldEval.weightedAreaUnderROC();
+                totalKappa += foldEval.kappa();
+            }
+
+
+
+
+        }
+
+        // Calcola NPofB20 medio
+        double npofb20 = computeNPofB20(cls, data);
+
+
 
                 // Aggiunge risultati alla media
-                aggregated.addRunResult(
-                        eval.weightedPrecision(),
-                        eval.weightedRecall(),
-                        eval.weightedFMeasure(),
-                        eval.weightedAreaUnderROC(),
-                        eval.kappa(),
-                        npofb20
-                );
-            }
-        }
+        aggregated.addRunResult(
+            totalPrecision/totalFolds,
+            totalRecall/totalFolds,
+            totalF1/totalFolds,
+            totalAUC/totalFolds,
+            totalKappa/totalFolds,
+            npofb20
+        );
 
         // Salva il risultato CV
         addResult(aggregated);
@@ -96,27 +155,41 @@ public class WekaController {
     /* =========================
        NPofB20 METRIC
        ========================= */
-    public double computeNPofB20(Classifier cls, Instances data) throws Exception {
-        int yesIndex = data.classAttribute().indexOfValue("yes");
-        if (yesIndex == -1) return 0.0;
+    public static double computeNPofB20(Classifier cls, Instances data) throws Exception {
+        // Costruisce un nuovo classificatore su tutti i dati
+        Classifier copy = weka.classifiers.AbstractClassifier.makeCopy(cls);
+        copy.buildClassifier(data);
 
-        List<double[]> scored = new ArrayList<>();
-        for (int i = 0; i < data.numInstances(); i++) {
-            Instance inst = data.instance(i);
-            double[] dist = cls.distributionForInstance(inst);
-            scored.add(new double[]{dist[yesIndex], inst.classValue()});
+        // Trova l’indice della classe “Yes”
+        int yesIndex = data.classAttribute().indexOfValue("yes");
+        if (yesIndex == -1) {
+            throw new IllegalArgumentException("La classe 'yes' non è presente tra i valori della variabile target.");
         }
 
-        scored.sort((a, b) -> Double.compare(b[0], a[0]));
-        int topN = (int) Math.ceil(data.numInstances() * 0.2);
-        int foundBuggy = 0, totalBuggy = 0;
+        // Prepara una lista (score, isBuggy)
+        List<double[]> scored = new ArrayList<>();
+        for (int i = 0; i < data.numInstances(); i++) {
+            double[] dist = copy.distributionForInstance(data.instance(i));
+            double score = dist[yesIndex];  // probabilità che sia buggy
+            double actual = data.instance(i).classValue(); // 1 = Yes, 0 = No (valore numerico)
+            scored.add(new double[]{score, actual});
+        }
 
-        for (int i = 0; i < scored.size(); i++) {
+        // Ordina per probabilità discendente
+        scored.sort((a, b) -> Double.compare(b[0], a[0]));
+
+        int topN = (int) Math.ceil(data.numInstances() * 0.2); // top 20%
+        int foundBuggy = 0;
+        int totalBuggy = 0;
+
+        for (int i = 0; i < data.numInstances(); i++) {
             if (scored.get(i)[1] == yesIndex) totalBuggy++;
             if (i < topN && scored.get(i)[1] == yesIndex) foundBuggy++;
         }
 
-        return totalBuggy == 0 ? 0.0 : (double) foundBuggy / totalBuggy;
+        if (totalBuggy == 0) return 0.0;
+
+        return (double) foundBuggy / totalBuggy;
     }
 
     /* =========================
@@ -146,7 +219,7 @@ public class WekaController {
     }
 
 
-    public Instances downsample(Instances data, int maxInstances) throws Exception {
+    public Instances downsample(Instances data, int maxInstances)  {
         if (data.numInstances() <= maxInstances) {
             return new Instances(data); // copia del dataset originale
         }
@@ -173,5 +246,8 @@ public class WekaController {
             Printer.printYellow("Failed to save CV result for project " + projectName + ": " + e.getMessage());
         }
     }
+
+
+
 
 }

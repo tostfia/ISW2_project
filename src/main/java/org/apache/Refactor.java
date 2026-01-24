@@ -7,6 +7,7 @@ import org.apache.model.AnalyzedClass;
 import org.apache.model.Release;
 import org.apache.utilities.writer.CsvWriter;
 
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -42,10 +43,7 @@ public class Refactor {
             Printer.errorPrint(e.getMessage());
         }
 
-
-
-
-
-
     }
+
+
 }

@@ -3,6 +3,8 @@ package org.apache.controller;
 import org.apache.commons.math3.distribution.TDistribution;
 import org.apache.commons.math3.stat.correlation.SpearmansCorrelation;
 import tech.tablesaw.api.*;
+
+
 import java.util.*;
 
 public class CorrelationController {
@@ -13,6 +15,7 @@ public class CorrelationController {
 
     public CorrelationController(Table dataset) {
         this.dataset = dataset;
+
     }
 
     // Feature actionable di riferimento
@@ -20,6 +23,9 @@ public class CorrelationController {
             "NumberOfCodeSmells", "CycloComplexity", "LOC",
             "CognitiveComplexity", "ParameterCount", "NestingDepth"
     );
+
+    public record FeatureValue(String methodName, double value) { }
+
 
     /**
      * Record esteso con Rho di Spearman e P-Value (Concetto da SpearmanWithPValue)
@@ -84,19 +90,18 @@ public class CorrelationController {
         return new FeatureCorrelation(name, rho, pValue);
     }
 
-    /**
-     * Trova il metodo target nell'ULTIMA RELEASE
-     */
-    public String findBuggyMethodWithMaxFeature(String featureName) {
+    public FeatureValue findBuggyMethodWithMaxFeature(String featureName) {
         StringColumn bugColumn = dataset.stringColumn(BUG_COLUMN);
         NumericColumn<?> featureColumn = (NumericColumn<?>) dataset.column(featureName);
-        TextColumn methodNameColumn = dataset.textColumn("MethodName");
+
+        StringColumn methodNameColumn = dataset.stringColumn("MethodName");
+        //TextColumn methodNameColumn = dataset.textColumn("MethodName");
 
         // Identifica l'ultima release
         String lastRelease = "";
         if (dataset.columnNames().contains(RELEASE_COLUMN)) {
             StringColumn uniqueReleases = dataset.column(RELEASE_COLUMN).unique().asStringColumn();
-            uniqueReleases.sortDescending(); // sortDescending() è void -> non va messo in chain
+            uniqueReleases.sortDescending();
             if (!uniqueReleases.isEmpty()) {
                 lastRelease = uniqueReleases.get(0);
             }
@@ -106,9 +111,8 @@ public class CorrelationController {
         int bestIndex = -1;
 
         for (int i = 0; i < dataset.rowCount(); i++) {
-            // Filtro: Buggy AND (se esiste la colonna release) appartiene all'ultima release
             boolean isBuggy = "yes".equalsIgnoreCase(bugColumn.get(i));
-            boolean isLastRelease = lastRelease.isEmpty() || lastRelease.equals(dataset.column(RELEASE_COLUMN).getString(i));
+            boolean isLastRelease = lastRelease.isEmpty() || lastRelease.equalsIgnoreCase(dataset.column(RELEASE_COLUMN).getString(i));
 
             if (isBuggy && isLastRelease) {
                 double val = featureColumn.getDouble(i);
@@ -119,8 +123,11 @@ public class CorrelationController {
             }
         }
 
-        return bestIndex == -1 ? "Nessun metodo trovato" : methodNameColumn.get(bestIndex);
+        if (bestIndex == -1) return new FeatureValue("Nessun metodo trovato", Double.NaN);
+
+        return new FeatureValue(String.valueOf(methodNameColumn.get(bestIndex)), maxValue);
     }
+
 
     /**
      * Helper per matchare i nomi delle feature ignorando case e caratteri speciali
