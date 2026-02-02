@@ -1,12 +1,15 @@
 package org.apache.controller;
 
 import org.apache.logging.Printer;
+import org.apache.model.AcumeRecord;
 import org.apache.model.AggregatedClassifierResult;
 import org.apache.model.AggregatedClassifierResultStore;
 import org.apache.model.EvaluationFoldResult;
+import org.apache.utilities.writer.AcumeUtils;
 import weka.classifiers.Classifier;
 import weka.classifiers.Evaluation;
 
+import weka.core.Instance;
 import weka.core.Instances;
 import weka.filters.Filter;
 import weka.filters.supervised.instance.SMOTE;
@@ -97,6 +100,11 @@ public class WekaController {
                 // Copia del classificatore
                 Classifier clsCopy = weka.classifiers.AbstractClassifier.makeCopy(cls);
                 clsCopy.buildClassifier(train);
+                List<AcumeRecord> foldRecords = getAcumeRecords(clsCopy, test);
+
+                // Salva il file rinominandolo per repeat e fold
+                String fileName = projectName + "_R" + r + "_F" + f;
+                AcumeUtils.writeAcumeCSV(fileName, foldRecords);
 
 
                 // Valutazione
@@ -245,6 +253,32 @@ public class WekaController {
         } catch (Exception e) {
             Printer.printYellow("Failed to save CV result for project " + projectName + ": " + e.getMessage());
         }
+    }
+
+
+    public List<AcumeRecord> getAcumeRecords(Classifier cls, Instances data) throws Exception {
+        List<AcumeRecord> records = new ArrayList<>();
+
+        // Trova gli indici delle colonne necessarie
+        int classIndex = data.classIndex();
+        int buggyClassIndex = data.classAttribute().indexOfValue("yes");
+        // Se nel tuo dataset il bug è indicato diversamente (es. "true" o "1"), cambia "yes"
+
+        int locIndex = data.attribute("LOC").index();
+
+        for (int i = 0; i < data.numInstances(); i++) {
+            Instance inst = data.instance(i);
+
+            // Estrai la probabilità che l'istanza sia BUGGY (classe "yes")
+            double[] distribution = cls.distributionForInstance(inst);
+            double probability = distribution[buggyClassIndex];
+
+            int loc = (int) inst.value(locIndex);
+            String actual = (int) inst.classValue() == buggyClassIndex ? "YES" : "NO";
+
+            records.add(new AcumeRecord(i, loc, probability, actual));
+        }
+        return records;
     }
 
 

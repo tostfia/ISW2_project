@@ -1,5 +1,7 @@
 package org.apache.model; // Assicurati che il package sia corretto
 
+
+
 import lombok.Getter;
 import lombok.Setter;
 
@@ -11,19 +13,22 @@ import java.util.List;
 public class Ticket {
 
 
-    private final String ticketKey;
-    private final LocalDate creationDate;
-    private final LocalDate resolutionDate;
+    public final String ticketKey;
+    public final LocalDate creationDate;
+    public final LocalDate resolutionDate;
     @Setter
-    private Release injectedVersion;
+    @Getter
+    public Release injectedVersion;
     @Setter
-    private  Release openingVersion;
+    @Getter
+    public   Release openingVersion;
     @Setter
-    private  Release fixedVersion;
+    @Getter
+    public Release fixedVersion;
     @Setter
-    private  List<Release> affectedVersions;
+    public  List<Release> affectedVersions;
     @Setter
-    private  List<Commit> commitList;
+    public  List<Commit> commitList;
 
 
 

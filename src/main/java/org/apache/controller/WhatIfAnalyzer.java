@@ -61,7 +61,10 @@ public class WhatIfAnalyzer {
         String aFeature = identifyActionableFeature();
         CorrelationController.FeatureValue buggyMethod = findBuggyMethod(aFeature);
 
-        Printer.print("Feature azionabile: " + aFeature + " (valore): "+ buggyMethod.value() + ", Metodo target: " + buggyMethod.methodName() + "\n");
+        Printer.print("Feature azionabile: " + aFeature +  ", Metodo target: " + buggyMethod.methodName() + "\n");
+        cc.exportFeatureRankingForTargetMethod();
+
+
 
         // 2. Caricamento modello
         loadedWekaClassifier = loadClassifier(bClassifier.getModelFilePath());
