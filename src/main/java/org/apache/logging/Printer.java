@@ -1,8 +1,5 @@
 package org.apache.logging;
 
-
-
-
 import java.io.InputStream;
 import java.io.IOException;
 import java.util.logging.*;
@@ -42,6 +39,8 @@ public class Printer {
                 logger.setUseParentHandlers(false);
 
                 ConsoleHandler handler = new ConsoleHandler();
+                handler.setLevel(Level.ALL); // Assicurati che l'handler accetti tutti i livelli
+
                 handler.setFormatter(new Formatter() {
                     @Override
                     public String format(LogRecord logRecord) {
@@ -53,24 +52,23 @@ public class Printer {
                             default        -> WHITE;
                         };
 
-                        // parentesi bianche, livello colorato, messaggio lasciato "così com'è"
                         return String.format(
                                 "%s[%s%s%s%s] %s%n",
-                                WHITE,      // apre parentesi bianca
+                                WHITE,      // parentesi bianca
                                 color,      // colore del livello
                                 logRecord.getLevel(),
                                 RESET,      // reset colore
                                 WHITE,      // chiusura parentesi bianca
-                                logRecord.getMessage() // il messaggio viene deciso dal chiamante
+                                logRecord.getMessage()
                         );
                     }
-
                 });
 
                 logger.addHandler(handler);
                 logger.setLevel(Level.ALL);
 
             } catch (IOException e) {
+                System.err.println("Errore nel leggere logging.properties: " + e.getMessage());
                 System.exit(-1);
             }
         }
@@ -79,34 +77,35 @@ public class Printer {
 
     // --- Metodi pubblici compatibili ---
     public static void print(String s) {
-        getInstance().getLogger().log(Level.INFO,()-> WHITE+ s+ RESET);
+        getInstance().getLogger().log(Level.INFO, () -> WHITE + s + RESET);
     }
 
     public static void println(String s) {
-        getInstance().getLogger().log(Level.INFO,()-> WHITE +s+ RESET);
+        getInstance().getLogger().log(Level.INFO, () -> WHITE + s + RESET);
     }
 
     public static void printlnBlue(String s) {
-        getInstance().getLogger().log(Level.INFO,()-> BLUE + s + RESET);
+        getInstance().getLogger().log(Level.INFO, () -> BLUE + s + RESET);
     }
 
     public static void printBlue(String s) {
-        getInstance().getLogger().log(Level.INFO,()-> BLUE + s + RESET);
+        getInstance().getLogger().log(Level.INFO, () -> BLUE + s + RESET);
     }
 
     public static void printlnGreen(String s) {
-        getInstance().getLogger().config(GREEN + s + RESET);
+        // Usa INFO invece di CONFIG per garantire la stampa
+        getInstance().getLogger().log(Level.INFO, () -> WHITE + s + RESET);
     }
 
     public static void printGreen(String s) {
-        getInstance().getLogger().config(GREEN + s + RESET);
+        getInstance().getLogger().log(Level.INFO, () -> WHITE + s + RESET);
     }
 
     public static void printYellow(String s) {
-        getInstance().getLogger().warning(YELLOW + s + RESET);
+        getInstance().getLogger().log(Level.WARNING, () -> YELLOW + s + RESET);
     }
 
     public static void errorPrint(String s) {
-        getInstance().getLogger().severe(RED + s + RESET);
+        getInstance().getLogger().log(Level.SEVERE, () -> RED + s + RESET);
     }
 }

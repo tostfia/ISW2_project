@@ -22,10 +22,7 @@ public class MethodMetrics {
     private long nestingDepth; // Nesting Depth
     @Setter
     private long numberOfCodeSmells; // Numero di Code Smells
-    @Setter
-    private long fanIn;
-    @Setter
-    private  long fanOut;
+
     @Setter
     private long age;
 

@@ -2,11 +2,8 @@ package org.apache.controller;
 
 
 import org.apache.logging.Printer;
-import org.apache.model.AggregatedClassifierResult;
-import org.apache.model.PredictionResult;
-import tech.tablesaw.api.Table;
-import tech.tablesaw.api.IntColumn;
-import tech.tablesaw.api.StringColumn;
+import org.apache.utilities.ClassifierFactory;
+import tech.tablesaw.api.*;
 import weka.classifiers.Classifier;
 import weka.core.Attribute;
 import weka.core.Instance;
@@ -18,74 +15,181 @@ import weka.filters.unsupervised.attribute.Remove;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
+import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 
 public class WhatIfAnalyzer {
 
-    private final AggregatedClassifierResult bClassifier;
+    private final String bClassifier;
     private final Table datasetA;
     private Instances wekaDatasetA;
     private final String projectName;
     private final CorrelationController cc;
-    private Classifier loadedWekaClassifier;
-
+    private final int seed ;
     private static final String OUTPUT_DIR = "output";
 
     // Costanti per feature e dataset
     private static final String FEATURE_SMELLS = "NumberOfCodeSmells";
-    private static final String DATASET_BPLUS = "B+";
-    private static final String DATASET_B = "B";
-    private static final String DATASET_C = "C";
-    private static final String DATASET_A = "A";
 
-    public WhatIfAnalyzer(AggregatedClassifierResult bClassifier, Table datasetA, Instances wekaDatasetA, String projectName) {
+    private record FeatureRankingRow(
+            int rank,
+            String feature,
+            double value,
+            double correlation,
+            double pValue
+    ) {}
+
+
+    public WhatIfAnalyzer(String bClassifier, Table datasetA, Instances wekaDatasetA, String projectName, int seed) {
         this.bClassifier = bClassifier;
         this.datasetA = datasetA;
         this.wekaDatasetA = wekaDatasetA;
         this.projectName = projectName;
         this.cc = new CorrelationController(datasetA);
+        this.seed = seed;
     }
 
-    /** Flusso principale */
     public void run() throws Exception {
-        Printer.printGreen("Avvio dell'analisi 'What-If'...\n");
 
-        // Preprocessing iniziale
-        // Pulizia nomi attributi e riordino classe no/yes
-        this.wekaDatasetA = normalizeAttributes(this.wekaDatasetA);
-        this.wekaDatasetA = reorderBugginessValues(this.wekaDatasetA);
-        // 1. Identificazione feature e metodo target
-        String aFeature = identifyActionableFeature();
+        Printer.printGreen("Avvio analisi What-If...\n");
+
+        wekaDatasetA = normalizeAttributes(wekaDatasetA);
+        wekaDatasetA = reorderBugginessValues(wekaDatasetA);
+
+        CorrelationController.FeatureCorrelation bestFeature = cc.getBestFeature();
+        String aFeature = bestFeature.featureName().replaceAll("[‘’“”'\"`]", "").trim();
+
+
+
         CorrelationController.FeatureValue buggyMethod = findBuggyMethod(aFeature);
 
-        Printer.print("Feature azionabile: " + aFeature +  ", Metodo target: " + buggyMethod.methodName() + "\n");
-        cc.exportFeatureRankingForTargetMethod();
+        saveFeatureRankingToCSV(
+                buildFeatureRankingForMethod(buggyMethod.index(), aFeature)
+        );
+        Printer.print(
+                "Feature azionabile: " + aFeature +
+                        " (ρ = " + bestFeature.correlation() + "metodo:"+ buggyMethod.methodName() +")\n"
+        );
 
 
+        //--- Crea dataset
+        // --- B+: Portion of A with NSmells > 0
+        Instances datasetBPlus = filterBySmell(wekaDatasetA, "greater");
+        // --- C: Portion of A with NSmells = 0
+        Instances datasetC = filterBySmell(wekaDatasetA, "equals");
+        // --- B: Like B+ but with NSmells brought to  0
+        Instances datasetB = new Instances(datasetBPlus);
+        int nSmellsIndex = datasetB.attribute(FEATURE_SMELLS).index();
+        if (nSmellsIndex == -1) throw new IllegalStateException("Feature 'NSmells' not found.");
+        datasetB.forEach(instance -> instance.setValue(nSmellsIndex , 0));
+        // --- Train BClassifier on A (BClassifierA) ---
+        Classifier bClassifierA =
+                ClassifierFactory.build(bClassifier, seed);
+        bClassifierA.buildClassifier(wekaDatasetA);
 
-        // 2. Caricamento modello
-        loadedWekaClassifier = loadClassifier(bClassifier.getModelFilePath());
+        // Count "Actual" values
+        int actualA = countActualBugs(wekaDatasetA);
+        int actualBPlus = countActualBugs(datasetBPlus);
+        int actualC = countActualBugs(datasetC);
+        int actualB = countActualBugs(datasetB);
 
-        // 3. Generazione dataset B+, B, C
-        Map<String, Instances> datasets = generateWhatIfDatasets(FEATURE_SMELLS);
-        // Allineamento Feature (Fondamentale se il modello è stato addestrato con Feature Selection)
-        alignAllDatasets(datasets);
+        // Count "Estimated" values
+        int estimatedA = countBuggyPredictions(bClassifierA, wekaDatasetA);
+        int estimatedBPlus = countBuggyPredictions(bClassifierA, datasetBPlus);
+        int estimatedC = countBuggyPredictions(bClassifierA, datasetC);
+        int estimatedB = countBuggyPredictions(bClassifierA, datasetB);
 
+        String outputDir = String.format("whatIfResults/%s/", projectName.toLowerCase());
+        String outputFile = outputDir + "whatIf.csv";
+        saveWhatIfResultsToCsv(outputFile,
+                actualA, estimatedA,
+                actualBPlus, estimatedBPlus,
+                actualB, estimatedB,
+                actualC, estimatedC);
 
-        // 4. Predizioni
-        Map<String, PredictionResult> predictionResults = runPredictions(datasets);
-        predictionResults.put(DATASET_A, predict(wekaDatasetA, DATASET_A));
-        // 5. Salvataggio dataset
-        saveDatasets(datasets);
-        // 6. Salvataggio tabella dei risultati e analisi
-        saveResults(predictionResults);
-        analyze(predictionResults, aFeature);
+        saveDatasetToCsv(datasetB, outputDir, "DatasetB.csv");
+        saveDatasetToCsv(datasetBPlus, outputDir, "DatasetBplus.csv");
+        saveDatasetToCsv(datasetC, outputDir, "DatasetC.csv");
 
-        Printer.printlnGreen("Analisi 'What-If' completata.\n");
     }
+    private Instances filterBySmell(Instances data, String comparison) {
+        int attrIndex = data.attribute(FEATURE_SMELLS).index();
+        if (attrIndex == -1) {
+            throw new IllegalArgumentException("Attribute not found: " + FEATURE_SMELLS);
+        }
+
+        Instances filteredData = new Instances(data, 0);
+
+        for (int i = 0; i < data.numInstances(); i++) {
+            Instance inst = data.instance(i);
+            double currentValue = inst.value(attrIndex);
+            boolean conditionMet = false;
+
+            switch (comparison) {
+                case "equals":
+                    if (currentValue == 0) conditionMet = true;
+                    break;
+                case "greater":
+                    if (currentValue > 0) conditionMet = true;
+                    break;
+                case "less":
+                    if (currentValue < 0) conditionMet = true;
+                    break;
+                default:
+                    throw new IllegalArgumentException("Comparison type not supported: " + comparison);
+            }
+
+            if (conditionMet) {
+                filteredData.add(inst);
+            }
+        }
+        return filteredData;
+    }
+
+
+    private int countBuggyPredictions(Classifier classifier, Instances data) throws Exception {
+        if (data.isEmpty()) return 0;
+        int buggyCount = 0;
+        int buggyClassIndex = data.classAttribute().indexOfValue("yes");
+        for (int i = 0; i < data.numInstances(); i++) {
+            if (classifier.classifyInstance(data.instance(i)) == buggyClassIndex) {
+                buggyCount++;
+            }
+        }
+        return buggyCount;
+    }
+
+    private int countActualBugs(Instances data) {
+        if (data.isEmpty()) return 0;
+        int actualBuggyCount = 0;
+        int buggyClassIndex = data.classAttribute().indexOfValue("yes");
+        for (int i = 0; i < data.numInstances(); i++) {
+            if (data.instance(i).classValue() == buggyClassIndex) {
+                actualBuggyCount++;
+            }
+        }
+        return actualBuggyCount;
+    }
+
+    private void saveDatasetToCsv(Instances data, String directoryPath, String fileName) {
+        try {
+            File dir = new File(directoryPath);
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+
+            CSVSaver saver = new CSVSaver();
+            saver.setInstances(data);
+            saver.setFile(new File(directoryPath + fileName));
+            saver.writeBatch();
+        } catch (Exception e) {
+            Printer.errorPrint(e.getMessage());
+        }
+    }
+
+
 
     /**
      * Normalizza i nomi degli attributi rimuovendo caratteri speciali
@@ -103,7 +207,7 @@ public class WhatIfAnalyzer {
      * Forza l'ordine della classe nominale a {no, yes}
      * (Concetto critico da WhatIfPredictor per evitare errori di classificazione)
      */
-    private Instances reorderBugginessValues(Instances data) throws Exception {
+   private Instances reorderBugginessValues(Instances data) throws Exception {
         int classIdx = data.classIndex() == -1 ? data.numAttributes() - 1 : data.classIndex();
         data.setClassIndex(classIdx);
 
@@ -135,205 +239,178 @@ public class WhatIfAnalyzer {
 
 
 
-    /** Identifica la feature più correlata */
-    private String identifyActionableFeature() {
-        CorrelationController.FeatureCorrelation best = cc.getBestFeature();
-        String aFeature = best.featureName().replaceAll("[‘’“”'\"`]", "").trim();
-        Printer.print("Feature azionabile (AFeature): " + aFeature + ", correlazione: " + best.correlation() + "\n");
-        return aFeature;
-    }
+
 
     /** Trova il metodo buggy con valore massimo della feature */
     private CorrelationController.FeatureValue findBuggyMethod(String feature) {
         return cc.findBuggyMethodWithMaxFeature(feature);
     }
 
-    /** Carica il modello Weka, lancia eccezione se fallisce */
-    private Classifier loadClassifier(String modelPath) throws Exception {
-        if (modelPath == null || modelPath.isEmpty())
-            throw new IllegalArgumentException("Percorso del modello del classificatore non valido.");
-        Classifier cls = (Classifier) SerializationHelper.read(modelPath);
-        Printer.print("Modello del classificatore caricato da: " + modelPath + "\n");
-        return cls;
-    }
-
-    /** Genera B+, B, C dataset usando un metodo generico */
-    private Map<String, Instances> generateWhatIfDatasets(String aFeature) {
-        Map<String, Instances> map = new HashMap<>();
-        int featureIndex = wekaDatasetA.attribute(aFeature).index();
-
-        // B+: Buggy che hanno la feature > 0
-        Instances bPlus = filterDataset(wekaDatasetA,
-                inst -> inst.value(featureIndex) > 0 && inst.stringValue(inst.classIndex()).equals("yes"),
-                inst -> {}
-        );
-        map.put(DATASET_BPLUS, bPlus);
-
-        // B: B+ ma con la feature azzerata (What-if scenario)
-        Instances bDataset = filterDataset(bPlus, inst -> true, inst -> inst.setValue(featureIndex, 0));
-        map.put(DATASET_B, bDataset);
-
-        // C: Istanze che non hanno la feature (Clean)
-        Instances cDataset = filterDataset(wekaDatasetA, inst -> inst.value(featureIndex) == 0, inst -> {});
-        map.put(DATASET_C, cDataset);
-
-        return map;
-    }
-
-    /**
-     * Allinea i dataset per assicurarsi che abbiano gli stessi attributi del modello
-     * (Gestisce il caso in cui il dataset A abbia releaseID o feature rimosse)
-     */
-    private void alignAllDatasets(Map<String, Instances> datasets) throws Exception {
-        // Rimuoviamo releaseID se presente (Concetto da WhatIfPredictor)
-        for (String key : datasets.keySet()) {
-            Instances ds = datasets.get(key);
-            if (ds.attribute("releaseID") != null) {
-                Remove rm = new Remove();
-                rm.setAttributeIndices("" + (ds.attribute("releaseID").index() + 1));
-                rm.setInputFormat(ds);
-                datasets.put(key, Filter.useFilter(ds, rm));
-            }
-        }
-    }
 
 
 
-    /** Metodo generico per filtrare e trasformare dataset */
-    private Instances filterDataset(Instances base, Predicate<Instance> condition, Consumer<Instance> transform) {
-        Instances result = new Instances(base, 0);
-        for (int i = 0; i < base.numInstances(); i++) {
-            Instance inst = base.instance(i);
-            if (condition.test(inst)) {
-                Instance copy = (Instance) inst.copy();
-                transform.accept(copy);
-                copy.setDataset(result);
-                result.add(copy);
-            }
-        }
-        Printer.printBlue("Dataset filtrato: " + result.numInstances() + " istanze.\n");
-        return result;
-    }
 
-    /** Esegue predizioni per tutti i dataset della mappa */
-    private Map<String, PredictionResult> runPredictions(Map<String, Instances> datasets) throws Exception {
-        Map<String, PredictionResult> results = new HashMap<>();
-        for (Map.Entry<String, Instances> entry : datasets.entrySet()) {
-            results.put(entry.getKey(), predict(entry.getValue(), entry.getKey()));
-        }
-        return results;
-    }
 
-    /** Predizione singolo dataset */
-    private PredictionResult predict(Instances dataToPredict, String datasetName) throws Exception {
-        if (dataToPredict == null || dataToPredict.isEmpty()) {
-            Printer.printYellow("Dataset '" + datasetName + "' è vuoto.");
-            return new PredictionResult(0, 0, 0);
+
+
+
+
+
+
+
+
+
+
+    private List<FeatureRankingRow> buildFeatureRankingForMethod(
+            int methodIndex,
+            String aFeature
+    ) {
+
+        // Tutte le correlazioni (calcolate una sola volta)
+        List<CorrelationController.FeatureCorrelation> correlations =
+                cc.computeAndSaveFullRanking(projectName);
+
+        // Map veloce: feature → correlazione
+        Map<String, CorrelationController.FeatureCorrelation> corrMap =
+                correlations.stream()
+                        .collect(Collectors.toMap(
+                                CorrelationController.FeatureCorrelation::featureName,
+                                c -> c
+                        ));
+
+        List<FeatureRankingRow> rows = new ArrayList<>();
+
+        for (String colName : datasetA.columnNames()) {
+
+            if (!datasetA.column(colName).type().equals(ColumnType.DOUBLE)
+                    && !datasetA.column(colName).type().equals(ColumnType.INTEGER))
+                continue;
+
+            if (!cc.isActionable(colName)) continue;
+
+            var corr = corrMap.get(colName);
+            if (corr == null) continue;
+
+            double value = datasetA.numberColumn(colName).getDouble(methodIndex);
+
+            rows.add(new FeatureRankingRow(
+                    0, // temporaneo
+                    colName,
+                    value,
+                    corr.correlation(),
+                    corr.pValue()
+            ));
         }
 
-        int actualBuggy = 0, predictedBuggy = 0, correctlyPredictedBuggy = 0;
-        int actualNonBuggy = 0, predictedNonBuggy = 0, correctlyPredictedNonBuggy = 0;
+        // Ordina: AFeature prima, poi |correlation| desc
+        rows.sort((a, b) -> {
+            if (a.feature.equals(aFeature)) return -1;
+            if (b.feature.equals(aFeature)) return 1;
+            return Double.compare(
+                    Math.abs(b.correlation),
+                    Math.abs(a.correlation)
+            );
+        });
 
-        if (dataToPredict.classIndex() == -1) dataToPredict.setClassIndex(dataToPredict.numAttributes() - 1);
-
-        for (int i = 0; i < dataToPredict.numInstances(); i++) {
-            Instance inst = dataToPredict.instance(i);
-            boolean isActuallyBuggy = inst.stringValue(inst.classIndex()).equals("yes");
-
-            double predictedValue = loadedWekaClassifier.classifyInstance(inst);
-            boolean isPredictedBuggy = dataToPredict.classAttribute().value((int) predictedValue).equals("yes");
-
-            if (isActuallyBuggy) actualBuggy++; else actualNonBuggy++;
-            if (isPredictedBuggy) {
-                predictedBuggy++;
-                if (isActuallyBuggy) correctlyPredictedBuggy++;
-            } else {
-                predictedNonBuggy++;
-                if (!isActuallyBuggy) correctlyPredictedNonBuggy++;
-            }
+        // Assegna ranking
+        for (int i = 0; i < rows.size(); i++) {
+            rows.set(i, new FeatureRankingRow(
+                    i + 1,
+                    rows.get(i).feature,
+                    rows.get(i).value,
+                    rows.get(i).correlation,
+                    rows.get(i).pValue
+            ));
         }
 
-        Printer.printBlue("Predizioni per " + datasetName + ": Totale=" + dataToPredict.numInstances() +
-                ", Actual Buggy=" + actualBuggy + ", Predicted Buggy=" + predictedBuggy +
-                ", Correctly Predicted Buggy=" + correctlyPredictedBuggy);
-
-        return new PredictionResult(actualBuggy, predictedBuggy, correctlyPredictedBuggy,
-                actualNonBuggy, predictedNonBuggy, correctlyPredictedNonBuggy);
+        return rows;
     }
 
-    /** Salva dataset in CSV */
-    private void saveDatasets(Map<String, Instances> datasets) {
+
+    private void saveFeatureRankingToCSV(
+            List<FeatureRankingRow> ranking
+    ) {
+
         try {
-            File dir = new File(OUTPUT_DIR);
-            if (!dir.exists() && !dir.mkdirs()) throw new RuntimeException("Impossibile creare directory output.");
+            IntColumn rankCol = IntColumn.create("Rank");
+            StringColumn featureCol = StringColumn.create("Feature");
+            DoubleColumn valueCol = DoubleColumn.create("FeatureValue");
+            DoubleColumn rhoCol = DoubleColumn.create("SpearmanRho");
 
-            CSVSaver saver = new CSVSaver();
-            for (Map.Entry<String, Instances> entry : datasets.entrySet()) {
-                String path = OUTPUT_DIR + File.separator + projectName + "_" + entry.getKey() + ".csv";
-                saver.setInstances(entry.getValue());
-                saver.setFile(new File(path));
-                saver.writeBatch();
-                Printer.println("Dataset " + entry.getKey() + " salvato in: " + path);
-            }
-        } catch (Exception e) {
-            Printer.errorPrint("Errore nel salvataggio dataset: " + e.getMessage());
-        }
-    }
 
-    /** Crea e salva tabella dei risultati */
-    private void saveResults(Map<String, PredictionResult> results) {
-        try {
-            StringColumn datasetCol = StringColumn.create("Dataset");
-            IntColumn totalCol = IntColumn.create("Total_Instances");
-            IntColumn actualBuggyCol = IntColumn.create("Actual_Buggy");
-            IntColumn predictedBuggyCol = IntColumn.create("Estimated_Buggy");
-            IntColumn actualNonBuggyCol = IntColumn.create("Actual_NonBuggy");
-            IntColumn predictedNonBuggyCol = IntColumn.create("Estimated_NonBuggy");
-            IntColumn correctBuggyCol = IntColumn.create("Correct_Buggy_Predictions");
-            IntColumn correctNonBuggyCol = IntColumn.create("Correct_NonBuggy_Predictions");
+            for (FeatureRankingRow r : ranking) {
+                rankCol.append(r.rank);
+                featureCol.append(r.feature);
+                valueCol.append(r.value);
+                rhoCol.append(r.correlation);
 
-            for (Map.Entry<String, PredictionResult> entry : results.entrySet()) {
-                String name = entry.getKey();
-                PredictionResult r = entry.getValue();
-                datasetCol.append(name);
-                totalCol.append(r.getTotalInstances());
-                actualBuggyCol.append(r.getActualBuggy());
-                predictedBuggyCol.append(r.getPredictedBuggy());
-                actualNonBuggyCol.append(r.getActualNonBuggy());
-                predictedNonBuggyCol.append(r.getPredictedNonBuggy());
-                correctBuggyCol.append(r.getCorrectlyPredictedBuggy());
-                correctNonBuggyCol.append(r.getCorrectlyPredictedNonBuggy());
             }
 
-            Table table = Table.create("Prediction_Results")
-                    .addColumns(datasetCol, totalCol, actualBuggyCol, predictedBuggyCol,
-                            actualNonBuggyCol, predictedNonBuggyCol, correctBuggyCol, correctNonBuggyCol);
+            Table table = Table.create("Feature_Ranking")
+                    .addColumns(rankCol, featureCol, valueCol, rhoCol);
 
-            String path = OUTPUT_DIR + File.separator + projectName + "_prediction_results.csv";
+            String path = OUTPUT_DIR + File.separator + projectName + "_feature_ranking.csv";
             table.write().csv(path);
-            Printer.print("Tabella risultati salvata in: " + path + "\n");
-            Printer.print("\n" + table.print());
+
+            Printer.printGreen("Ranking feature salvato in: " + path + "\n");
+
         } catch (Exception e) {
-            Printer.errorPrint("Errore nel salvataggio risultati: " + e.getMessage());
+            Printer.errorPrint("Errore nel salvataggio ranking feature: " + e.getMessage());
         }
     }
 
-    /** Analisi dei risultati B+ vs B */
-    private void analyze(Map<String, PredictionResult> results, String aFeature) {
-        Printer.print("\n--- ANALISI WHAT-IF ---");
-        PredictionResult bPlusRes = results.get(DATASET_BPLUS);
-        PredictionResult bRes = results.get(DATASET_B);
+    public void saveWhatIfResultsToCsv(
+            String outputFile,
+            int actualA, int estimatedA,
+            int actualBPlus, int estimatedBPlus,
+            int actualB, int estimatedB,
+            int actualC, int estimatedC) {
 
-        if (bPlusRes != null && bRes != null) {
-            int preventable = Math.max(bPlusRes.getPredictedBuggy() - bRes.getPredictedBuggy(), 0);
-            Printer.print("Metodi buggy previsti B+: " + bPlusRes.getPredictedBuggy());
-            Printer.print("Metodi buggy previsti B: " + bRes.getPredictedBuggy());
-            Printer.print("RISPOSTA: Circa " + preventable + " metodi difettosi avrebbero potuto essere prevenuti azzerando " + aFeature);
+        try {
+            File file = new File(outputFile);
+            file.getParentFile().mkdirs();
 
-            if (bPlusRes.getPredictedBuggy() > 0) {
-                double proportion = (double) preventable / bPlusRes.getPredictedBuggy() * 100;
-                Printer.println(String.format("Proporzione: %.2f%% dei metodi buggy con smells", proportion));
-            }
+            StringColumn datasetCol = StringColumn.create("Dataset");
+            IntColumn actualCol = IntColumn.create("ActualBuggy");
+            IntColumn estimatedCol = IntColumn.create("EstimatedBuggy");
+            DoubleColumn errorPercCol = DoubleColumn.create("ErrorPercentage");
+
+            // Helper lambda
+            BiConsumer<String, int[]> addRow = (name, values) -> {
+                int actual = values[0];
+                int estimated = values[1];
+
+                double errorPerc = (actual == 0)
+                        ? 0.0
+                        : Math.abs(estimated - actual) / (double) actual;
+
+                datasetCol.append(name);
+                actualCol.append(actual);
+                estimatedCol.append(estimated);
+                errorPercCol.append(errorPerc);
+            };
+
+            addRow.accept("A", new int[]{actualA, estimatedA});
+            addRow.accept("B+", new int[]{actualBPlus, estimatedBPlus});
+            addRow.accept("B", new int[]{actualB, estimatedB});
+            addRow.accept("C", new int[]{actualC, estimatedC});
+
+            Table table = Table.create("WhatIfResults")
+                    .addColumns(datasetCol, actualCol, estimatedCol, errorPercCol);
+
+            table.write().csv(outputFile);
+
+            Printer.printGreen(
+                    "What-If results salvati in: " + outputFile + "\n"
+            );
+
+        } catch (Exception e) {
+            Printer.errorPrint(
+                    "Errore nel salvataggio What-If CSV: " + e.getMessage()
+            );
         }
     }
+
+
+
 }

@@ -45,7 +45,6 @@ public class CsvWriter implements AutoCloseable {
                     "LOC", "ParameterCount", "CycloComplexity", "CognitiveComplexity", "NestingDepth",
                     // Metriche Storiche
                     "Revisions", "Authors",
-                    "Fan-In", "Fan-Out",
                     // Metriche di Cambiamento Dettagliate
                     "TotalChurn", "MaxChurn", "AvgChurn", "NumberOfCodeSmells",
                     // Etichetta
@@ -118,8 +117,6 @@ public class CsvWriter implements AutoCloseable {
                 String.valueOf(methodMetrics.getNestingDepth()),
                 String.valueOf(cm.getNumberOfRevisions()),
                 String.valueOf(cm.getNumAuthors()),
-                String.valueOf(methodMetrics.getFanIn()),
-                String.valueOf(methodMetrics.getFanOut()),
                 String.valueOf(cm.getChurnMetrics().getVal()),
                 String.valueOf(cm.getChurnMetrics().getMaxVal()),
                 String.format(Locale.US, "%.2f", cm.getChurnMetrics().getAvgVal()),
@@ -129,4 +126,6 @@ public class CsvWriter implements AutoCloseable {
                 analyzedMethod.isBuggy() ? "yes" : "no"
         );
     }
+
+
 }

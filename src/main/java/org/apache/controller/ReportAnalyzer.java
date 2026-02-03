@@ -38,20 +38,27 @@ public class ReportAnalyzer {
        COMPOSITE SCORE
        ========================= */
     private double compositeScore(AggregatedClassifierResult r) {
-        double auc = r.getAvgAuc();
-        double recall = r.getAvgRecall();
-        double precision = r.getAvgPrecision();
+        double recall = r.getAvgRecall(); // già 0-1
+        double auc = r.getAvgAuc();       // già 0-1
+        double npofb20 = normalizeNp(r.getAvgNpofb20()); // normalizza NPofB20
         double kappa = normalizeKappa(r.getAvgKappa());
 
-        return 0.40 * auc +
-                0.25 * recall +
-                0.15 * precision +
-                0.20 * kappa;
+        return 0.30 * auc +
+                0.40 * recall +
+                0.20 * npofb20 +
+                0.10 * kappa;
     }
 
     private double normalizeKappa(double kappa) {
         return (kappa + 1.0) / 2.0;
     }
+    // Normalizza NPofB20 su scala 0-1
+    private double normalizeNp(double val) {
+        double min = 0.0;    // ipotetico minimo possibile
+        double max = 100.0;  // ipotetico massimo possibile (da calibrare sul dataset)
+        return Math.min(1.0, Math.max(0.0, (val - min) / (max - min)));
+    }
+
 
     /* =========================
        OPTIONAL: RANKING OUTPUT

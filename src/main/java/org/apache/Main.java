@@ -6,6 +6,7 @@ import org.apache.controller.ReportAnalyzer;
 import org.apache.controller.WhatIfAnalyzer;
 import org.apache.controller.milestone1.JiraController;
 import org.apache.logging.Printer;
+import org.apache.model.AcumeRecord;
 import org.apache.model.AggregatedClassifierResult;
 import org.apache.model.Release;
 import org.apache.utilities.ClassifierFactory;
@@ -15,6 +16,8 @@ import weka.core.Instances;
 import weka.core.SerializationHelper;
 
 import java.util.List;
+
+import static org.apache.utilities.writer.AcumeUtils.writeAcumeCSV;
 
 public class Main {
 
@@ -54,11 +57,13 @@ public class Main {
             return;
         }
 
+
+
         // =========================
         // Step 1: CROSS-VALIDATION → MODEL & FEATURE SELECTION
         // =========================
         Printer.printlnGreen("STEP 1: Cross-Validation for classifier & feature selection");
-        long start= System.currentTimeMillis();
+
         Instances allData = datasetController.convertTablesawToWekaInstances(
                 datasetA,
                 releases.stream().map(Release::getReleaseName).toList(),
@@ -67,6 +72,9 @@ public class Main {
         allData.setClassIndex(allData.numAttributes() - 1);
 
         WekaController cvController = new WekaController(projectName); // CV controller
+
+
+        Printer.printlnGreen("File per ACUME generato in: acume_data/test/");
 
         // Esegui CV su tutti i classificatori definiti in ClassifierFactory
         List<String> classifiersToTest = List.of("NaiveBayes", "RandomForest", "IBk");
@@ -98,9 +106,7 @@ public class Main {
         AggregatedClassifierResult best = analyzer.getBestClassifierByCompositeScore();
         analyzer.printRanking();
         Printer.println("Best classifier (from CV): " + best.getClassifierName());
-        long middle = System.currentTimeMillis();
-        long tot= start-middle;
-        Printer.print("Sono passati "+ tot);
+
         // =========================
         // Step 2: TRAIN FINAL MODEL
         // =========================
@@ -117,12 +123,12 @@ public class Main {
 
         Classifier finalClassifier = ClassifierFactory.build(best.getClassifierName(), SEED);
         finalClassifier.buildClassifier(finalTraining);
-        long middle1=System.currentTimeMillis();
-        long tot1= start-middle1;
-        Printer.print("Sono passati "+ tot1);
+
         String modelPath = "models/" + projectName + "_best.model";
         SerializationHelper.write(modelPath, finalClassifier);
         best.setModelFilePath(modelPath);
+        List<AcumeRecord> acumeData = cvController.getAcumeRecords(finalClassifier, finalTraining);
+        writeAcumeCSV(projectName, acumeData);
 
         Printer.printlnGreen("Final model saved to: " + modelPath);
 
@@ -130,7 +136,7 @@ public class Main {
         // Step 3: WHAT-IF ANALYSIS
         // =========================
         Printer.printlnGreen("STEP 3: Running What-If Analysis");
-        WhatIfAnalyzer whatIf = new WhatIfAnalyzer(best, datasetA, finalTraining, projectName);
+        WhatIfAnalyzer whatIf = new WhatIfAnalyzer(best.getClassifierName(), datasetA, finalTraining, projectName,SEED);
         whatIf.run();
 
         Printer.printlnGreen("ANALYSIS COMPLETED for project: " + projectName);

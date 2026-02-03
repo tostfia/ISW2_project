@@ -3,10 +3,9 @@ package org.apache.controller.milestone1;
 
 
 
-import com.github.javaparser.StaticJavaParser;
+
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.BinaryExpr;
-import com.github.javaparser.ast.expr.MethodCallExpr;
 import com.github.javaparser.ast.stmt.*;
 import org.apache.logging.Printer;
 import org.apache.model.*;
@@ -41,9 +40,7 @@ public class MetricsController {
         Printer.printBlue("Inizio calcolo metriche per lo snapshot...\n");
 
 
-        // Prima di processare le singole classi/metodi, calcoliamo Fan-in/Fan-out
-        // che richiede una visione d'insieme dello snapshot corrente.
-        calculateMethodUsageMetrics(); // Nuovo metodo per Fan-in/Fan-out
+
 
 
         for (AnalyzedClass analyzedClass : analyzedClasses) {
@@ -83,102 +80,7 @@ public class MetricsController {
 
         }
     }
-    private void calculateMethodUsageMetrics() {
-        Printer.print("Inizio calcolo Fan-in/Fan-out per lo snapshot.\n");
 
-        // Mappa per memorizzare le chiamate effettuate da ogni metodo chiamante
-        // Chiave: firma completa del metodo chiamante (es. "com.example.MyClass.myMethod(int,String)")
-        // Valore: Set di nomi semplici dei metodi chiamati (es. "calledMethod")
-        // Questo è per il calcolo Fan-out.
-        Map<String, Set<String>> methodCallsOutSimpleName = new HashMap<>();
-
-        // Mappa per un accesso rapido a tutti gli AnalyzedMethod per il calcolo del Fan-in
-        // Chiave: "nomeMetodo_numeroParametri" (euristica)
-        // Valore: Lista di AnalyzedMethod che corrispondono a quella firma euristica.
-        // Necessaria una lista perché più metodi possono avere lo stesso nome e numero di parametri
-        // in classi diverse o per overloading (anche se l'overloading per solo numero di parametri è raro).
-        Map<String, List<AnalyzedMethod>> methodsByHeuristicSignature = new HashMap<>();
-
-
-        // --- Fase 1: Popolare le chiamate in uscita (Fan-out) e preparare la mappa per il Fan-in ---
-        for (AnalyzedClass analyzedClass : analyzedClasses) {
-            String className = analyzedClass.getClassName();
-            // Parsing sicuro della classe per evitare errori di sintassi
-            try {
-                 StaticJavaParser.parse(analyzedClass.getFileContent());
-            } catch (Exception e) {
-                Printer.printYellow("Errore di parsing JavaParser per classe " + className + ": " + e.getMessage());
-                continue;
-            }
-
-            for (AnalyzedMethod analyzedMethod : analyzedClass.getMethods()) {
-                MethodDeclaration methodDecl = analyzedMethod.getMethodDeclaration();
-                String methodSignature = analyzedMethod.getSignature();
-                String fullCallerSignature = className + "." + methodSignature;
-
-                // Popola la mappa per il Fan-in
-                // Prepara la chiave euristica: nome del metodo + numero di parametri
-                String heuristicSignature = methodDecl.getNameAsString() + "_" + methodDecl.getParameters().size();
-                methodsByHeuristicSignature.computeIfAbsent(heuristicSignature, k -> new ArrayList<>()).add(analyzedMethod);
-
-
-                // Raccogli le chiamate per il Fan-out
-                Set<String> calleesSimpleNames = new HashSet<>();
-                methodDecl.findAll(MethodCallExpr.class).forEach(methodCall -> {
-                    // Per Fan-out, contiamo i nomi dei metodi distinti.
-                    calleesSimpleNames.add(methodCall.getNameAsString());
-                });
-                methodCallsOutSimpleName.put(fullCallerSignature, calleesSimpleNames);
-            }
-        }
-
-        // --- Fase 2: Calcolare Fan-out per ogni metodo ---
-        for (AnalyzedClass analyzedClass : analyzedClasses) {
-            String className = analyzedClass.getClassName();
-            for (AnalyzedMethod analyzedMethod : analyzedClass.getMethods()) {
-                String methodSignature = analyzedMethod.getSignature();
-                String fullMethodSignature = className + "." + methodSignature;
-
-                Set<String> callees = methodCallsOutSimpleName.getOrDefault(fullMethodSignature, Collections.emptySet());
-                analyzedMethod.getMetrics().setFanOut(callees.size());
-            }
-        }
-
-        // --- Fase 3: Calcolare Fan-in per ogni metodo ---
-        // Resetta Fan-in a 0 per tutti i metodi prima di ricalcolare,
-        // per assicurare un conteggio corretto ad ogni esecuzione.
-        for (AnalyzedClass ac : analyzedClasses) {
-            for (AnalyzedMethod am : ac.getMethods()) {
-                am.getMetrics().setFanIn(0);
-            }
-        }
-
-        for (AnalyzedClass callerClass : analyzedClasses) {
-
-            try {
-                StaticJavaParser.parse(callerClass.getFileContent());
-            } catch (Exception e) {
-                Printer.errorPrint("Errore di parsing JavaParser per classe chiamante " + callerClass.getClassName() + ": " + e.getMessage());
-                continue;
-            }
-
-            for (AnalyzedMethod callerMethod : callerClass.getMethods()) {
-                MethodDeclaration callerMd = callerMethod.getMethodDeclaration();
-                callerMd.getBody().ifPresent(body ->
-                        body.findAll(MethodCallExpr.class).forEach(methodCall -> {
-                            String calleeSimpleName = methodCall.getNameAsString();
-                            int calleeArgCount = methodCall.getArguments().size();
-                            String heuristicSignature = calleeSimpleName + "_" + calleeArgCount;
-                            List<AnalyzedMethod> potentialCallees = methodsByHeuristicSignature.getOrDefault(heuristicSignature, Collections.emptyList());
-                            potentialCallees.forEach(potentialCalleeMethod ->
-                                    potentialCalleeMethod.getMetrics().setFanIn(potentialCalleeMethod.getMetrics().getFanIn() + 1)
-                            );
-                        })
-                );
-            }
-        }
-        Printer.print("Calcolo Fan-in/Fan-out completato.\n");
-    }
 
 
 
