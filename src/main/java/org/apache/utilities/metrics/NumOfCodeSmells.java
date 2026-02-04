@@ -50,7 +50,7 @@ public class NumOfCodeSmells {
     /**
      * Esegue l'analisi PMD per tutte le release, generando un file CSV per ciascuna.
      */
-    public void generatePmdReports() {
+    public void generatePmdReports() throws GitAPIException {
         String outputDirPath = PMD_ANALYSIS_BASE_DIR + File.separator + this.project;
         new File(outputDirPath);
 
@@ -74,6 +74,9 @@ public class NumOfCodeSmells {
 
             // 5. Chiama il metodo di analisi passando l'ID CORRETTO della release corrente.
             //    Questa è la riga più importante. Non ci sono 'if' o logiche strane.
+            git.reset().setMode(ResetCommand.ResetType.HARD).call();
+            git.clean().setForce(true).setCleanDirectories(true).call();
+
             runPmdForCommit(release.getReleaseID(), targetCommit);
         }
 
@@ -96,6 +99,8 @@ public class NumOfCodeSmells {
 
         try {
             git.checkout().setForced(true).setName(commit.getName()).setStartPoint(commit).call();
+
+
             Printer.print("Checkout al commit " + commit.getName() + " completato.\n");
 
             Process process = buildPmdProcess(reportPath);
@@ -156,30 +161,26 @@ public class NumOfCodeSmells {
             throw new IOException("La variabile d'ambiente PMD_HOME non è impostata.");
         }
 
-        // Determina l'eseguibile corretto (Windows vs Unix)
         String pmdExecutableName = System.getProperty("os.name").toLowerCase().contains("win")
                 ? "pmd.bat"
                 : "pmd";
 
         String pmdExecutablePath = pmdHome + File.separator + "bin" + File.separator + pmdExecutableName;
 
-        // Usa repoPath passato al costruttore
-
-        // Path ruleset: meglio passarlo come parametro o config, non hardcoded
         String rulesetPath = "src/main/resources/pmd-ruleset.xml";
 
-
+        // Usa repoPath + filtro solo *.java
         return new ProcessBuilder(
                 pmdExecutablePath, "check",
                 "-d", repoPath,
                 "-R", rulesetPath,
-                "-f", "xml", // CAMBIA QUI: da "csv" a "xml"
+                "-f", "xml",
                 "--no-cache",
                 "--debug",
-                "-r", reportPath.replace(".csv", ".xml") // AGGIORNA QUI: cambia estensione file a .xml
+                "-r", reportPath.replace(".csv", ".xml")
         ).redirectErrorStream(true).start();
-
     }
+
 
 
     private void cleanAndResetGitState() {

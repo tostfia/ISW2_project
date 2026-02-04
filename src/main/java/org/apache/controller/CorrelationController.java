@@ -101,7 +101,8 @@ public class CorrelationController {
 
         StringColumn bugColumn = dataset.stringColumn(BUG_COLUMN);
         NumericColumn<?> featureColumn = (NumericColumn<?>) dataset.column(featureName);
-        StringColumn methodNameColumn = dataset.stringColumn("MethodName");
+        TextColumn methodNameColumn = dataset.textColumn("MethodName");
+        //StringColumn methodNameColumn = dataset.stringColumn("MethodName");
 
         String lastRelease = "";
         if (dataset.columnNames().contains(RELEASE_COLUMN)) {

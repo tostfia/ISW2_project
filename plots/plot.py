@@ -14,7 +14,7 @@ if len(sys.argv) < 2:
 project_name = sys.argv[1]
 
 # Carica i dati dal CSV
-df = pd.read_csv('results_'+project_name+'.csv')
+df = pd.read_csv('results_fold'+project_name+'.csv')
 
 # Pulisci i nomi delle colonne (rimuovi spazi extra)
 df.columns = df.columns.str.strip()

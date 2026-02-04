@@ -6,7 +6,6 @@ import org.apache.controller.ReportAnalyzer;
 import org.apache.controller.WhatIfAnalyzer;
 import org.apache.controller.milestone1.JiraController;
 import org.apache.logging.Printer;
-import org.apache.model.AcumeRecord;
 import org.apache.model.AggregatedClassifierResult;
 import org.apache.model.Release;
 import org.apache.utilities.ClassifierFactory;
@@ -17,7 +16,7 @@ import weka.core.SerializationHelper;
 
 import java.util.List;
 
-import static org.apache.utilities.writer.AcumeUtils.writeAcumeCSV;
+
 
 public class Main {
 
@@ -56,6 +55,7 @@ public class Main {
             Printer.errorPrint("Dataset A is empty.");
             return;
         }
+        saveDatasetA(datasetA, "datasetA.csv");
 
 
 
@@ -127,8 +127,6 @@ public class Main {
         String modelPath = "models/" + projectName + "_best.model";
         SerializationHelper.write(modelPath, finalClassifier);
         best.setModelFilePath(modelPath);
-        List<AcumeRecord> acumeData = cvController.getAcumeRecords(finalClassifier, finalTraining);
-        writeAcumeCSV(projectName, acumeData);
 
         Printer.printlnGreen("Final model saved to: " + modelPath);
 
@@ -150,4 +148,20 @@ public class Main {
             return DEFAULT_CUT_PERCENTAGE;
         }
     }
+
+
+
+
+
+    public static void saveDatasetA(Table datasetA, String filename) {
+        if (datasetA == null || datasetA.rowCount() == 0) {
+            Printer.errorPrint("ERROR: Empty dataset!");
+            return;
+        }
+
+        datasetA.write().csv(filename);
+        Printer.printlnBlue("Dataset salvato correttamente in CSV: " + filename);
+    }
+
+
 }

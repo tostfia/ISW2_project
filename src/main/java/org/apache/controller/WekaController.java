@@ -1,13 +1,9 @@
 package org.apache.controller;
 
 import org.apache.logging.Printer;
-import org.apache.model.AcumeRecord;
 import org.apache.model.AggregatedClassifierResult;
 import org.apache.model.AggregatedClassifierResultStore;
-import org.apache.utilities.writer.AcumeUtils;
-import weka.attributeSelection.AttributeSelection;
-import weka.attributeSelection.InfoGainAttributeEval;
-import weka.attributeSelection.Ranker;
+import weka.attributeSelection.*;
 import weka.classifiers.Classifier;
 import weka.classifiers.Evaluation;
 import weka.classifiers.meta.FilteredClassifier;
@@ -18,9 +14,12 @@ import weka.filters.supervised.instance.SMOTE;
 import weka.filters.unsupervised.attribute.Remove;
 import weka.filters.unsupervised.attribute.RemoveUseless;
 
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.*;
 
 public class WekaController {
+
 
     private final String projectName;
     private static final int SEED = 42;
@@ -35,7 +34,7 @@ public class WekaController {
     public AggregatedClassifierResult runCrossValidation(
             Classifier cls,
             Instances data,
-            boolean applyFS,
+            boolean applyFs,   // <-- ora enum
             boolean applySmote,
             boolean applyDownsampling,
             int maxInstances) throws Exception {
@@ -59,7 +58,7 @@ public class WekaController {
                 new AggregatedClassifierResult(projectName, modelName);
 
         for (int r = 0; r < repeats; r++) {
-            Printer.printlnGreen("CV repetition " + (r + 1) + "/" + repeats);
+            Printer.printlnGreen("=== CV repetition " + (r + 1) + "/" + repeats + " ===");
 
             // Somme per questa repetition
             double sumPrecisionRep = 0;
@@ -68,6 +67,7 @@ public class WekaController {
             double sumAUCRep = 0;
             double sumKappaRep = 0;
             double sumNPofB20Rep = 0;
+            double sumAccuracyRep = 0;
             int validFolds = 0;
 
             Instances trainFull = new Instances(data);
@@ -77,32 +77,45 @@ public class WekaController {
             }
 
             int startInst = trainFull.numInstances();
-            if (applyFS) {
+
+            // =========================
+            // FEATURE SELECTION FILTRANTE
+            // =========================
+            if (applyFs) {
+                Printer.printlnBlue("[R" + (r + 1) + "] Applicazione InfoGain prima del classificatore");
                 trainFull = applyFeatureSelection(trainFull);
             }
             int afterFS = trainFull.numInstances();
 
+            // =========================
+            // SMOTE se necessario
+            // =========================
             if (projectName.equalsIgnoreCase("BOOKKEEPER")) {
                 applySmote = true;
             }
             if (applySmote) {
+                Printer.printlnBlue("[R" + (r + 1) + "] Applicazione SMOTE");
                 trainFull = applySMOTE(trainFull);
             }
             int afterSMOTE = trainFull.numInstances();
 
+            // =========================
+            // DOWNSAMPLING se necessario
+            // =========================
             if (applyDownsampling) {
+                Printer.printlnBlue("[R" + (r + 1) + "] Applicazione downsampling a " + maxInstances + " istanze");
                 trainFull = downsample(trainFull, maxInstances);
             }
             int afterDownsampling = trainFull.numInstances();
 
             Printer.printlnBlue(
-                    "[CV R" + (r + 1) + "] Instances: " +
-                            "start=" + startInst +
+                    "[R" + (r + 1) + "] Instances: start=" + startInst +
                             ", afterFS=" + afterFS +
                             ", afterSMOTE=" + afterSMOTE +
                             ", afterDownsampling=" + afterDownsampling +
                             ", final=" + trainFull.numInstances()
             );
+            int featuresNumber = Math.max(0, trainFull.numAttributes() - 1);
 
             int foldSize = trainFull.numInstances() / folds;
             int buggyClassIndex = trainFull.classAttribute().indexOfValue("yes");
@@ -119,65 +132,77 @@ public class WekaController {
                     train.delete(i);
                 }
 
-                Classifier clsCopy =
-                        weka.classifiers.AbstractClassifier.makeCopy(cls);
-                clsCopy.buildClassifier(train);
+                // =========================
+                // LOG FEATURE COUNT
+                // =========================
+                int featuresTrain = Math.max(0, train.numAttributes() - 1);
+                int featuresTest = Math.max(0, test.numAttributes() - 1);
+                int featuresAfterFS = Math.max(0, trainFull.numAttributes() - 1);
+                Printer.printlnGreen(String.format("[R%d F%d] Features: train=%d, test=%d, afterFS=%d",
+                        r, f, featuresTrain, featuresTest, featuresAfterFS));
 
+                // =========================
+                // COSTRUZIONE CLASSIFICATORE
+                // =========================
+                Classifier clsCopy = weka.classifiers.AbstractClassifier.makeCopy(cls);
+                clsCopy.buildClassifier(train);
+                Printer.printlnGreen("[R" + (r + 1) + " F" + (f + 1) + "] Classificatore pronto: " +
+                        clsCopy.getClass().getSimpleName());
+
+                // =========================
+                // VALUTAZIONE
+                // =========================
                 Evaluation eval = new Evaluation(train);
                 eval.evaluateModel(clsCopy, test);
 
-                // Calcola NPofB20 per questo fold
                 double npofb20 = computeNPofB20(clsCopy, test);
 
-                // Accumula le metriche per questa repetition (gestendo NaN)
                 double precision = eval.precision(buggyClassIndex);
                 double recall = eval.recall(buggyClassIndex);
                 double f1 = eval.fMeasure(buggyClassIndex);
                 double auc = eval.areaUnderROC(buggyClassIndex);
                 double kappa = eval.kappa();
+                double accuracy = eval.pctCorrect() / 100.0;
 
-                // Evita NaN sommando solo valori validi
-                if (!Double.isNaN(precision)) {
-                    sumPrecisionRep += precision;
-                }
-                if (!Double.isNaN(recall)) {
-                    sumRecallRep += recall;
-                }
-                if (!Double.isNaN(f1)) {
-                    sumF1Rep += f1;
-                }
-                if (!Double.isNaN(auc)) {
-                    sumAUCRep += auc;
-                }
-                if (!Double.isNaN(kappa)) {
-                    sumKappaRep += kappa;
-                }
-                if (!Double.isNaN(npofb20)) {
-                    sumNPofB20Rep += npofb20;
-                }
+                writeFoldResultToCSV(
+                        "results_fold" + projectName + ".csv",
+                        modelName,
+                        applyFs ? "InfoGain" : "None",
+                        featuresTrain,
+                        f + 1,
+                        precision,
+                        recall,
+                        f1,
+                        auc,
+                        kappa,
+                        accuracy,
+                        npofb20
+                );
+
+                // Accumula metriche
+                if (!Double.isNaN(precision)) sumPrecisionRep += precision;
+                if (!Double.isNaN(recall)) sumRecallRep += recall;
+                if (!Double.isNaN(f1)) sumF1Rep += f1;
+                if (!Double.isNaN(auc)) sumAUCRep += auc;
+                if (!Double.isNaN(kappa)) sumKappaRep += kappa;
+                if (!Double.isNaN(accuracy)) sumAccuracyRep += accuracy;
+                if (!Double.isNaN(npofb20)) sumNPofB20Rep += npofb20;
                 validFolds++;
 
-                // Genera i record ACUME per questo fold
-                List<AcumeRecord> records = getAcumeRecords(clsCopy, test);
-                AcumeUtils.writeAcumeCSV(
-                        projectName + "_R" + r + "_F" + f,
-                        records
-                );
-
-                // Stampa metriche del fold (opzionale)
-                Printer.printlnBlue(
-                        String.format("[R%d F%d] Precision=%.3f, Recall=%.3f, F1=%.3f, AUC=%.3f, Kappa=%.3f, NPofB20=%.3f",
-                                r, f, precision, recall, f1, auc, kappa, npofb20)
-                );
+                Printer.printlnBlue(String.format("[R%d F%d] Precision=%.3f, Recall=%.3f, F1=%.3f, AUC=%.3f, Kappa=%.3f, NPofB20=%.3f",
+                        r, f, precision, recall, f1, auc, kappa, npofb20));
             }
 
-            // Calcola le medie di questa repetition e aggiungile all'aggregato
+            // =========================
+            // MEDIE REPETITION
+            // =========================
             double avgPrecisionRep = sumPrecisionRep / validFolds;
             double avgRecallRep = sumRecallRep / validFolds;
             double avgF1Rep = sumF1Rep / validFolds;
             double avgAUCRep = sumAUCRep / validFolds;
             double avgKappaRep = sumKappaRep / validFolds;
             double avgNPofB20Rep = sumNPofB20Rep / validFolds;
+            double avgAccuracyRep = sumAccuracyRep / validFolds;
 
             aggregated.addRunResult(
                     avgPrecisionRep,
@@ -185,14 +210,30 @@ public class WekaController {
                     avgF1Rep,
                     avgAUCRep,
                     avgKappaRep,
+                    avgAccuracyRep,
                     avgNPofB20Rep
             );
 
-            Printer.printlnGreen(
-                    String.format("[R%d SUMMARY] Precision=%.3f, Recall=%.3f, F1=%.3f, AUC=%.3f, Kappa=%.3f, NPofB20=%.3f",
-                            r, avgPrecisionRep, avgRecallRep, avgF1Rep, avgAUCRep, avgKappaRep, avgNPofB20Rep)
-            );
+            Printer.printlnGreen("[R" + (r + 1) + " SUMMARY] Precision=%.3f, Recall=%.3f, F1=%.3f, AUC=%.3f, Kappa=%.3f, NPofB20=%.3f"
+                    .formatted(avgPrecisionRep, avgRecallRep, avgF1Rep, avgAUCRep, avgKappaRep, avgNPofB20Rep));
+            /*writeRepetionSummaryToCSV(
+                    "results_rep" + projectName + ".csv",
+                    modelName,
+                    applyFs ? "InfoGain" : "None",
+                    featuresNumber,
+                    r + 1,
+                    avgPrecisionRep,
+                    avgRecallRep,
+                    avgF1Rep,
+                    avgAUCRep,
+                    avgKappaRep,
+                    avgAccuracyRep,
+                    avgNPofB20Rep
+            );*/
+
+
         }
+
 
         addResult(aggregated);
         return aggregated;
@@ -244,7 +285,7 @@ public class WekaController {
     }
 
     /* =========================
-       PREPROCESSING
+       PREPROCESSING: INFOGAIN
        ========================= */
     public Instances applyFeatureSelection(Instances data) throws Exception {
         RemoveUseless ru = new RemoveUseless();
@@ -262,6 +303,9 @@ public class WekaController {
         return selector.reduceDimensionality(afterRu);
     }
 
+    /* =========================
+       SMOTE
+       ========================= */
     public Instances applySMOTE(Instances data) throws Exception {
         SMOTE smote = new SMOTE();
         smote.setPercentage(65);
@@ -270,6 +314,9 @@ public class WekaController {
         return Filter.useFilter(data, smote);
     }
 
+    /* =========================
+       DOWNSAMPLING
+       ========================= */
     public Instances downsample(Instances data, int maxInstances) {
         if (data.numInstances() <= maxInstances) return new Instances(data);
         Instances rand = new Instances(data);
@@ -291,21 +338,84 @@ public class WekaController {
         }
     }
 
-    /* =========================
-       ACUME OUTPUT
-       ========================= */
-    public List<AcumeRecord> getAcumeRecords(Classifier cls, Instances data) throws Exception {
-        List<AcumeRecord> records = new ArrayList<>();
-        int buggyIdx = data.classAttribute().indexOfValue("yes");
-        int locIdx = data.attribute("LOC").index();
+    public void writeFoldResultToCSV(
+            String csvPath,
+            String modelName,
+            String featureSelection,
+            int featuresNumber,
+            int fold,
+            double precision,
+            double recall,
+            double f1,
+            double auc,
+            double kappa,
+            double accuracy,
+            double npofb20
+    ) throws IOException {
 
-        for (int i = 0; i < data.numInstances(); i++) {
-            Instance inst = data.instance(i);
-            double prob = cls.distributionForInstance(inst)[buggyIdx];
-            int loc = (int) inst.value(locIdx);
-            String actual = ((int) inst.classValue() == buggyIdx) ? "YES" : "NO";
-            records.add(new AcumeRecord(i, loc, prob, actual));
+
+        boolean writeHeader = !new java.io.File(csvPath).exists();
+
+        try (FileWriter writer = new FileWriter(csvPath, true)) {
+            if (writeHeader) {
+                writer.append("Model,FeatureSelection,FeaturesNumber,Fold,")
+                        .append("Precision,Recall,F1,AUC,Kappa,Accuracy,NPofB20\n");
+            }
+
+            writer.append(modelName).append(",")
+                    .append(featureSelection).append(",")
+                    .append(String.valueOf(featuresNumber)).append(",")
+                    .append(String.valueOf(fold)).append(",")
+                    .append(String.format(Locale.US, "%.3f", precision)).append(",")
+                    .append(String.format(Locale.US, "%.3f", recall)).append(",")
+                    .append(String.format(Locale.US, "%.3f", f1)).append(",")
+                    .append(String.format(Locale.US, "%.3f", auc)).append(",")
+                    .append(String.format(Locale.US, "%.3f", kappa)).append(",")
+                    .append(String.format(Locale.US, "%.3f", accuracy)).append(",")
+                    .append(String.format(Locale.US, "%.3f", npofb20)).append("\n");
         }
-        return records;
     }
+
+
+    /*public void writeRepetionSummaryToCSV(
+            String csvPath,
+            String modelName,
+            String featureSelection,
+            int featuresNumber,
+            int repetition,
+            double precision,
+            double recall,
+            double f1,
+            double auc,
+            double kappa,
+            double accuracy,
+            double npofb20
+    ) throws IOException {
+
+
+
+        boolean writeHeader = !new java.io.File(csvPath).exists();
+
+        try (FileWriter writer = new FileWriter(csvPath, true)) {
+
+            if (writeHeader) {
+                writer.append("Model,FeatureSelection,FeaturesNumber,Repetition,")
+                        .append("AvgPrecision,AvgRecall,AvgF1,AvgAUC,AvgKappa, AvgAccuracy,AvgNPofB20\n");
+            }
+
+            writer.append(modelName).append(",")
+                    .append(featureSelection).append(",")
+                    .append(String.valueOf(featuresNumber)).append(",")
+                    .append(String.valueOf(repetition)).append(",")
+                    .append(String.format(Locale.US, "%.3f", precision)).append(",")
+                    .append(String.format(Locale.US, "%.3f", recall)).append(",")
+                    .append(String.format(Locale.US, "%.3f", f1)).append(",")
+                    .append(String.format(Locale.US, "%.3f", auc)).append(",")
+                    .append(String.format(Locale.US, "%.3f", kappa)).append(",")
+                    .append(String.format(Locale.US, "%.3f", accuracy)).append(",")
+                    .append(String.format(Locale.US, "%.3f", npofb20)).append("\n");
+
+        }
+    }*/
+
 }

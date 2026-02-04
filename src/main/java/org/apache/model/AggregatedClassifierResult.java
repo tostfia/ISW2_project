@@ -28,6 +28,7 @@ public class AggregatedClassifierResult {
     private double avgF1;
     private double avgAuc;
     private double avgKappa;
+    private double avgAccuracy;
     private double avgNpofb20;
 
     /* =========================
@@ -38,7 +39,9 @@ public class AggregatedClassifierResult {
     private double F1;
     private double Auc;
     private double Kappa;
+    private double Accuracy;
     private double Npofb20;
+
 
     private int numberOfRuns;
     private String modelFilePath;
@@ -71,6 +74,7 @@ public class AggregatedClassifierResult {
             double f1,
             double auc,
             double kappa,
+            double accuracy,
             double npofb20) {
 
         // Aggiorna snapshot ultima run
@@ -79,6 +83,7 @@ public class AggregatedClassifierResult {
         this.F1 = f1;
         this.Auc = auc;
         this.Kappa = kappa;
+        this.Accuracy = accuracy;
         this.Npofb20 = npofb20;
 
         // Se è la prima run, inizializza le medie
@@ -88,6 +93,7 @@ public class AggregatedClassifierResult {
             this.avgF1 = f1;
             this.avgAuc = auc;
             this.avgKappa = kappa;
+            this.avgAccuracy = accuracy;
             this.avgNpofb20 = npofb20;
         } else {
             // Altrimenti aggiorna medie incrementalmente
@@ -96,26 +102,14 @@ public class AggregatedClassifierResult {
             this.avgF1 = incrementalAvg(this.avgF1, f1);
             this.avgAuc = incrementalAvg(this.avgAuc, auc);
             this.avgKappa = incrementalAvg(this.avgKappa, kappa);
+            this.avgAccuracy = incrementalAvg(this.avgAccuracy, accuracy);
             this.avgNpofb20 = incrementalAvg(this.avgNpofb20, npofb20);
         }
 
         numberOfRuns++;
     }
 
-    /**
-     * Aggiunge i risultati di un singolo fold.
-     * Utile se vuoi aggregare fold per fold invece che passare già le medie.
-     */
-    public void addFoldResult(
-            double precision,
-            double recall,
-            double f1,
-            double auc,
-            double kappa,
-            double npofb20) {
 
-        addRunResult(precision, recall, f1, auc, kappa, npofb20);
-    }
 
     /* =========================
        UTILS
@@ -136,8 +130,8 @@ public class AggregatedClassifierResult {
     @Override
     public String toString() {
         return String.format(
-                "%s | AUC=%.3f | Precision=%.3f | Recall=%.3f | F1=%.3f | Kappa=%.3f | NPofB20=%.3f | runs=%d ",
-                classifierName, avgAuc, avgPrecision, avgRecall, avgF1, avgKappa, avgNpofb20, numberOfRuns
+                "%s | AUC=%.3f | Precision=%.3f | Recall=%.3f | F1=%.3f | Kappa=%.3f | Accuracy=%.3f | NPofB20=%.3f | runs=%d ",
+                classifierName, avgAuc, avgPrecision, avgRecall, avgF1, avgKappa,avgAccuracy, avgNpofb20, numberOfRuns
         );
     }
 
