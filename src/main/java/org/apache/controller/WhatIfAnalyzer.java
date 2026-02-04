@@ -8,7 +8,6 @@ import weka.classifiers.Classifier;
 import weka.core.Attribute;
 import weka.core.Instance;
 import weka.core.Instances;
-import weka.core.SerializationHelper;
 import weka.core.converters.CSVSaver;
 import weka.filters.Filter;
 import weka.filters.unsupervised.attribute.Remove;
@@ -76,17 +75,21 @@ public class WhatIfAnalyzer {
 
         //--- Crea dataset
         // --- B+: Portion of A with NSmells > 0
-        Instances datasetBPlus = filterBySmell(wekaDatasetA, "greater");
+        Instances datasetBPlus = filterBySmell(wekaDatasetA, "greater",aFeature);
         // --- C: Portion of A with NSmells = 0
-        Instances datasetC = filterBySmell(wekaDatasetA, "equals");
+        Instances datasetC = filterBySmell(wekaDatasetA, "equals",aFeature);
         // --- B: Like B+ but with NSmells brought to  0
         Instances datasetB = new Instances(datasetBPlus);
-        int nSmellsIndex = datasetB.attribute(FEATURE_SMELLS).index();
-        if (nSmellsIndex == -1) throw new IllegalStateException("Feature 'NSmells' not found.");
-        datasetB.forEach(instance -> instance.setValue(nSmellsIndex , 0));
+        datasetB = reorderBugginessValues(datasetB);
+        //int nSmellsIndex = datasetB.attribute(FEATURE_SMELLS).index();
+        //if (nSmellsIndex == -1) throw new IllegalStateException("Feature 'NSmells' not found.");
+        //datasetB.forEach(instance -> instance.setValue(nSmellsIndex , 0));
+        int aFeatureIndex = datasetB.attribute(aFeature).index();
+        if (aFeatureIndex == -1)
+            throw new IllegalStateException("Feature '" + aFeature + "' not found.");
+        datasetB.forEach(instance -> instance.setValue(aFeatureIndex , 0));
         // --- Train BClassifier on A (BClassifierA) ---
-        Classifier bClassifierA =
-                ClassifierFactory.build(bClassifier, seed);
+        Classifier bClassifierA = ClassifierFactory.build(bClassifier, seed);
         bClassifierA.buildClassifier(wekaDatasetA);
 
         // Count "Actual" values
@@ -114,8 +117,8 @@ public class WhatIfAnalyzer {
         saveDatasetToCsv(datasetC, outputDir, "DatasetC.csv");
 
     }
-    private Instances filterBySmell(Instances data, String comparison) {
-        int attrIndex = data.attribute(FEATURE_SMELLS).index();
+    private Instances filterBySmell(Instances data, String comparison,String aFeature) {
+        int attrIndex = data.attribute(aFeature).index();
         if (attrIndex == -1) {
             throw new IllegalArgumentException("Attribute not found: " + FEATURE_SMELLS);
         }
@@ -245,15 +248,6 @@ public class WhatIfAnalyzer {
     private CorrelationController.FeatureValue findBuggyMethod(String feature) {
         return cc.findBuggyMethodWithMaxFeature(feature);
     }
-
-
-
-
-
-
-
-
-
 
 
 
