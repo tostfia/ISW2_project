@@ -1,8 +1,11 @@
 package org.apache.model;
 
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Getter;
 import lombok.Setter;
+
+
 
 
 @Getter
@@ -13,8 +16,11 @@ public class AggregatedClassifierResult {
     /* =========================
        METADATI
        ========================= */
-    private final String project;
-    private final String classifierName;
+    @Setter
+    private  String project;
+    @Setter
+    private  String classifierName;
+
 
     private final String featureSelection = "InfoGain";
 
@@ -46,6 +52,10 @@ public class AggregatedClassifierResult {
     private int numberOfRuns;
     private String modelFilePath;
 
+
+
+
+
     /* =========================
        COSTRUTTORI
        ========================= */
@@ -56,9 +66,10 @@ public class AggregatedClassifierResult {
     }
 
     public AggregatedClassifierResult() {
-        this.project = null;
-        this.classifierName = null;
+        this.numberOfRuns = 0;
     }
+
+
 
     /* =========================
        AGGIUNTA DI UNA RUN
@@ -106,6 +117,7 @@ public class AggregatedClassifierResult {
             this.avgNpofb20 = incrementalAvg(this.avgNpofb20, npofb20);
         }
 
+
         numberOfRuns++;
     }
 
@@ -134,6 +146,8 @@ public class AggregatedClassifierResult {
                 classifierName, avgAuc, avgPrecision, avgRecall, avgF1, avgKappa,avgAccuracy, avgNpofb20, numberOfRuns
         );
     }
+
+
 
 
 }

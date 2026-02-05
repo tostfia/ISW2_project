@@ -42,6 +42,8 @@ public class Refactor {
         }catch( IOException e){
             Printer.errorPrint(e.getMessage());
         }
+        //Classifier classifier = ClassifierFactory.build("RandomForest",42);
+        //classifier.buildClassifier();
 
     }
 

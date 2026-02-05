@@ -12,7 +12,6 @@ import weka.core.Instances;
 import weka.filters.Filter;
 import weka.filters.supervised.instance.SMOTE;
 import weka.filters.unsupervised.attribute.Remove;
-import weka.filters.unsupervised.attribute.RemoveUseless;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -135,9 +134,9 @@ public class WekaController {
                 // =========================
                 // LOG FEATURE COUNT
                 // =========================
-                int featuresTrain = Math.max(0, train.numAttributes() - 1);
-                int featuresTest = Math.max(0, test.numAttributes() - 1);
-                int featuresAfterFS = Math.max(0, trainFull.numAttributes() - 1);
+                int featuresTrain = Math.max(0, train.numAttributes());
+                int featuresTest = Math.max(0, test.numAttributes());
+                int featuresAfterFS = Math.max(0, trainFull.numAttributes());
                 Printer.printlnGreen(String.format("[R%d F%d] Features: train=%d, test=%d, afterFS=%d",
                         r, f, featuresTrain, featuresTest, featuresAfterFS));
 
@@ -288,19 +287,19 @@ public class WekaController {
        PREPROCESSING: INFOGAIN
        ========================= */
     public Instances applyFeatureSelection(Instances data) throws Exception {
-        RemoveUseless ru = new RemoveUseless();
-        ru.setInputFormat(data);
-        Instances afterRu = Filter.useFilter(data, ru);
-
         AttributeSelection selector = new AttributeSelection();
-        selector.setEvaluator(new InfoGainAttributeEval());
+        InfoGainAttributeEval evaluator = new InfoGainAttributeEval();
 
-        Ranker ranker = new Ranker();
-        ranker.setThreshold(0.01);
-        selector.setSearch(ranker);
+        Ranker search = new Ranker();
+        search.setThreshold(0.01);
 
-        selector.SelectAttributes(afterRu);
-        return selector.reduceDimensionality(afterRu);
+        selector.setEvaluator(evaluator);
+        selector.setSearch(search);
+        selector.SelectAttributes(data);
+
+        int[] selected = selector.selectedAttributes();
+        Printer.printGreen("Selected attributes:" + Arrays.toString(selected));
+        return selector.reduceDimensionality(data);
     }
 
     /* =========================

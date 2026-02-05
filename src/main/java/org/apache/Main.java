@@ -1,9 +1,10 @@
 package org.apache;
 
+import org.apache.controller.FindActionableFeature;
 import org.apache.controller.WekaController;
 import org.apache.controller.DatasetController;
 import org.apache.controller.ReportAnalyzer;
-import org.apache.controller.WhatIfAnalyzer;
+
 import org.apache.controller.milestone1.JiraController;
 import org.apache.logging.Printer;
 import org.apache.model.AggregatedClassifierResult;
@@ -129,15 +130,11 @@ public class Main {
         best.setModelFilePath(modelPath);
 
         Printer.printlnGreen("Final model saved to: " + modelPath);
+        Printer.printlnGreen("STEP 3: Find Actionable Feature");
+        FindActionableFeature actionableFeature = new FindActionableFeature(datasetA, projectName);
+        actionableFeature.run();
 
-        // =========================
-        // Step 3: WHAT-IF ANALYSIS
-        // =========================
-        Printer.printlnGreen("STEP 3: Running What-If Analysis");
-        WhatIfAnalyzer whatIf = new WhatIfAnalyzer(best.getClassifierName(), datasetA, finalTraining, projectName,SEED);
-        whatIf.run();
-
-        Printer.printlnGreen("ANALYSIS COMPLETED for project: " + projectName);
+        Printer.printlnGreen("AFeature end: " + projectName);
     }
 
     private static double getCutPercentage() {

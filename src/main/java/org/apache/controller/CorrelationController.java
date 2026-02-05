@@ -3,10 +3,8 @@ package org.apache.controller;
 import org.apache.logging.Printer;
 import tech.tablesaw.api.*;
 import org.apache.commons.math3.stat.correlation.SpearmansCorrelation;
-import org.apache.commons.math3.distribution.TDistribution;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class CorrelationController {
 
@@ -27,7 +25,7 @@ public class CorrelationController {
     public record FeatureValue(String methodName, double value, int index) { }
 
     /** Record per correlazione + p-value */
-    public record FeatureCorrelation(String featureName, double correlation, double pValue) { }
+    public record FeatureCorrelation(String featureName, double correlation) { }
 
     /**
      * Calcola Spearman per tutte le feature numeriche
@@ -136,12 +134,9 @@ public class CorrelationController {
         SpearmansCorrelation sc = new SpearmansCorrelation();
         double rho = sc.correlation(x, y);
 
-        int n = x.length;
-        double t = rho * Math.sqrt((n - 2.0) / (1.0 - rho * rho));
-        TDistribution tDist = new TDistribution(n - 2.0);
-        double pValue = 2.0 * (1.0 - tDist.cumulativeProbability(Math.abs(t)));
 
-        return new FeatureCorrelation(name, rho, pValue);
+
+        return new FeatureCorrelation(name, rho);
     }
 
     /** Verifica se una feature è azionabile */
@@ -155,7 +150,17 @@ public class CorrelationController {
     public FeatureCorrelation getBestFeature() {
         List<FeatureCorrelation> actionableRanking = computeAndSaveFullRanking("temp").stream()
                 .filter(fc -> isActionable(fc.featureName()))
-                .collect(Collectors.toList());
-        return actionableRanking.isEmpty() ? null : actionableRanking.get(0);
+                .filter(fc -> fc.correlation() > 0)  // ← AGGIUNGI QUESTO!
+                .toList();
+
+        if (actionableRanking.isEmpty()) {
+            Printer.errorPrint("Nessuna feature azionabile con correlazione positiva trovata!");
+            return null;
+        }
+
+        FeatureCorrelation best = actionableRanking.getFirst();
+        Printer.printlnGreen("Feature selezionata: " + best.featureName() +
+                " (ρ = " + best.correlation() + ")");
+        return best;
     }
 }

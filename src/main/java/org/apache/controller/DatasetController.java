@@ -105,44 +105,58 @@ public class DatasetController {
             for (Attribute attr : attributes) {
                 String attrName = attr.name();
 
-                try {
-                    // Assicurati che la colonna esista nella tabella filtrata
-                    if (!filteredTable.columnNames().contains(attrName)) {
-                        Printer.printYellow("Colonna Tablesaw '" + attrName + "' non trovata nella tabella filtrata. Skippato l'impostazione del valore per questa istanza.");
-                        continue; // Passa al prossimo attributo
-                    }
-
-                    if (attr.isNumeric()) {
-                        double value = getNumericValue(filteredTable, attrName, i);
-                        instance.setValue(attr, value);
-                    } else if (attr.isNominal()) {
-                        String value = getStringValue(filteredTable, attrName, i);
-                        if (value != null && !value.trim().isEmpty()) {
-                            if (attr.indexOfValue(value) != -1) { // Verifica che il valore sia tra i nominali definiti
-                                instance.setValue(attr, value);
-                            } else {
-                                Printer.printYellow(String.format("Valore nominale '%s' non riconosciuto per attributo '%s'. Alla riga %d. Assegnato Missing Value.", value, attrName, i));
-                                instance.setMissing(attr); // Imposta come valore mancante di Weka
-                            }
-                        } else {
-                            Printer.printYellow(String.format("Valore nullo/vuoto per attributo nominale '%s' alla riga %d. Assegnato Missing Value.", attrName, i));
-                            instance.setMissing(attr); // Imposta come valore mancante di Weka
-                        }
-                    } else if (attr.isString()) { // Gestione esplicita di attributi di tipo String (testo libero)
-                        String value = getStringValue(filteredTable, attrName, i);
-                        instance.setValue(attr, value);
-                    }
-                } catch (Exception e) {
-                    Printer.printYellow(String.format("Errore imprevisto nell'impostare il valore per l'attributo '%s' (tipo Weka: %d) alla riga %d: %s. Valore sorgente: '%s'. Assegnando Missing Value/Default.",
-                            attrName, attr.type(), i, e.getMessage(), filteredTable.column(attrName).getString(i)));
-                    instance.setMissing(attr); // In caso di errore inaspettato, imposta missing
+                // Assicurati che la colonna esista nella tabella filtrata
+                if (!filteredTable.columnNames().contains(attrName)) {
+                    Printer.printYellow("Colonna Tablesaw '" + attrName + "' non trovata nella tabella filtrata. Skippato l'impostazione del valore per questa istanza.");
+                    continue; // Passa al prossimo attributo
                 }
+
+                // Delegazione alla nuova routine che imposta il valore (gestisce anche gli errori)
+                setAttributeValue(instance, attr, filteredTable, i);
             }
             wekaInstances.add(instance);
         }
 
         return wekaInstances;
     }
+
+
+    private void setAttributeValue(DenseInstance instance, Attribute attr, Table filteredTable, int rowIndex) {
+        String attrName = attr.name();
+        try {
+            if (attr.isNumeric()) {
+                double value = getNumericValue(filteredTable, attrName, rowIndex);
+                instance.setValue(attr, value);
+            } else if (attr.isNominal()) {
+                String value = getStringValue(filteredTable, attrName, rowIndex);
+                if (value != null && !value.trim().isEmpty()) {
+                    if (attr.indexOfValue(value) != -1) { // Verifica che il valore sia tra i nominali definiti
+                        instance.setValue(attr, value);
+                    } else {
+                        Printer.printYellow(String.format("Valore nominale '%s' non riconosciuto per attributo '%s'. Alla riga %d. Assegnato Missing Value.", value, attrName, rowIndex));
+                        instance.setMissing(attr); // Imposta come valore mancante di Weka
+                    }
+                } else {
+                    Printer.printYellow(String.format("Valore nullo/vuoto per attributo nominale '%s' alla riga %d. Assegnato Missing Value.", attrName, rowIndex));
+                    instance.setMissing(attr); // Imposta come valore mancante di Weka
+                }
+            } else if (attr.isString()) { // Gestione esplicita di attributi di tipo String (testo libero)
+                String value = getStringValue(filteredTable, attrName, rowIndex);
+                instance.setValue(attr, value);
+            }
+        } catch (Exception e) {
+            String sourceVal;
+            try {
+                sourceVal = filteredTable.column(attrName).getString(rowIndex);
+            } catch (Exception ex) {
+                sourceVal = "N/A";
+            }
+            Printer.printYellow(String.format("Errore imprevisto nell'impostare il valore per l'attributo '%s' (tipo Weka: %d) alla riga %d: %s. Valore sorgente: '%s'. Assegnando Missing Value/Default.",
+                    attrName, attr.type(), rowIndex, e.getMessage(), sourceVal));
+            instance.setMissing(attr); // In caso di errore inaspettato, imposta missing
+        }
+    }
+
 
 
     private Table filterTableByReleases(Table sourceTable, List<String> targetReleases) {
@@ -165,6 +179,7 @@ public class DatasetController {
         }
     }
 
+
     private ArrayList<Attribute> createWekaAttributes(Table table) {
         ArrayList<Attribute> attributes = new ArrayList<>();
 
@@ -184,24 +199,7 @@ public class DatasetController {
             } else if (col instanceof IntColumn || col instanceof DoubleColumn) {
                 attributes.add(new Attribute(colName)); // Numerico
             } else if (col instanceof StringColumn) {
-                Set<String> uniqueValues = new HashSet<>();
-                for (int i = 0; i < col.size(); i++) {
-                    String value = col.getString(i);
-                    if (value != null && !value.trim().isEmpty()) {
-                        uniqueValues.add(value.trim());
-                    }
-                }
-
-                // Euristiche: se pochi valori unici, è nominale; altrimenti, è stringa
-                if (!uniqueValues.isEmpty() && uniqueValues.size() < 50) { // Limite ragionevole per nominali
-                    ArrayList<String> nominalValues = new ArrayList<>(uniqueValues);
-                    Collections.sort(nominalValues); // Ordina i valori nominali
-                    attributes.add(new Attribute(colName, nominalValues));
-                } else {
-                    // Troppi valori unici o nessun valore, trattato come stringa (testo libero)
-                    Printer.printYellow(String.format("Colonna '%s' ha troppi valori unici (%d) o è vuota. Trattata come attributo String.", colName, uniqueValues.size()));
-                    attributes.add(new Attribute(colName, (ArrayList<String>) null)); // Tipo String Weka
-                }
+                attributes.add(createAttributeForStringColumn(col));
             } else {
                 Printer.printYellow("Tipo di colonna Tablesaw non riconosciuto per Weka Attribute: " + colName + " (" + col.type() + "). Skippato.");
             }
@@ -211,6 +209,28 @@ public class DatasetController {
         moveClassAttributeToEnd(attributes);
 
         return attributes;
+    }
+
+    private Attribute createAttributeForStringColumn(Column<?> col) {
+        String colName = col.name();
+        Set<String> uniqueValues = new HashSet<>();
+        for (int i = 0; i < col.size(); i++) {
+            String value = col.getString(i);
+            if (value != null && !value.trim().isEmpty()) {
+                uniqueValues.add(value.trim());
+            }
+        }
+
+        // Euristiche: se pochi valori unici, è nominale; altrimenti, è stringa
+        if (!uniqueValues.isEmpty() && uniqueValues.size() < 50) { // Limite ragionevole per nominali
+            ArrayList<String> nominalValues = new ArrayList<>(uniqueValues);
+            Collections.sort(nominalValues); // Ordina i valori nominali
+            return new Attribute(colName, nominalValues);
+        } else {
+            // Troppi valori unici o nessun valore, trattato come stringa (testo libero)
+            Printer.printYellow(String.format("Colonna '%s' ha troppi valori unici (%d) o è vuota. Trattata come attributo String.", colName, uniqueValues.size()));
+            return new Attribute(colName, (ArrayList<String>) null); // Tipo String Weka
+        }
     }
 
     private void moveClassAttributeToEnd(ArrayList<Attribute> attributes) {
