@@ -1,12 +1,10 @@
 package org.apache.controller.milestone2;
 
 
-import com.opencsv.exceptions.CsvValidationException;
 import org.apache.logging.Printer;
 import tech.tablesaw.api.*;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +35,7 @@ public class FindActionableFeature {
 
     }
 
-    public void run() throws IOException, CsvValidationException {
+    public void run()  {
 
         Printer.printGreen("Avvio analisi What-If...\n");
         CorrelationController.FeatureCorrelation bestFeature = cc.getBestFeature();
@@ -60,11 +58,11 @@ public class FindActionableFeature {
             String aFeature
     ) {
 
-        // Tutte le correlazioni (calcolate una sola volta)
+        // Calcola una sola volta il ranking completo delle correlazioni
         List<CorrelationController.FeatureCorrelation> correlations =
                 cc.computeAndSaveFullRanking(projectName);
 
-        // Map veloce: feature → correlazione
+        // Mappa feature → correlazione per accesso O(1)
         Map<String, CorrelationController.FeatureCorrelation> corrMap =
                 correlations.stream()
                         .collect(Collectors.toMap(
@@ -76,26 +74,29 @@ public class FindActionableFeature {
 
         for (String colName : datasetA.columnNames()) {
 
-            if (!datasetA.column(colName).type().equals(ColumnType.DOUBLE)
-                    && !datasetA.column(colName).type().equals(ColumnType.INTEGER))
+            ColumnType type = datasetA.column(colName).type();
+            CorrelationController.FeatureCorrelation corr = corrMap.get(colName);
+
+            // Unica guard-condition
+            if (
+                    (type != ColumnType.DOUBLE && type != ColumnType.INTEGER)
+                            || !cc.isActionable(colName)
+                            || corr == null
+            ) {
                 continue;
-
-            if (!cc.isActionable(colName)) continue;
-
-            var corr = corrMap.get(colName);
-            if (corr == null) continue;
+            }
 
             double value = datasetA.numberColumn(colName).getDouble(methodIndex);
 
             rows.add(new FeatureRankingRow(
-                    0, // temporaneo
+                    0,              // ranking temporaneo
                     colName,
                     value,
                     corr.correlation()
             ));
         }
 
-        // Ordina: AFeature prima, poi |correlation| desc
+        // Ordina: AFeature sempre prima, poi per |correlation| decrescente
         rows.sort((a, b) -> {
             if (a.feature.equals(aFeature)) return -1;
             if (b.feature.equals(aFeature)) return 1;
@@ -105,18 +106,20 @@ public class FindActionableFeature {
             );
         });
 
-        // Assegna ranking
+        // Assegna ranking finale
         for (int i = 0; i < rows.size(); i++) {
+            FeatureRankingRow r = rows.get(i);
             rows.set(i, new FeatureRankingRow(
                     i + 1,
-                    rows.get(i).feature,
-                    rows.get(i).value,
-                    rows.get(i).correlation
+                    r.feature,
+                    r.value,
+                    r.correlation
             ));
         }
 
         return rows;
     }
+
 
 
     private void saveFeatureRankingToCSV(

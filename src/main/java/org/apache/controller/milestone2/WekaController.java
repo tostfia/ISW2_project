@@ -55,7 +55,8 @@ public class WekaController {
             Printer.printlnGreen("=== CV repetition " + (r + 1) + "/" + repeats + " ===");
 
             Instances trainFull = new Instances(data);
-            trainFull.randomize(new Random(SEED + r));
+            // Sostituire la riga 58 con:
+            trainFull.randomize(new Random((long) SEED + r));
             if (trainFull.classAttribute().isNominal()) trainFull.stratify(folds);
 
             trainFull = preprocess(trainFull, applyFs, applySmote, applyDownsampling, maxInstances, r);
@@ -64,8 +65,13 @@ public class WekaController {
             int buggyClassIndex = trainFull.classAttribute().indexOfValue("yes");
 
             // Somme metriche per repetition
-            double sumPrecisionRep = 0, sumRecallRep = 0, sumF1Rep = 0, sumAUCRep = 0,
-                    sumKappaRep = 0, sumNPofB20Rep = 0, sumAccuracyRep = 0;
+            double sumPrecisionRep = 0;
+            double sumRecallRep = 0;
+            double sumF1Rep = 0;
+            double sumAUCRep = 0;
+            double sumKappaRep = 0;
+            double sumNPofB20Rep = 0;
+            double sumAccuracyRep = 0;
             int validFolds = 0;
 
             for (int f = 0; f < folds; f++) {
@@ -179,12 +185,10 @@ public class WekaController {
     /* =========================
        MODEL NAME UTILS
        ========================= */
+
     private String getBaseClassifierName(Classifier cls) {
-        if (cls instanceof FilteredClassifier) {
-            return ((FilteredClassifier) cls)
-                    .getClassifier()
-                    .getClass()
-                    .getSimpleName();
+        if (cls instanceof FilteredClassifier filteredclassifier) {
+            return filteredclassifier.getClassifier().getClass().getSimpleName();
         }
         return cls.getClass().getSimpleName();
     }

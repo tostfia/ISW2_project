@@ -22,9 +22,9 @@ public class AggregatedClassifierResult {
     private  String classifierName;
 
 
-    private final static String INFO_GAIN = "InfoGain";
+    private static final  String INFO_GAIN = "InfoGain";
 
-    private final static String CROSS_VALIDATION = "CrossValidation";
+    private static final String CROSS_VALIDATION = "CrossValidation";
 
     /* =========================
        METRICHE AGGREGATE (per tutte le run)
