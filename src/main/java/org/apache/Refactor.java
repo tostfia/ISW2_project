@@ -114,7 +114,7 @@ public class Refactor {
 
             // 2. PREPARAZIONE TRAINING SET (ARFF)
             Instances trainRaw = loadTrainingSet(trainingPath);
-            if (trainRaw == null) return;
+            if (trainRaw == null || trainRaw.numInstances()==0) return;
 
             Instances trainProcessed = preprocessLikeOriginal(trainRaw);
             Printer.printlnGreen("✓ Training preprocessato (feature selection applicata)");
@@ -161,7 +161,10 @@ public class Refactor {
         } catch (Exception e) {
             Printer.errorPrint("✗ Training set non trovato: " + trainingPath);
             Printer.printYellow("Suggerimento: assicurati che il file ARFF di training esista");
-            return null;
+            ArrayList<Attribute> attrs = new ArrayList<>();
+            Instances empty = new Instances("empty", attrs, 0);
+            empty.setClassIndex(-1);
+            return empty;
         }
     }
 
