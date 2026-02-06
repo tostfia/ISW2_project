@@ -12,8 +12,8 @@ public class RunPrediction{
         try {
             Printer.printBlue("INIZIO: Predizione What-If");
 
-            String project = "STORM"; // Cambia qui per ogni progetto
-            String datasetAPath = "datasetA.csv";
+            String project = "BOOKKEEPER"; // Cambia qui per ogni progetto
+            String datasetAPath = project.toLowerCase()+"/datasetA.csv";
             String outputSummaryCsv = BASE_PATH + project + "_summary.csv";
 
             PredictionWhatIf.runPrediction(

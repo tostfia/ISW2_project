@@ -1,0 +1,24 @@
+=== PREDIZIONI WHAT-IF (MODELLO RIFATTORIZZATO) ===
+Progetto: STORM
+Data: Fri Feb 06 12:10:39 CET 2026
+Feature utilizzate: 7
+--------------------------------------------------
+
+Metodo: 4                              | Pred: NO    | Prob YES: 11,94%
+Metodo: 34                             | Pred: NO    | Prob YES: 14,98%
+Metodo: 16                             | Pred: NO    | Prob YES: 11,93%
+Metodo: 3                              | Pred: NO    | Prob YES: 11,74%
+Metodo: 19                             | Pred: NO    | Prob YES: 15,26%
+Metodo: 8                              | Pred: NO    | Prob YES: 13,65%
+Metodo: 0                              | Pred: NO    | Prob YES: 11,73%
+Metodo: 11                             | Pred: NO    | Prob YES: 13,61%
+Metodo: 17                             | Pred: NO    | Prob YES: 14,87%
+Metodo: 12                             | Pred: NO    | Prob YES: 14,43%
+Metodo: 34                             | Pred: NO    | Prob YES: 16,79%
+Metodo: 9                              | Pred: NO    | Prob YES: 16,72%
+
+--------------------------------------------------
+RIEPILOGO:
+Totale metodi analizzati: 12
+Metodi predetti come BUGGY: 0 (0,0%)
+Metodi predetti come OK: 12 (100,0%)

@@ -25,9 +25,9 @@ public class DatasetBuilder {
         this.outputDir = outputDir.endsWith("/") ? outputDir : outputDir + "/";
     }
 
-    private static final String RAW_FEATURE_NAME = "NestingDepth";//Cambia qui per ogni progetto
+    private static final String RAW_FEATURE_NAME = "LOC";//Cambia qui per ogni progetto
 
-    private static final String PROJECT_PREFIX = "STORM"; //Cambia qui per ogni progetto
+    private static final String PROJECT_PREFIX = "BOOKKEEPER"; //Cambia qui per ogni progetto
 
     // Costruisce il dataset B+ (metodi con smells) - RITORNA Instances
     public Instances buildBPlus(Instances datasetA) {

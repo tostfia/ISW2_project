@@ -1,0 +1,12 @@
+Rank,Feature,SpearmanRho,Actionable
+1,Authors,0.39226945197807345,false
+2,Revisions,0.38206177460788404,false
+3,TotalChurn,0.2300780522229887,false
+4,MaxChurn,0.1723444137652031,false
+5,AvgChurn,0.1547381245308185,false
+6,NestingDepth,0.054500210853570555,true
+7,CognitiveComplexity,0.05292621419849734,true
+8,CycloComplexity,0.04923823875692247,true
+9,LOC,0.04499069911391,true
+10,ParameterCount,0.031332122936307626,true
+11,NumberOfCodeSmells,-0.02428742012473784,true

@@ -4,10 +4,11 @@ import org.apache.logging.Printer;
 import weka.attributeSelection.InfoGainAttributeEval;
 import weka.attributeSelection.Ranker;
 import weka.classifiers.Classifier;
+import weka.classifiers.meta.Bagging;
+import weka.classifiers.trees.RandomTree;
 import weka.core.Attribute;
 import weka.core.Instance;
 import weka.core.Instances;
-import weka.core.Utils;
 import weka.core.converters.ConverterUtils;
 import weka.filters.Filter;
 import weka.filters.supervised.attribute.AttributeSelection;
@@ -59,7 +60,8 @@ public class PredictionWhatIf {
             datasetTrain = downSample(datasetTrain);
         }
 
-        Classifier model = buildClassifier(datasetTrain);
+        Classifier model = buildBaggingRandomTree();
+        model.buildClassifier(datasetTrain);
 
         PredictionSummary predictA= predict("A", datasetA,model, modelHeader);
         PredictionSummary predictB= predict("B", datasetB,model, modelHeader);
@@ -125,37 +127,45 @@ public class PredictionWhatIf {
     private static Instances applySMOTE(Instances data) throws Exception {
         SMOTE smote = new SMOTE();
         smote.setInputFormat(data);
-        smote.setPercentage(65.0);
+        smote.setPercentage(20.0);
         return Filter.useFilter(data, smote);
     }
 
     // Campionamento semplice delle istanze (per limitare dimensioni)
     private static Instances downSample(Instances data) {
-        if (data.size() <= 40000) return data;
+        if (data.size() <= 20000) return data;
 
         // Shuffle con seed fisso per riproducibilità
         data.randomize(new java.util.Random(42));
 
         // Estrae casualmente le prime N istanze
-        return new Instances(data, 0, 40000);
+        return new Instances(data, 0, 20000);
     }
 
 
-    // Costruisce il classificatore ottimale in base al progetto selezionato.
-    private static Classifier buildClassifier(Instances trainData) throws Exception {
 
-            //  Random Forest
-            weka.classifiers.trees.RandomForest rf = new weka.classifiers.trees.RandomForest();
+    public static Classifier buildBaggingRandomTree() throws Exception {
+        // 1. Crea il RandomTree base learner
+        RandomTree baseTree = new RandomTree();
+        baseTree.setKValue(0);        // consider all features
+        baseTree.setMinNum(1);        // min instances per leaf
+        baseTree.setMaxDepth(0);      // 0 = unlimited
+        baseTree.setDoNotCheckCapabilities(true);
+        baseTree.setSeed(42);
+        baseTree.setNumFolds(0);      // usato per reduced-error pruning
+        baseTree.setMinVarianceProp(0.001); // -V 0.001
 
-            // Parametri ottimizzati: I=30, depth=12, M=50, K=0 (auto), S=1, slots=1
-            // Nota: BagSizePercent impostato al 50% come indicato nell'ultimo snippet
-            String[] options = Utils.splitOptions("-I 30 -depth 12 -M 50 -K 0 -S 1 -num-slots 1");
-            rf.setOptions(options);
-            rf.setBagSizePercent(50);
-            rf.buildClassifier(trainData);
-            return rf;
+        // 2. Crea il Bagging meta-classifier
+        Bagging bagger = new Bagging();
+        bagger.setClassifier(baseTree);
+        bagger.setNumIterations(100);  // 100 alberi
+        bagger.setSeed(42);
+        bagger.setCalcOutOfBag(false); // puoi mettere true se vuoi OOB estimate
+        bagger.setBagSizePercent(100); // ogni albero usa il 100% del campione bootstrap
 
+        return bagger;
     }
+
 
     // METODO PREDICT CON ALLINEAMENTO DATASET
     private static PredictionSummary predict(String name, Instances data, Classifier model, Instances header) throws Exception {

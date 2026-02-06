@@ -1,0 +1,42 @@
+=== PREDIZIONI WHAT-IF (MODELLO RIFATTORIZZATO) ===
+Progetto: BOOKKEEPER
+Data: Fri Feb 06 12:11:10 CET 2026
+Feature utilizzate: 7
+--------------------------------------------------
+
+Metodo: 3                              | Pred: NO    | Prob YES: 41,03%
+Metodo: 13                             | Pred: NO    | Prob YES: 38,68%
+Metodo: 7                              | Pred: NO    | Prob YES: 43,09%
+Metodo: 3                              | Pred: NO    | Prob YES: 40,39%
+Metodo: 3                              | Pred: NO    | Prob YES: 41,75%
+Metodo: 3                              | Pred: NO    | Prob YES: 41,75%
+Metodo: 13                             | Pred: NO    | Prob YES: 38,29%
+Metodo: 10                             | Pred: NO    | Prob YES: 43,70%
+Metodo: 11                             | Pred: NO    | Prob YES: 44,78%
+Metodo: 3                              | Pred: NO    | Prob YES: 41,07%
+Metodo: 3                              | Pred: NO    | Prob YES: 40,39%
+Metodo: 3                              | Pred: NO    | Prob YES: 38,97%
+Metodo: 3                              | Pred: NO    | Prob YES: 40,39%
+Metodo: 3                              | Pred: NO    | Prob YES: 41,75%
+Metodo: 3                              | Pred: NO    | Prob YES: 40,39%
+Metodo: 13                             | Pred: NO    | Prob YES: 44,95%
+Metodo: 4                              | Pred: NO    | Prob YES: 41,74%
+Metodo: 12                             | Pred: NO    | Prob YES: 45,32%
+Metodo: 36                             | Pred: YES   | Prob YES: 50,15%
+Metodo: 39                             | Pred: YES   | Prob YES: 51,70%
+Metodo: 4                              | Pred: NO    | Prob YES: 40,51%
+Metodo: 0                              | Pred: NO    | Prob YES: 37,34%
+Metodo: 4                              | Pred: NO    | Prob YES: 40,51%
+Metodo: 29                             | Pred: NO    | Prob YES: 48,62%
+Metodo: 23                             | Pred: YES   | Prob YES: 50,78%
+Metodo: 21                             | Pred: NO    | Prob YES: 49,86%
+Metodo: 10                             | Pred: NO    | Prob YES: 38,57%
+Metodo: 9                              | Pred: NO    | Prob YES: 41,48%
+Metodo: 9                              | Pred: NO    | Prob YES: 42,54%
+Metodo: 25                             | Pred: YES   | Prob YES: 52,14%
+
+--------------------------------------------------
+RIEPILOGO:
+Totale metodi analizzati: 30
+Metodi predetti come BUGGY: 4 (13,3%)
+Metodi predetti come OK: 26 (86,7%)

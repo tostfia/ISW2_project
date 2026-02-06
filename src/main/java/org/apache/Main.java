@@ -1,9 +1,9 @@
 package org.apache;
 
-import org.apache.controller.FindActionableFeature;
-import org.apache.controller.WekaController;
-import org.apache.controller.DatasetController;
-import org.apache.controller.ReportAnalyzer;
+import org.apache.controller.milestone2.FindActionableFeature;
+import org.apache.controller.milestone2.WekaController;
+import org.apache.controller.milestone2.DatasetController;
+import org.apache.controller.milestone2.ReportAnalyzer;
 
 import org.apache.controller.milestone1.JiraController;
 import org.apache.logging.Printer;
@@ -128,6 +128,20 @@ public class Main {
         String modelPath = "models/" + projectName + "_best.model";
         SerializationHelper.write(modelPath, finalClassifier);
         best.setModelFilePath(modelPath);
+        // Salva lo schema
+        String schemaPath = "models/" + projectName + "_schema.arff";
+        try {
+            java.io.BufferedWriter writer = new java.io.BufferedWriter(
+                    new java.io.FileWriter(schemaPath)
+            );
+            Instances emptySchema = new Instances(finalTraining, 0);
+            writer.write(emptySchema.toString());
+            writer.close();
+            Printer.printlnGreen("Schema salvato: " + schemaPath);
+        } catch (Exception e) {
+            Printer.errorPrint("Errore: " + e.getMessage());
+        }
+
 
         Printer.printlnGreen("Final model saved to: " + modelPath);
         Printer.printlnGreen("STEP 3: Find Actionable Feature");
