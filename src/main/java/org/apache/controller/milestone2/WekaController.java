@@ -4,6 +4,7 @@ import org.apache.logging.Printer;
 import org.apache.model.AggregatedClassifierResult;
 import org.apache.model.AggregatedClassifierResultStore;
 import weka.attributeSelection.*;
+import weka.classifiers.AbstractClassifier;
 import weka.classifiers.Classifier;
 import weka.classifiers.Evaluation;
 import weka.classifiers.meta.FilteredClassifier;
@@ -33,7 +34,7 @@ public class WekaController {
     public AggregatedClassifierResult runCrossValidation(
             Classifier cls,
             Instances data,
-            boolean applyFs,   // <-- ora enum
+            boolean applyFs,
             boolean applySmote,
             boolean applyDownsampling,
             int maxInstances) throws Exception {
@@ -53,97 +54,40 @@ public class WekaController {
         }
 
         String modelName = getBaseClassifierName(cls);
-        AggregatedClassifierResult aggregated =
-                new AggregatedClassifierResult(projectName, modelName);
+        AggregatedClassifierResult aggregated = new AggregatedClassifierResult(projectName, modelName);
 
         for (int r = 0; r < repeats; r++) {
             Printer.printlnGreen("=== CV repetition " + (r + 1) + "/" + repeats + " ===");
 
             // Somme per questa repetition
-            double sumPrecisionRep = 0;
-            double sumRecallRep = 0;
-            double sumF1Rep = 0;
-            double sumAUCRep = 0;
-            double sumKappaRep = 0;
-            double sumNPofB20Rep = 0;
-            double sumAccuracyRep = 0;
+            double sumPrecisionRep = 0, sumRecallRep = 0, sumF1Rep = 0, sumAUCRep = 0,
+                    sumKappaRep = 0, sumNPofB20Rep = 0, sumAccuracyRep = 0;
             int validFolds = 0;
 
             Instances trainFull = new Instances(data);
             trainFull.randomize(new Random(SEED + r));
-            if (trainFull.classAttribute().isNominal()) {
-                trainFull.stratify(folds);
-            }
-
-            int startInst = trainFull.numInstances();
+            if (trainFull.classAttribute().isNominal()) trainFull.stratify(folds);
 
             // =========================
-            // FEATURE SELECTION FILTRANTE
+            // PREPROCESSING
             // =========================
-            if (applyFs) {
-                Printer.printlnBlue("[R" + (r + 1) + "] Applicazione InfoGain prima del classificatore");
-                trainFull = applyFeatureSelection(trainFull);
-            }
-            int afterFS = trainFull.numInstances();
-
-            // =========================
-            // SMOTE se necessario
-            // =========================
-            if (projectName.equalsIgnoreCase("BOOKKEEPER")) {
-                applySmote = true;
-            }
-            if (applySmote) {
-                Printer.printlnBlue("[R" + (r + 1) + "] Applicazione SMOTE");
-                trainFull = applySMOTE(trainFull);
-            }
-            int afterSMOTE = trainFull.numInstances();
-
-            // =========================
-            // DOWNSAMPLING se necessario
-            // =========================
-            if (applyDownsampling) {
-                Printer.printlnBlue("[R" + (r + 1) + "] Applicazione downsampling a " + maxInstances + " istanze");
-                trainFull = downsample(trainFull, maxInstances);
-            }
-            int afterDownsampling = trainFull.numInstances();
-
-            Printer.printlnBlue(
-                    "[R" + (r + 1) + "] Instances: start=" + startInst +
-                            ", afterFS=" + afterFS +
-                            ", afterSMOTE=" + afterSMOTE +
-                            ", afterDownsampling=" + afterDownsampling +
-                            ", final=" + trainFull.numInstances()
-            );
-            int featuresNumber = Math.max(0, trainFull.numAttributes() - 1);
+            trainFull = preprocess(trainFull, applyFs, applySmote, applyDownsampling, maxInstances, r);
 
             int foldSize = trainFull.numInstances() / folds;
             int buggyClassIndex = trainFull.classAttribute().indexOfValue("yes");
 
+            // =========================
+            // CROSS-VALIDATION
+            // =========================
             for (int f = 0; f < folds; f++) {
-                int start = f * foldSize;
-                int end = (f == folds - 1)
-                        ? trainFull.numInstances()
-                        : start + foldSize;
-
-                Instances test = new Instances(trainFull, start, end - start);
-                Instances train = new Instances(trainFull);
-                for (int i = end - 1; i >= start; i--) {
-                    train.delete(i);
-                }
-
-                // =========================
-                // LOG FEATURE COUNT
-                // =========================
-                int featuresTrain = Math.max(0, train.numAttributes());
-                int featuresTest = Math.max(0, test.numAttributes());
-                int featuresAfterFS = Math.max(0, trainFull.numAttributes());
-                Printer.printlnGreen(String.format("[R%d F%d] Features: train=%d, test=%d, afterFS=%d",
-                        r, f, featuresTrain, featuresTest, featuresAfterFS));
+                Instances[] foldData = prepareFoldData(trainFull, f, foldSize);
+                Instances train = foldData[0];
+                Instances test = foldData[1];
 
                 // =========================
                 // COSTRUZIONE CLASSIFICATORE
                 // =========================
-                Classifier clsCopy = weka.classifiers.AbstractClassifier.makeCopy(cls);
+                Classifier clsCopy = AbstractClassifier.makeCopy(cls);
                 clsCopy.buildClassifier(train);
                 Printer.printlnGreen("[R" + (r + 1) + " F" + (f + 1) + "] Classificatore pronto: " +
                         clsCopy.getClass().getSimpleName());
@@ -153,7 +97,6 @@ public class WekaController {
                 // =========================
                 Evaluation eval = new Evaluation(train);
                 eval.evaluateModel(clsCopy, test);
-
                 double npofb20 = computeNPofB20(clsCopy, test);
 
                 double precision = eval.precision(buggyClassIndex);
@@ -163,11 +106,14 @@ public class WekaController {
                 double kappa = eval.kappa();
                 double accuracy = eval.pctCorrect() / 100.0;
 
+                // =========================
+                // SALVATAGGIO CSV
+                // =========================
                 writeFoldResultToCSV(
                         "results_fold" + projectName + ".csv",
                         modelName,
                         applyFs ? "InfoGain" : "None",
-                        featuresTrain,
+                        Math.max(0, train.numAttributes()),
                         f + 1,
                         precision,
                         recall,
@@ -178,7 +124,9 @@ public class WekaController {
                         npofb20
                 );
 
-                // Accumula metriche
+                // =========================
+                // ACCUMULO METRICHE
+                // =========================
                 if (!Double.isNaN(precision)) sumPrecisionRep += precision;
                 if (!Double.isNaN(recall)) sumRecallRep += recall;
                 if (!Double.isNaN(f1)) sumF1Rep += f1;
@@ -195,48 +143,69 @@ public class WekaController {
             // =========================
             // MEDIE REPETITION
             // =========================
-            double avgPrecisionRep = sumPrecisionRep / validFolds;
-            double avgRecallRep = sumRecallRep / validFolds;
-            double avgF1Rep = sumF1Rep / validFolds;
-            double avgAUCRep = sumAUCRep / validFolds;
-            double avgKappaRep = sumKappaRep / validFolds;
-            double avgNPofB20Rep = sumNPofB20Rep / validFolds;
-            double avgAccuracyRep = sumAccuracyRep / validFolds;
-
             aggregated.addRunResult(
-                    avgPrecisionRep,
-                    avgRecallRep,
-                    avgF1Rep,
-                    avgAUCRep,
-                    avgKappaRep,
-                    avgAccuracyRep,
-                    avgNPofB20Rep
+                    sumPrecisionRep / validFolds,
+                    sumRecallRep / validFolds,
+                    sumF1Rep / validFolds,
+                    sumAUCRep / validFolds,
+                    sumKappaRep / validFolds,
+                    sumAccuracyRep / validFolds,
+                    sumNPofB20Rep / validFolds
             );
 
             Printer.printlnGreen("[R" + (r + 1) + " SUMMARY] Precision=%.3f, Recall=%.3f, F1=%.3f, AUC=%.3f, Kappa=%.3f, NPofB20=%.3f"
-                    .formatted(avgPrecisionRep, avgRecallRep, avgF1Rep, avgAUCRep, avgKappaRep, avgNPofB20Rep));
-            /*writeRepetionSummaryToCSV(
-                    "results_rep" + projectName + ".csv",
-                    modelName,
-                    applyFs ? "InfoGain" : "None",
-                    featuresNumber,
-                    r + 1,
-                    avgPrecisionRep,
-                    avgRecallRep,
-                    avgF1Rep,
-                    avgAUCRep,
-                    avgKappaRep,
-                    avgAccuracyRep,
-                    avgNPofB20Rep
-            );*/
-
-
+                    .formatted(sumPrecisionRep / validFolds,
+                            sumRecallRep / validFolds,
+                            sumF1Rep / validFolds,
+                            sumAUCRep / validFolds,
+                            sumKappaRep / validFolds,
+                            sumNPofB20Rep / validFolds));
         }
-
 
         addResult(aggregated);
         return aggregated;
     }
+
+    // =========================
+// FUNZIONI PRIVATE AUSILIARIE
+// =========================
+    private Instances preprocess(Instances data, boolean applyFs, boolean applySmote,
+                                 boolean applyDownsampling, int maxInstances, int r) throws Exception {
+
+        int startInst = data.numInstances();
+
+        if (applyFs) {
+            Printer.printlnBlue("[R" + (r + 1) + "] Applicazione InfoGain prima del classificatore");
+            data = applyFeatureSelection(data);
+        }
+
+        if (projectName.equalsIgnoreCase("BOOKKEEPER")) applySmote = true;
+        if (applySmote) {
+            Printer.printlnBlue("[R" + (r + 1) + "] Applicazione SMOTE");
+            data = applySMOTE(data);
+        }
+
+        if (applyDownsampling) {
+            Printer.printlnBlue("[R" + (r + 1) + "] Applicazione downsampling a " + maxInstances + " istanze");
+            data = downsample(data, maxInstances);
+        }
+
+        Printer.printlnBlue("[R" + (r + 1) + "] Instances: start=" + startInst + ", final=" + data.numInstances());
+        return data;
+    }
+
+    private Instances[] prepareFoldData(Instances trainFull, int foldIndex, int foldSize) {
+        int start = foldIndex * foldSize;
+        int end = (foldIndex == 9) ? trainFull.numInstances() : start + foldSize;
+
+        Instances test = new Instances(trainFull, start, end - start);
+        Instances train = new Instances(trainFull);
+        for (int i = end - 1; i >= start; i--) train.delete(i);
+
+        return new Instances[]{train, test};
+    }
+
+
 
     /* =========================
        MODEL NAME UTILS
