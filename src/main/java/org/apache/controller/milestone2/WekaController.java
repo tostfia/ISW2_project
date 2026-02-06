@@ -43,9 +43,7 @@ public class WekaController {
         final int repeats = 10;
 
         // Rimuove attributo Release se presente
-        int releaseIdx = data.attribute("Release") != null
-                ? data.attribute("Release").index()
-                : -1;
+        int releaseIdx = data.attribute("Release") != null ? data.attribute("Release").index() : -1;
         if (releaseIdx != -1) {
             Remove remove = new Remove();
             remove.setAttributeIndicesArray(new int[]{releaseIdx});
@@ -59,90 +57,40 @@ public class WekaController {
         for (int r = 0; r < repeats; r++) {
             Printer.printlnGreen("=== CV repetition " + (r + 1) + "/" + repeats + " ===");
 
-            // Somme per questa repetition
-            double sumPrecisionRep = 0, sumRecallRep = 0, sumF1Rep = 0, sumAUCRep = 0,
-                    sumKappaRep = 0, sumNPofB20Rep = 0, sumAccuracyRep = 0;
-            int validFolds = 0;
-
             Instances trainFull = new Instances(data);
             trainFull.randomize(new Random(SEED + r));
             if (trainFull.classAttribute().isNominal()) trainFull.stratify(folds);
 
-            // =========================
-            // PREPROCESSING
-            // =========================
             trainFull = preprocess(trainFull, applyFs, applySmote, applyDownsampling, maxInstances, r);
 
             int foldSize = trainFull.numInstances() / folds;
             int buggyClassIndex = trainFull.classAttribute().indexOfValue("yes");
 
-            // =========================
-            // CROSS-VALIDATION
-            // =========================
+            // Somme metriche per repetition
+            double sumPrecisionRep = 0, sumRecallRep = 0, sumF1Rep = 0, sumAUCRep = 0,
+                    sumKappaRep = 0, sumNPofB20Rep = 0, sumAccuracyRep = 0;
+            int validFolds = 0;
+
             for (int f = 0; f < folds; f++) {
                 Instances[] foldData = prepareFoldData(trainFull, f, foldSize);
                 Instances train = foldData[0];
                 Instances test = foldData[1];
 
-                // =========================
-                // COSTRUZIONE CLASSIFICATORE
-                // =========================
-                Classifier clsCopy = AbstractClassifier.makeCopy(cls);
-                clsCopy.buildClassifier(train);
-                Printer.printlnGreen("[R" + (r + 1) + " F" + (f + 1) + "] Classificatore pronto: " +
-                        clsCopy.getClass().getSimpleName());
+                Classifier clsCopy = buildAndTrainClassifier(cls, train, r, f);
 
-                // =========================
-                // VALUTAZIONE
-                // =========================
-                Evaluation eval = new Evaluation(train);
-                eval.evaluateModel(clsCopy, test);
-                double npofb20 = computeNPofB20(clsCopy, test);
+                double[] metrics = evaluateFold(clsCopy, train, test, buggyClassIndex, r, f);
 
-                double precision = eval.precision(buggyClassIndex);
-                double recall = eval.recall(buggyClassIndex);
-                double f1 = eval.fMeasure(buggyClassIndex);
-                double auc = eval.areaUnderROC(buggyClassIndex);
-                double kappa = eval.kappa();
-                double accuracy = eval.pctCorrect() / 100.0;
-
-                // =========================
-                // SALVATAGGIO CSV
-                // =========================
-                writeFoldResultToCSV(
-                        "results_fold" + projectName + ".csv",
-                        modelName,
-                        applyFs ? "InfoGain" : "None",
-                        Math.max(0, train.numAttributes()),
-                        f + 1,
-                        precision,
-                        recall,
-                        f1,
-                        auc,
-                        kappa,
-                        accuracy,
-                        npofb20
-                );
-
-                // =========================
-                // ACCUMULO METRICHE
-                // =========================
-                if (!Double.isNaN(precision)) sumPrecisionRep += precision;
-                if (!Double.isNaN(recall)) sumRecallRep += recall;
-                if (!Double.isNaN(f1)) sumF1Rep += f1;
-                if (!Double.isNaN(auc)) sumAUCRep += auc;
-                if (!Double.isNaN(kappa)) sumKappaRep += kappa;
-                if (!Double.isNaN(accuracy)) sumAccuracyRep += accuracy;
-                if (!Double.isNaN(npofb20)) sumNPofB20Rep += npofb20;
+                sumPrecisionRep += metrics[0];
+                sumRecallRep += metrics[1];
+                sumF1Rep += metrics[2];
+                sumAUCRep += metrics[3];
+                sumKappaRep += metrics[4];
+                sumAccuracyRep += metrics[5];
+                sumNPofB20Rep += metrics[6];
                 validFolds++;
-
-                Printer.printlnBlue(String.format("[R%d F%d] Precision=%.3f, Recall=%.3f, F1=%.3f, AUC=%.3f, Kappa=%.3f, NPofB20=%.3f",
-                        r, f, precision, recall, f1, auc, kappa, npofb20));
             }
 
-            // =========================
-            // MEDIE REPETITION
-            // =========================
+            // Medie per repetition
             aggregated.addRunResult(
                     sumPrecisionRep / validFolds,
                     sumRecallRep / validFolds,
@@ -153,22 +101,14 @@ public class WekaController {
                     sumNPofB20Rep / validFolds
             );
 
-            Printer.printlnGreen("[R" + (r + 1) + " SUMMARY] Precision=%.3f, Recall=%.3f, F1=%.3f, AUC=%.3f, Kappa=%.3f, NPofB20=%.3f"
-                    .formatted(sumPrecisionRep / validFolds,
-                            sumRecallRep / validFolds,
-                            sumF1Rep / validFolds,
-                            sumAUCRep / validFolds,
-                            sumKappaRep / validFolds,
-                            sumNPofB20Rep / validFolds));
+
         }
 
         addResult(aggregated);
         return aggregated;
     }
 
-    // =========================
-// FUNZIONI PRIVATE AUSILIARIE
-// =========================
+
     private Instances preprocess(Instances data, boolean applyFs, boolean applySmote,
                                  boolean applyDownsampling, int maxInstances, int r) throws Exception {
 
@@ -204,6 +144,51 @@ public class WekaController {
 
         return new Instances[]{train, test};
     }
+
+    private Classifier buildAndTrainClassifier(Classifier cls, Instances train, int r, int f) throws Exception {
+        Classifier clsCopy = AbstractClassifier.makeCopy(cls);
+        clsCopy.buildClassifier(train);
+        Printer.printlnGreen("[R" + (r + 1) + " F" + (f + 1) + "] Classificatore pronto: " +
+                clsCopy.getClass().getSimpleName());
+        return clsCopy;
+    }
+
+    private double[] evaluateFold(Classifier clsCopy, Instances train, Instances test, int buggyClassIndex, int r, int f) throws Exception {
+        Evaluation eval = new Evaluation(train);
+        eval.evaluateModel(clsCopy, test);
+        double npofb20 = computeNPofB20(clsCopy, test);
+
+        double precision = eval.precision(buggyClassIndex);
+        double recall = eval.recall(buggyClassIndex);
+        double f1 = eval.fMeasure(buggyClassIndex);
+        double auc = eval.areaUnderROC(buggyClassIndex);
+        double kappa = eval.kappa();
+        double accuracy = eval.pctCorrect() / 100.0;
+
+        writeFoldResultToCSV(
+                "results_fold" + projectName + ".csv",
+                getBaseClassifierName(clsCopy),
+                "InfoGain",
+                Math.max(0, train.numAttributes()),
+                f + 1,
+                precision,
+                recall,
+                f1,
+                auc,
+                kappa,
+                accuracy,
+                npofb20
+        );
+
+        Printer.printlnBlue(String.format("[R%d F%d] Precision=%.3f, Recall=%.3f, F1=%.3f, AUC=%.3f, Kappa=%.3f, NPofB20=%.3f",
+                r, f, precision, recall, f1, auc, kappa, npofb20));
+
+        return new double[]{precision, recall, f1, auc, kappa, accuracy, npofb20};
+    }
+
+
+
+
 
 
 
