@@ -13,9 +13,6 @@ import weka.core.Instances;
 import weka.filters.Filter;
 import weka.filters.supervised.instance.SMOTE;
 import weka.filters.unsupervised.attribute.Remove;
-
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.*;
 
 public class WekaController {
@@ -165,20 +162,7 @@ public class WekaController {
         double kappa = eval.kappa();
         double accuracy = eval.pctCorrect() / 100.0;
 
-        writeFoldResultToCSV(
-                "results_fold" + projectName + ".csv",
-                getBaseClassifierName(clsCopy),
-                "InfoGain",
-                Math.max(0, train.numAttributes()),
-                f + 1,
-                precision,
-                recall,
-                f1,
-                auc,
-                kappa,
-                accuracy,
-                npofb20
-        );
+
 
         Printer.printlnBlue(String.format("[R%d F%d] Precision=%.3f, Recall=%.3f, F1=%.3f, AUC=%.3f, Kappa=%.3f, NPofB20=%.3f",
                 r, f, precision, recall, f1, auc, kappa, npofb20));
@@ -291,84 +275,6 @@ public class WekaController {
         }
     }
 
-    public void writeFoldResultToCSV(
-            String csvPath,
-            String modelName,
-            String featureSelection,
-            int featuresNumber,
-            int fold,
-            double precision,
-            double recall,
-            double f1,
-            double auc,
-            double kappa,
-            double accuracy,
-            double npofb20
-    ) throws IOException {
 
-
-        boolean writeHeader = !new java.io.File(csvPath).exists();
-
-        try (FileWriter writer = new FileWriter(csvPath, true)) {
-            if (writeHeader) {
-                writer.append("Model,FeatureSelection,FeaturesNumber,Fold,")
-                        .append("Precision,Recall,F1,AUC,Kappa,Accuracy,NPofB20\n");
-            }
-
-            writer.append(modelName).append(",")
-                    .append(featureSelection).append(",")
-                    .append(String.valueOf(featuresNumber)).append(",")
-                    .append(String.valueOf(fold)).append(",")
-                    .append(String.format(Locale.US, "%.3f", precision)).append(",")
-                    .append(String.format(Locale.US, "%.3f", recall)).append(",")
-                    .append(String.format(Locale.US, "%.3f", f1)).append(",")
-                    .append(String.format(Locale.US, "%.3f", auc)).append(",")
-                    .append(String.format(Locale.US, "%.3f", kappa)).append(",")
-                    .append(String.format(Locale.US, "%.3f", accuracy)).append(",")
-                    .append(String.format(Locale.US, "%.3f", npofb20)).append("\n");
-        }
-    }
-
-
-    /*public void writeRepetionSummaryToCSV(
-            String csvPath,
-            String modelName,
-            String featureSelection,
-            int featuresNumber,
-            int repetition,
-            double precision,
-            double recall,
-            double f1,
-            double auc,
-            double kappa,
-            double accuracy,
-            double npofb20
-    ) throws IOException {
-
-
-
-        boolean writeHeader = !new java.io.File(csvPath).exists();
-
-        try (FileWriter writer = new FileWriter(csvPath, true)) {
-
-            if (writeHeader) {
-                writer.append("Model,FeatureSelection,FeaturesNumber,Repetition,")
-                        .append("AvgPrecision,AvgRecall,AvgF1,AvgAUC,AvgKappa, AvgAccuracy,AvgNPofB20\n");
-            }
-
-            writer.append(modelName).append(",")
-                    .append(featureSelection).append(",")
-                    .append(String.valueOf(featuresNumber)).append(",")
-                    .append(String.valueOf(repetition)).append(",")
-                    .append(String.format(Locale.US, "%.3f", precision)).append(",")
-                    .append(String.format(Locale.US, "%.3f", recall)).append(",")
-                    .append(String.format(Locale.US, "%.3f", f1)).append(",")
-                    .append(String.format(Locale.US, "%.3f", auc)).append(",")
-                    .append(String.format(Locale.US, "%.3f", kappa)).append(",")
-                    .append(String.format(Locale.US, "%.3f", accuracy)).append(",")
-                    .append(String.format(Locale.US, "%.3f", npofb20)).append("\n");
-
-        }
-    }*/
 
 }

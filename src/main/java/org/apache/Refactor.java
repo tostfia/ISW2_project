@@ -99,10 +99,6 @@ public class Refactor {
         Printer.printlnGreen("\n=== ANALISI COMPLETATA ===");
     }
 
-    /**
-     * Predice la bugginess usando l'approccio What-If di RefactorPredictor
-     * Addestra il modello al momento invece di caricarlo
-     */
     private static void predictWithWhatIfApproach(String project, String refactoredCsvPath,
                                                   String cleanedCsvPath, String reportPath) {
         try {
@@ -114,22 +110,11 @@ public class Refactor {
             cleanCsvFile(refactoredCsvPath, cleanedCsvPath);
             Printer.printlnGreen("✓ CSV pulito: " + cleanedCsvPath);
 
-            // Legge i nomi dei metodi dal CSV pulito
             List<String> methodNames = readMethodNamesFromCsv(cleanedCsvPath);
 
             // 2. PREPARAZIONE TRAINING SET (ARFF)
-            Instances trainRaw;
-            try {
-                trainRaw = new DataSource(trainingPath).getDataSet();
-            } catch (Exception e) {
-                Printer.errorPrint("✗ Training set non trovato: " + trainingPath);
-                Printer.printYellow("Suggerimento: assicurati che il file ARFF di training esista");
-                return;
-            }
-
-            if (trainRaw.classIndex() == -1) {
-                trainRaw.setClassIndex(trainRaw.numAttributes() - 1);
-            }
+            Instances trainRaw = loadTrainingSet(trainingPath);
+            if (trainRaw == null) return;
 
             Instances trainProcessed = preprocessLikeOriginal(trainRaw);
             Printer.printlnGreen("✓ Training preprocessato (feature selection applicata)");
@@ -138,23 +123,26 @@ public class Refactor {
             if (project.equalsIgnoreCase("STORM")) trainProcessed = downsample(trainProcessed);
             if (project.equalsIgnoreCase("BOOKKEEPER")) trainProcessed = applySMOTE(trainProcessed);
 
-            // 3. COSTRUZIONE MODELLO MAPPATO
+            // 3. COSTRUZIONE MODELLO
             Classifier baseModel = buildBaggingRandomTree();
             baseModel.buildClassifier(trainProcessed);
+
             InputMappedClassifier mappedModel = new InputMappedClassifier();
             mappedModel.setClassifier(baseModel);
             mappedModel.setSuppressMappingReport(true);
             mappedModel.buildClassifier(trainProcessed);
 
-            Printer.printlnGreen("✓ Modello addestrato con " + (trainProcessed.numAttributes() - 1) + " feature");
+            Printer.printlnGreen("✓ Modello addestrato con " +
+                    (trainProcessed.numAttributes() - 1) + " feature");
 
-            // 4. CARICAMENTO E PREPARAZIONE TEST SET (CSV)
+            // 4. TEST SET
             Instances testRaw = loadCsvAsInstances(cleanedCsvPath);
             prepareBugginessAttribute(testRaw, false);
             Printer.printlnGreen("✓ Test set preparato: " + testRaw.numInstances() + " metodi");
 
-            // 5. ESECUZIONE PREDIZIONI (estratto in metodo privato)
-            executePredictionsAndWriteReport(project, testRaw, trainProcessed, mappedModel, methodNames, reportPath);
+            // 5. PREDIZIONI
+            executePredictionsAndWriteReport(
+                    project, testRaw, trainProcessed, mappedModel, methodNames, reportPath);
 
             Printer.printlnGreen("\n✓ Report generato in: " + reportPath);
 
@@ -162,6 +150,22 @@ public class Refactor {
             Printer.errorPrint("ERRORE durante le predizioni per " + project + ": " + e.getMessage());
         }
     }
+
+    private static Instances loadTrainingSet(String trainingPath) {
+        try {
+            Instances trainRaw = new DataSource(trainingPath).getDataSet();
+            if (trainRaw.classIndex() == -1) {
+                trainRaw.setClassIndex(trainRaw.numAttributes() - 1);
+            }
+            return trainRaw;
+        } catch (Exception e) {
+            Printer.errorPrint("✗ Training set non trovato: " + trainingPath);
+            Printer.printYellow("Suggerimento: assicurati che il file ARFF di training esista");
+            return null;
+        }
+    }
+
+
 
 
     private static List<String> readMethodNamesFromCsv(String cleanedCsvPath) throws IOException {
@@ -173,7 +177,7 @@ public class Refactor {
                 methodNames.add(line[0]); // MethodName è ora la prima colonna
             }
         } catch (CsvValidationException e) {
-            throw new RuntimeException(e);
+            Printer.errorPrint(e.getMessage());
         }
         return methodNames;
     }

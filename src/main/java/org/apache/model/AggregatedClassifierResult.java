@@ -52,6 +52,10 @@ public class AggregatedClassifierResult {
     private int numberOfRuns;
     private String modelFilePath;
 
+    private AggregatedClassifierResult() {
+        throw new AssertionError("Utility class - non istanziare");
+    }
+
 
 
 
@@ -66,9 +70,7 @@ public class AggregatedClassifierResult {
     }
 
 
-    private AggregatedClassifierResult() {
-        // intenzionalmente privato: usare il costruttore pubblico con parametri
-    }
+
 
 
 
