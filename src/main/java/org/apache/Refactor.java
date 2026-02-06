@@ -225,12 +225,7 @@ public class Refactor {
                         " (" + String.format("%.1f%%", 100.0 * (totalMethods - buggyCount) / totalMethods) + ")");
             }
 
-            Printer.printYellow("\n" + "=".repeat(60));
-            Printer.printlnBlue("Totale metodi: " + totalMethods);
-            Printer.errorPrint("Metodi predetti come BUGGY: " + buggyCount +
-                    " (" + String.format("%.1f%%", 100.0 * buggyCount / totalMethods) + ")");
-            Printer.printGreen("Metodi predetti come OK: " + (totalMethods - buggyCount) +
-                    " (" + String.format("%.1f%%", 100.0 * (totalMethods - buggyCount) / totalMethods) + ")");
+
 
             Printer.printlnGreen("\n✓ Report generato in: " + reportPath);
 
