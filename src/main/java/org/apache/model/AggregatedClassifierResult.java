@@ -51,12 +51,7 @@ public class AggregatedClassifierResult {
     private int numberOfRuns;
     private String modelFilePath;
 
-    // Costruttore privato base (nasconde l'inizializzazione implicita)
-    private AggregatedClassifierResult(String project, String classifierName, int numberOfRuns) {
-        this.project = project;
-        this.classifierName = classifierName;
-        this.numberOfRuns = numberOfRuns;
-    }
+
 
 
     /* =========================
