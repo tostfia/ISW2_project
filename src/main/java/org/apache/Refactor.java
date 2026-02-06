@@ -30,6 +30,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 public class Refactor {
 
@@ -379,7 +380,7 @@ public class Refactor {
      */
     private static Instances downsample(Instances data) {
         if (data.size() <= 20000) return data;
-        data.randomize(new java.util.Random(42));
+        data.randomize(new Random(42));
         return new Instances(data, 0, 20000);
     }
     private static Instances applySMOTE(Instances data) throws Exception {
