@@ -253,21 +253,25 @@ public class DatasetController {
 
     private double getNumericValue(Table table, String columnName, int rowIndex) {
         Column<?> column = table.column(columnName);
-        if (column instanceof DoubleColumn doubleColumn) {
-            return (doubleColumn.getDouble(rowIndex));
-        } else if (column instanceof IntColumn intColumn) {
-            return (intColumn.getInt(rowIndex));
-        } else {
-            // Se la colonna non è numerica direttamente, prova a parsare da stringa
-            String stringValue = column.getString(rowIndex);
-            try {
-                return Double.parseDouble(stringValue);
-            } catch (NumberFormatException e) {
-                Printer.printYellow("Impossibile convertire '" + stringValue + "' in numero per la colonna " + columnName + " alla riga " + rowIndex + ". Restituisco 0.0.");
-                return 0.0;
+
+        return switch (column) {
+            case DoubleColumn doubleColumn -> doubleColumn.getDouble(rowIndex);
+            case IntColumn intColumn -> intColumn.getInt(rowIndex);
+            default -> {
+                String stringValue = column.getString(rowIndex);
+                double value;
+                try {
+                    value = Double.parseDouble(stringValue);
+                } catch (NumberFormatException e) {
+                    Printer.printYellow("Impossibile convertire '" + stringValue + "' in numero per la colonna "
+                            + columnName + " alla riga " + rowIndex + ". Restituisco 0.0.");
+                    value = 0.0;
+                }
+                yield value;
             }
-        }
+        };
     }
+
 
     private String getStringValue(Table table, String columnName, int rowIndex) {
         Column<?> column = table.column(columnName);

@@ -1,5 +1,6 @@
 package org.apache.controller.milestone2;
 
+import org.apache.logging.Printer;
 import org.apache.model.AggregatedClassifierResult;
 import org.apache.model.AggregatedClassifierResultStore;
 
@@ -18,9 +19,9 @@ public class ReportAnalyzer {
     public ReportAnalyzer(String project) {
         this.project = project;
         this.results = AggregatedClassifierResultStore.load(project);
-        System.out.println("Loaded " + results.size() + " classifier results for project " + project);
+        Printer.printGreen("Loaded " + results.size() + " classifier results for project " + project);
         for (AggregatedClassifierResult r : results) {
-            System.out.println(r.getClassifierName() + " | " + r.getProject());
+            Printer.printGreen(r.getClassifierName() + " | " + r.getProject());
         }
     }
 
@@ -56,7 +57,7 @@ public class ReportAnalyzer {
     private double normalizeNp(double val) {
         double min = 0.0;    // ipotetico minimo possibile
         double max = 100.0;  // ipotetico massimo possibile (da calibrare sul dataset)
-        return Math.min(1.0, Math.max(0.0, (val - min) / (max - min)));
+        return Math.clamp((val-min)/(max-min),0.0,1.0);
     }
 
 
@@ -72,12 +73,12 @@ public class ReportAnalyzer {
                                 .reversed())
                         .toList();
 
-        System.out.println("=== CLASSIFIER RANKING (" + project + ") ===");
+        Printer.printlnBlue("=== CLASSIFIER RANKING (" + project + ") ===");
 
         int pos = 1;
         for (AggregatedClassifierResult r : ranked) {
-            System.out.printf(
-                    "%d) %s | Score=%.3f | AUC=%.3f | Recall=%.3f | Precision=%.3f | Kappa=%.3f | NPofB20=%.3f%n",
+            String line = String.format(
+                    "%d) %s | Score=%.3f | AUC=%.3f | Recall=%.3f | Precision=%.3f | Kappa=%.3f | NPofB20=%.3f",
                     pos++,
                     r.getClassifierName(),
                     compositeScore(r),
@@ -87,6 +88,7 @@ public class ReportAnalyzer {
                     r.getAvgKappa(),
                     r.getAvgNpofb20()
             );
+            Printer.println(line);
         }
     }
 }

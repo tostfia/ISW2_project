@@ -127,24 +127,36 @@ public class NumOfCodeSmells {
             }
 
             // 3. Logga i risultati dettagliati
-            Printer.print("Analisi PMD per la release " + releaseId + " terminata con codice di uscita: " + exitCode+ "\n");
+            Printer.print("Analisi PMD per la release " + releaseId +
+                    " terminata con codice di uscita: " + exitCode + "\n");
 
-            if (exitCode == 0) {
-                // PMD ha terminato con successo e non ha trovato violazioni.
-                // Potrebbe esserci il caso "No files to analyze".
-                if (pmdOutput.toString().contains("No files to analyze")) {
-                    Printer.printYellow(PMD_RESULTS + releaseId + " ma non ha trovato file Java da analizzare. (Commit potrebbe non contenere codice Java o filtri attivi).\n");
-                } else {
-                    Printer.print(PMD_RESULTS + releaseId + " senza trovare violazioni.\n");
+            switch (exitCode) {
+                case 0 -> {
+                    // PMD ha terminato con successo e non ha trovato violazioni
+                    if (pmdOutput.toString().contains("No files to analyze")) {
+                        Printer.printYellow(
+                                PMD_RESULTS + releaseId +
+                                        " ma non ha trovato file Java da analizzare. " +
+                                        "(Commit potrebbe non contenere codice Java o filtri attivi).\n"
+                        );
+                    } else {
+                        Printer.print(PMD_RESULTS + releaseId + " senza trovare violazioni.\n");
+                    }
                 }
-            } else if (exitCode == 4) {
-                // PMD ha terminato con successo e ha trovato violazioni.
-                Printer.print(PMD_RESULTS + releaseId + " trovando violazioni. (Vedi report XML).\n");
-            } else {
-                // Qualsiasi altro codice di uscita indica un vero fallimento o errore di configurazione.
-                Printer.errorPrint("PMD ha fallito inaspettatamente per la release " + releaseId + ". Codice di uscita: " + exitCode + ". Output di PMD:\n" + pmdOutput + "\n");
+                case 4 ->
+                    // PMD ha terminato con successo e ha trovato violazioni
+                        Printer.print(PMD_RESULTS + releaseId +
+                                " trovando violazioni. (Vedi report XML).\n");
+
+                default ->
+                    // Qualsiasi altro codice indica errore reale
+                        Printer.errorPrint(
+                                "PMD ha fallito inaspettatamente per la release " + releaseId +
+                                        ". Codice di uscita: " + exitCode +
+                                        ". Output di PMD:\n" + pmdOutput + "\n"
+                        );
             }
-            // --- FINE DIAGNOSTICA AVANZATA ---
+
 
         } catch (GitAPIException e) {
             Printer.errorPrint("Errore critico di Git durante il checkout del commit " + commit.getName() + ": " + e.getMessage());

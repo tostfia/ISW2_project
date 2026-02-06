@@ -68,7 +68,7 @@ public class Printer {
                 logger.setLevel(Level.ALL);
 
             } catch (IOException e) {
-                System.err.println("Errore nel leggere logging.properties: " + e.getMessage());
+                Logger.getLogger(LOGGER_NAME).severe("Errore nel leggere logging.properties: " + e.getMessage());
                 System.exit(-1);
             }
         }

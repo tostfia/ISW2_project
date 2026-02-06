@@ -1,10 +1,12 @@
 package org.apache.controller.milestone2;
 
 
+import com.opencsv.exceptions.CsvValidationException;
 import org.apache.logging.Printer;
 import tech.tablesaw.api.*;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -35,7 +37,7 @@ public class FindActionableFeature {
 
     }
 
-    public void run() throws Exception {
+    public void run() throws IOException, CsvValidationException {
 
         Printer.printGreen("Avvio analisi What-If...\n");
         CorrelationController.FeatureCorrelation bestFeature = cc.getBestFeature();

@@ -17,6 +17,11 @@ import java.util.Map;
 
 public class CodeSmellParser {
 
+
+    private CodeSmellParser() {
+        throw new AssertionError("Utility class - non istanziare");
+    }
+
     @Setter
     private static String repoRootPath;
 

@@ -65,9 +65,11 @@ public class AggregatedClassifierResult {
         this.numberOfRuns = 0;
     }
 
-    public AggregatedClassifierResult() {
-        this.numberOfRuns = 0;
+
+    private AggregatedClassifierResult() {
+        // intenzionalmente privato: usare il costruttore pubblico con parametri
     }
+
 
 
 

@@ -2,6 +2,7 @@ package org.apache;
 
 import com.opencsv.CSVReader;
 import com.opencsv.CSVWriter;
+import com.opencsv.exceptions.CsvValidationException;
 import org.apache.controller.milestone1.MetricsController;
 import org.apache.logging.Printer;
 import org.apache.model.AnalyzedClass;
@@ -107,22 +108,14 @@ public class Refactor {
         try {
             Printer.printlnBlue("\n--- Predizioni What-If per " + project.toUpperCase() + " ---");
 
-            String trainingPath = project.toLowerCase()+"/datasetA.csv";
-
+            String trainingPath = project.toLowerCase() + "/datasetA.csv";
 
             // 1. PULIZIA CSV DI INPUT
             cleanCsvFile(refactoredCsvPath, cleanedCsvPath);
             Printer.printlnGreen("✓ CSV pulito: " + cleanedCsvPath);
-            // Dopo cleanCsvFile
-            List<String> methodNames = new ArrayList<>();
-            try (CSVReader reader = new CSVReader(new FileReader(cleanedCsvPath))) {
-                String[] line;
-                reader.readNext(); // salta header
-                while ((line = reader.readNext()) != null) {
-                    methodNames.add(line[0]); // MethodName è ora la prima colonna nel CSV pulito
-                }
-            }
 
+            // Legge i nomi dei metodi dal CSV pulito
+            List<String> methodNames = readMethodNamesFromCsv(cleanedCsvPath);
 
             // 2. PREPARAZIONE TRAINING SET (ARFF)
             Instances trainRaw;
@@ -138,20 +131,12 @@ public class Refactor {
                 trainRaw.setClassIndex(trainRaw.numAttributes() - 1);
             }
 
-            // Pre-processamento: Rimuove stringhe, storiche e applica Feature Selection
             Instances trainProcessed = preprocessLikeOriginal(trainRaw);
             Printer.printlnGreen("✓ Training preprocessato (feature selection applicata)");
-
-            // Riordina Bugginess in {no, yes} (Specifico per il Training)
             prepareBugginessAttribute(trainProcessed, true);
 
-
-            if (project.equalsIgnoreCase("STORM")) {
-                trainProcessed = downsample(trainProcessed);
-            }
-            if (project.equalsIgnoreCase("BOOKKEEPER")) {
-                trainProcessed = applySMOTE(trainProcessed);
-            }
+            if (project.equalsIgnoreCase("STORM")) trainProcessed = downsample(trainProcessed);
+            if (project.equalsIgnoreCase("BOOKKEEPER")) trainProcessed = applySMOTE(trainProcessed);
 
             // 3. COSTRUZIONE MODELLO MAPPATO
             Classifier baseModel = buildBaggingRandomTree();
@@ -164,79 +149,95 @@ public class Refactor {
             Printer.printlnGreen("✓ Modello addestrato con " + (trainProcessed.numAttributes() - 1) + " feature");
 
             // 4. CARICAMENTO E PREPARAZIONE TEST SET (CSV)
-            CSVLoader loader = new CSVLoader();
-            loader.setSource(new File(cleanedCsvPath));
-            loader.setFieldSeparator(",");  // CsvWriter usa virgola come separatore
-            Instances testRaw = loader.getDataSet();
-
-            // Aggiunge la colonna Bugginess fittizia (Specifico per il Test)
+            Instances testRaw = loadCsvAsInstances(cleanedCsvPath);
             prepareBugginessAttribute(testRaw, false);
             Printer.printlnGreen("✓ Test set preparato: " + testRaw.numInstances() + " metodi");
 
-            // 5. ESECUZIONE PREDIZIONI
-            int buggyCount = 0;
-            int totalMethods = testRaw.numInstances();
-
-            try (PrintWriter writer = new PrintWriter(reportPath)) {
-                writer.println("=== PREDIZIONI WHAT-IF (MODELLO RIFATTORIZZATO) ===");
-                writer.println("Progetto: " + project.toUpperCase());
-                writer.println("Data: " + new java.util.Date());
-                writer.println("Feature utilizzate: " + (trainProcessed.numAttributes() - 1));
-                writer.println("--------------------------------------------------");
-                writer.println();
-
-                Printer.printYellow("\nRisultati predizioni:");
-                Printer.printYellow(String.format("%-30s | %-10s | %-12s", "Metodo", "Predizione", "Prob YES"));
-                Printer.printYellow("-".repeat(60));
-
-                for (int i = 0; i < testRaw.numInstances(); i++) {
-                    Instance inst = testRaw.instance(i);
-
-                    // Usa distributionForInstance per ottenere le probabilità
-                    double[] distribution = mappedModel.distributionForInstance(inst);
-                    double pred = mappedModel.classifyInstance(inst);
-                    String label = trainProcessed.classAttribute().value((int) pred);
-
-                    String methodName = methodNames.get(i);
-                    // distribution[1] è la probabilità di "YES"
-                    double probYes = distribution[1];
-
-                    writer.printf("Metodo: %-30s | Pred: %-5s | Prob YES: %.2f%%%n",
-                            methodName, label.toUpperCase(), probYes * 100);
-
-                    // Stampa a console
-                    if ("yes".equalsIgnoreCase(label)) {
-                        buggyCount++;
-                        Printer.errorPrint(String.format("%-30s | %-10s | %.2f%%",
-                                truncate(methodName), "BUGGY", probYes * 100));
-                    } else {
-                        Printer.printGreen(String.format("%-30s | %-10s | %.2f%%",
-                                truncate(methodName), "OK", probYes * 100));
-                    }
-                }
-
-                writer.println();
-                writer.println("--------------------------------------------------");
-                writer.println("RIEPILOGO:");
-                writer.println("Totale metodi analizzati: " + totalMethods);
-                writer.println("Metodi predetti come BUGGY: " + buggyCount +
-                        " (" + String.format("%.1f%%", 100.0 * buggyCount / totalMethods) + ")");
-                writer.println("Metodi predetti come OK: " + (totalMethods - buggyCount) +
-                        " (" + String.format("%.1f%%", 100.0 * (totalMethods - buggyCount) / totalMethods) + ")");
-            }
-
-
+            // 5. ESECUZIONE PREDIZIONI (estratto in metodo privato)
+            executePredictionsAndWriteReport(project, testRaw, trainProcessed, mappedModel, methodNames, reportPath);
 
             Printer.printlnGreen("\n✓ Report generato in: " + reportPath);
 
         } catch (Exception e) {
             Printer.errorPrint("ERRORE durante le predizioni per " + project + ": " + e.getMessage());
-
         }
     }
 
 
-    private static void cleanCsvFile(String sourcePath, String destPath) throws Exception {
+    private static List<String> readMethodNamesFromCsv(String cleanedCsvPath) throws IOException {
+        List<String> methodNames = new ArrayList<>();
+        try (CSVReader reader = new CSVReader(new FileReader(cleanedCsvPath))) {
+            String[] line;
+            reader.readNext(); // salta header
+            while ((line = reader.readNext()) != null) {
+                methodNames.add(line[0]); // MethodName è ora la prima colonna
+            }
+        } catch (CsvValidationException e) {
+            throw new RuntimeException(e);
+        }
+        return methodNames;
+    }
+
+    private static Instances loadCsvAsInstances(String cleanedCsvPath) throws IOException {
+        CSVLoader loader = new CSVLoader();
+        loader.setSource(new File(cleanedCsvPath));
+        loader.setFieldSeparator(",");
+        return loader.getDataSet();
+    }
+
+    private static void executePredictionsAndWriteReport(String project, Instances testRaw, Instances trainProcessed,
+                                                         InputMappedClassifier mappedModel, List<String> methodNames,
+                                                         String reportPath) throws Exception {
+
+        int buggyCount = 0;
+        int totalMethods = testRaw.numInstances();
+
+        try (PrintWriter writer = new PrintWriter(reportPath)) {
+            writer.println("=== PREDIZIONI WHAT-IF (MODELLO RIFATTORIZZATO) ===");
+            writer.println("Progetto: " + project.toUpperCase());
+            writer.println("Data: " + new java.util.Date());
+            writer.println("Feature utilizzate: " + (trainProcessed.numAttributes() - 1));
+            writer.println("--------------------------------------------------");
+            writer.println();
+
+            Printer.printYellow("\nRisultati predizioni:");
+            Printer.printYellow(String.format("%-30s | %-10s | %-12s", "Metodo", "Predizione", "Prob YES"));
+            Printer.printYellow("-".repeat(60));
+
+            for (int i = 0; i < testRaw.numInstances(); i++) {
+                Instance inst = testRaw.instance(i);
+
+                double[] distribution = mappedModel.distributionForInstance(inst);
+                double pred = mappedModel.classifyInstance(inst);
+                String label = trainProcessed.classAttribute().value((int) pred);
+                double probYes = distribution[1];
+
+                String methodName = methodNames.get(i);
+                writer.printf("Metodo: %-30s | Pred: %-5s | Prob YES: %.2f%%%n",
+                        methodName, label.toUpperCase(), probYes * 100);
+
+                if ("yes".equalsIgnoreCase(label)) {
+                    buggyCount++;
+                    Printer.errorPrint(String.format("%-30s | %-10s | %.2f%%", truncate(methodName), "BUGGY", probYes * 100));
+                } else {
+                    Printer.printGreen(String.format("%-30s | %-10s | %.2f%%", truncate(methodName), "OK", probYes * 100));
+                }
+            }
+
+            writer.println();
+            writer.println("--------------------------------------------------");
+            writer.println("RIEPILOGO:");
+            writer.println("Totale metodi analizzati: " + totalMethods);
+            writer.println("Metodi predetti come BUGGY: " + buggyCount +
+                    " (" + String.format("%.1f%%", 100.0 * buggyCount / totalMethods) + ")");
+            writer.println("Metodi predetti come OK: " + (totalMethods - buggyCount) +
+                    " (" + String.format("%.1f%%", 100.0 * (totalMethods - buggyCount) / totalMethods) + ")");
+        }
+    }
+
+
+
+    private static void cleanCsvFile(String sourcePath, String destPath) throws IOException, CsvValidationException {
 
         CSVReader reader = new CSVReader(new FileReader(sourcePath));
         CSVWriter writer = new CSVWriter(new FileWriter(destPath));

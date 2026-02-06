@@ -10,7 +10,12 @@ import weka.filters.unsupervised.attribute.Normalize;
 
 public class ClassifierFactory {
 
-    public static Classifier build(String name, int seed) throws Exception {
+    private ClassifierFactory() {
+        throw new AssertionError("Utility class - non istanziare");
+    }
+
+
+    public static Classifier build(String name, int seed) throws IllegalArgumentException {
 
         return switch (name) {
             case "NaiveBayes" -> new NaiveBayes();
