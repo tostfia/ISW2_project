@@ -22,9 +22,9 @@ public class AggregatedClassifierResult {
     private  String classifierName;
 
 
-    private final String featureSelection = "InfoGain";
+    private final static String featureSelection = "InfoGain";
 
-    private final String evaluationType = "CrossValidation";
+    private final static String evaluationType = "CrossValidation";
 
     /* =========================
        METRICHE AGGREGATE (per tutte le run)
@@ -40,24 +40,23 @@ public class AggregatedClassifierResult {
     /* =========================
        SNAPSHOT ultima run (opzionale)
        ========================= */
-    private double Precision;
-    private double Recall;
-    private double F1;
-    private double Auc;
-    private double Kappa;
-    private double Accuracy;
-    private double Npofb20;
-
+    private double precisionLast;
+    private double recallLast;
+    private double f1Last;
+    private double aucLast;
+    private double kappaLast;
+    private double accuracyLast;
+    private double npofb20Last;
 
     private int numberOfRuns;
     private String modelFilePath;
 
-    private AggregatedClassifierResult() {
-        throw new AssertionError("Utility class - non istanziare");
+    // Costruttore privato base (nasconde l'inizializzazione implicita)
+    private AggregatedClassifierResult(String project, String classifierName, int numberOfRuns) {
+        this.project = project;
+        this.classifierName = classifierName;
+        this.numberOfRuns = numberOfRuns;
     }
-
-
-
 
 
     /* =========================
@@ -92,14 +91,13 @@ public class AggregatedClassifierResult {
             double accuracy,
             double npofb20) {
 
-        // Aggiorna snapshot ultima run
-        this.Precision = precision;
-        this.Recall = recall;
-        this.F1 = f1;
-        this.Auc = auc;
-        this.Kappa = kappa;
-        this.Accuracy = accuracy;
-        this.Npofb20 = npofb20;
+        this.precisionLast = precision;
+        this.recallLast = recall;
+        this.f1Last = f1;
+        this.aucLast = auc;
+        this.kappaLast = kappa;
+        this.accuracyLast = accuracy;
+        this.npofb20Last = npofb20;
 
         // Se è la prima run, inizializza le medie
         if (numberOfRuns == 0) {
